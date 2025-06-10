@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Row, Col, Card, ListGroup, Button } from 'react-bootstrap';
-import { FaBook, FaFileDownload, FaLink } from 'react-icons/fa';
+import { FaFileDownload, FaLink } from 'react-icons/fa';
 import Footer from '../components/footer';
 
 interface Resource {
