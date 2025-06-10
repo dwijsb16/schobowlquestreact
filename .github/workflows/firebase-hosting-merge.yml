@@ -12,11 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          if [ ! -f package-lock.json ]; then
-            echo "package-lock.json file missing. Running npm install to generate it."
-            npm install
-          fi
-          npm ci && npm run build
+          cd schobowlquestreact
+          cd my-app
+          npm ci
+          npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
