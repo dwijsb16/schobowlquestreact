@@ -12,7 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          cd schobowlquestreact
           cd my-app
           npm ci
           npm run build
