@@ -45,7 +45,7 @@ const CoachesCards: React.FC = () => {
               <img
                 className="card-img-top"
                 src="/images/quest-Q-logo.png"
-                alt="Card image cap"
+                alt="Quest Q logo"
               />
               <div className="card-body">
                 <h5 className="card-title">{card.title}</h5>

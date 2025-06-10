@@ -5,6 +5,7 @@ const Calendar: React.FC = () => {
     <div className="col-md-8">
       <iframe
         src="https://calendar.google.com/calendar/embed?src=questsbclub%40gmail.com&ctz=America%2FChicago"
+        title = "Quest SB Club Calendar"
         style={{ border: 0 }}
         width="100%"
         height="600"
@@ -16,3 +17,4 @@ const Calendar: React.FC = () => {
 };
 
 export default Calendar;
+
