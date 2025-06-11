@@ -1,7 +1,37 @@
+import React, { useState, useEffect } from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../.firebase/utils/firebase'; // Adjust the import path as necessary
 
 const Navigation = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  // Monitor authentication state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true); // User is logged in
+      } else {
+        setIsLoggedIn(false); // User is logged out
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup subscription
+  }, []);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/'); // Navigate to home after logout
+      console.log('Signed out successfully');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <Navbar fixed="top" expand="lg" bg="light" className="navbar-light">
       <Container>
@@ -22,7 +52,11 @@ const Navigation = () => {
             <Nav.Link as={Link} to="/resources">Resources</Nav.Link>
             <Nav.Link as={Link} to="/contact">Contact</Nav.Link>
             <Nav.Link as={Link} to="/coaches">Coaches</Nav.Link>
-            <Nav.Link as={Link} to="/login">Login</Nav.Link>
+            {isLoggedIn ? (
+              <Nav.Link onClick={handleLogout}>Sign Out</Nav.Link>
+            ) : (
+              <Nav.Link as={Link} to="/login">Login</Nav.Link>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>
