@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -28,5 +29,6 @@ provider.setCustomParameters({
     prompt : "select_account "
 });
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const signInWithGooglePopup = () => signInWithPopup(auth, provider);
 export default app;
