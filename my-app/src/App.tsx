@@ -19,9 +19,12 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignUpInfo from "./pages/SignUpInfo"; // Ensure the casing matches the actual file name
 import Profile from "./pages/Profile";
+import { AuthProvider } from "./hooks/AuthContext"; // Adjust the import path as needed
 
 const App = () => {
   return (
+    <AuthProvider>
+
     <>
       <Navigation />
       {/* Add padding below the navbar */}
@@ -59,12 +62,14 @@ const App = () => {
           <Route path="/resources" element={<Resources />} />
           <Route path="/tournament" element={<TournamentPage />} /> */}
 
-          <Route path="/tournament"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <TournamentPage />
-              </ProtectedRoute>
-            }/>
+<Route
+  path="/tournament/:id"
+  element={
+    <ProtectedRoute requiresCoach={true}>
+      <TournamentPage />
+    </ProtectedRoute>
+  }
+/>
 
           {/* Coaches-only routes */}
           {/*<Route path="/coaches" element={<CoachesOnlyPage />} />
@@ -106,6 +111,7 @@ const App = () => {
         </Routes>
       </div>
     </>
+    </AuthProvider>
   );
 };
 

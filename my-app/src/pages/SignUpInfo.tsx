@@ -1,161 +1,194 @@
-import React, { useState } from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/footer";
+import React, { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
 import { auth } from "../.firebase/utils/firebase";
-import { ToastContainer, toast } from "react-toastify";
-import { addDocument } from "../hooks/firestore";
-import "react-toastify/dist/ReactToastify.css";
-import { User } from "../types/user";
-import { Player } from "../types/player";
+import { useNavigate } from "react-router-dom";
+import { addDocument } from "../hooks/firestore"; // Adjust as needed!
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../.firebase/utils/firebase";
 
-const SignUpInfo: React.FC = () => {
-  const [fname, setFirstName] = useState("");
-  const [lname, setLastName] = useState("");
-  const [role, setRole] = useState("");
-  const [grade, setGrade] = useState("");
+const GRADE_OPTIONS = [
+  "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"
+];
+
+const SignupPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("player");
+  const [grade, setGrade] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // On mount, check auth state
+  useEffect(() => {
+    setCurrentUser(auth.currentUser);
+    // If you want this to be more robust to auth changes, use onAuthStateChanged here
+  }, []);
 
-    try {
+  
+const handleSignup = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
+
+  try {
+    let uid: string, signupEmail: string;
+
+    // 1. If already logged in, just use current user
+    if (currentUser) {
+      uid = currentUser.uid;
+      signupEmail = currentUser.email;
+    } else {
+      // 2. Otherwise, create new Auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
-
-      const userData: User = {
-        uid,
-        firstName: fname,
-        lastName: lname,
-        email,
-        role: role as User["role"],
-        ...(role === "player" && { grade }),
-      };
-
-      await addDocument("users", userData);
-
-      if (role === "player") {
-        const playerData: Player = {
-          uid,
-          firstName: fname,
-          lastName: lname,
-          email,
-          role: "player",
-          grade,
-          linkedUsers: [uid],
-        };
-        await addDocument("players", playerData);
-      }
-
-      toast.success("Account created successfully! ✅", {
-        autoClose: 2000,
-        onClose: () => navigate("/profile"),
-      });
-
-    } catch (error: any) {
-      console.error("Sign-up failed:", error);
-      const message = firebaseErrorParser(error);
-      toast.error(message);
+      uid = userCredential.user.uid;
+      signupEmail = userCredential.user.email!;
     }
-  };
 
-  const firebaseErrorParser = (error: any) => {
-    if (error.code) {
-      switch (error.code) {
-        case "auth/email-already-in-use":
-          return "This email is already in use.";
-        case "auth/invalid-email":
-          return "Please enter a valid email address.";
-        case "auth/weak-password":
-          return "Password should be at least 6 characters.";
-        default:
-          return "An unexpected error occurred. Please try again.";
-      }
+    // 3. Check if a Firestore user doc with this UID exists
+    const userDocRef = doc(db, "users", uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      setError("A profile already exists for this account.");
+      alert("You already have a user profile!");
+      navigate("/");
+      return;
     }
-    return "An unknown error occurred.";
-  };
+
+    // 4. Optionally, also check by email (if you want to enforce email uniqueness at the Firestore level)
+    // const emailQuery = query(collection(db, "users"), where("email", "==", signupEmail));
+    // const emailSnap = await getDocs(emailQuery);
+    // if (!emailSnap.empty) {
+    //   setError("A profile with this email already exists.");
+    //   return;
+    // }
+
+    // 5. Build user object for Firestore
+    const newUser = {
+      uid,
+      email: signupEmail,
+      firstName,
+      lastName,
+      role,
+      ...(role === "player" && { grade }),
+    };
+
+    // 6. Add to Firestore using the user's UID as the doc ID
+    await setDoc(userDocRef, newUser);
+
+    alert("Signup/Profile successful!");
+    navigate("/");
+  } catch (err: any) {
+    console.error("Signup failed:", err);
+    if (err.code === "auth/email-already-in-use") {
+      setError("This email is already in use with another account.");
+    } else {
+      setError("An unexpected error occurred. Please try again.");
+    }
+  }
+};
+
 
   return (
-    <>
-      <Navbar />
-      <div className="container" style={{ paddingTop: "90px" }}>
-        <h1 className="text-center">Sign Up</h1>
-        <form onSubmit={handleSubmit} className="mt-4">
-
-          {/* Name Input */}
+    <div className="container">
+      <h2 className="text-center mt-4">{currentUser ? "Complete Your Profile" : "Create an Account"}</h2>
+      <form onSubmit={handleSignup} className="mt-3">
+        {currentUser ? (
           <div className="form-group">
-            <label htmlFor="first">First Name</label>
-            <input type="text" className="form-control" id="first" placeholder="Enter your first name"
-              value={fname} onChange={(e) => setFirstName(e.target.value)} required />
+            <label>Email</label>
+            <input
+              type="email"
+              className="form-control"
+              value={currentUser.email}
+              readOnly
+              disabled
+            />
+            <small className="form-text text-muted">You are signed in as {currentUser.email}</small>
           </div>
+        ) : (
+          <>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                className="form-control"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                className="form-control"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </>
+        )}
+
+        <div className="form-group">
+          <label>First Name</label>
+          <input
+            type="text"
+            className="form-control"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>Last Name</label>
+          <input
+            type="text"
+            className="form-control"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>Role</label>
+          <select
+            className="form-control"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            required
+          >
+            <option value="player">Player</option>
+            <option value="coach">Coach</option>
+            <option value="parent">Parent</option>
+          </select>
+        </div>
+        {role === "player" && (
           <div className="form-group">
-            <label htmlFor="last">Last Name</label>
-            <input type="text" className="form-control" id="last" placeholder="Enter your last name"
-              value={lname} onChange={(e) => setLastName(e.target.value)} required />
+            <label>Grade</label>
+            <select
+              className="form-control"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              required
+            >
+              <option value="">Select grade</option>
+              {GRADE_OPTIONS.map((g) => (
+                <option value={g} key={g}>{g}</option>
+              ))}
+            </select>
           </div>
-
-          {/* Email Input */}
-          <div className="form-group mt-3">
-            <label htmlFor="email">Email address</label>
-            <input type="email" className="form-control" id="email" placeholder="Enter email"
-              value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-
-          {/* Password Input */}
-          <div className="form-group mt-3">
-            <label htmlFor="password">Password</label>
-            <input type="password" className="form-control" id="password" placeholder="Password"
-              value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-
-          {/* Role Selection */}
-          <div className="form-group mt-3">
-            <label>Role</label>
-            <div className="form-check">
-              <input className="form-check-input" type="radio" name="role" id="player" value="player"
-                onChange={(e) => setRole(e.target.value)} required />
-              <label className="form-check-label" htmlFor="player">Player</label>
-            </div>
-            <div className="form-check">
-              <input className="form-check-input" type="radio" name="role" id="parent" value="parent"
-                onChange={(e) => setRole(e.target.value)} required />
-              <label className="form-check-label" htmlFor="parent">Parent</label>
-            </div>
-            <div className="form-check">
-              <input className="form-check-input" type="radio" name="role" id="coach" value="coach"
-                onChange={(e) => setRole(e.target.value)} required />
-              <label className="form-check-label" htmlFor="coach">Coach</label>
-            </div>
-          </div>
-
-          {/* Grade Dropdown (only for players) */}
-          {role === "player" && (
-            <div className="form-group mt-3">
-              <label htmlFor="grade">Grade</label>
-              <select className="form-control" id="grade" value={grade} onChange={(e) => setGrade(e.target.value)} required>
-                <option value="" disabled>Select your grade</option>
-                <option value="5">5th Grade</option>
-                <option value="6">6th Grade</option>
-                <option value="7">7th Grade</option>
-                <option value="8">8th Grade</option>
-              </select>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <div className="text-center mt-4">
-            <button type="submit" className="btn btn-primary">Create Account</button>
-          </div>
-
-        </form>
-        <ToastContainer />
-      </div>
-      <Footer />
-    </>
+        )}
+        {error && <div className="alert alert-danger mt-2">{error}</div>}
+        <button className="btn btn-primary mt-3">
+          {currentUser ? "Save Profile" : "Sign Up"}
+        </button>
+      </form>
+    </div>
   );
 };
 
-export default SignUpInfo;
+export default SignupPage;

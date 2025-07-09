@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, signInWithGooglePopup } from "../.firebase/utils/firebase";
+import { auth, signInWithGooglePopup, db } from "../.firebase/utils/firebase";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { User } from "../types/user";
+import { getDoc, doc,  collection, query, where, getDocs } from "firebase/firestore";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -14,46 +14,78 @@ const LoginForm: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Handle Google Sign-In
   const logGoogleUser = async () => {
     setErrorMessage(null);
     try {
       const response = await signInWithGooglePopup();
-      const user: User = {
-        uid: response.user.uid,
-        firstName: response.user.displayName?.split(" ")[0] || "",
-        email: response.user.email || "",
-        lastName: "",
-        role: "player"
-      };
-      console.log(user);
-      toast.success("Logged In! ✅", { 
-        autoClose: 2000,
-        onClose: () => navigate("/")
-      });
-    } catch (error: any) {
-      console.error("Google sign-in failed:", error);
-      setErrorMessage("Google sign-in failed. Please try again.");
+      const firebaseUser = response.user;
+      const uid = firebaseUser.uid;
+      const email = firebaseUser.email;
+  
+      // 1. Fastest: try direct UID doc first
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+  
+      if (userSnap.exists()) {
+        // All good!
+        navigate("/");
+        return;
+      }
+  
+      // 2. Not found by UID, try to find by email
+      const q = query(collection(db, "users"), where("email", "==", email));
+      const querySnap = await getDocs(q);
+  
+      if (!querySnap.empty) {
+        // Migration/legacy case: optionally merge or migrate to new UID
+        // For now, just treat as profile found:
+        navigate("/");
+        return;
+      }
+  
+      // 3. No doc by uid or email: must create profile
+      navigate("/signup");
+  
+    } catch (error) {
+      // Handle errors
     }
   };
 
+  // Handle Email/Password Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user: User = {
-        uid: userCredential.user.uid,
-        firstName: userCredential.user.displayName?.split(" ")[0] || "",
-        email: userCredential.user.email || "",
-        lastName: "",
-        role: "player"
-      };
-      console.log(user);
-      toast.success("Logged In! ✅", { autoClose: 2000 });
-      setTimeout(() => navigate("/"), 2000);
+
+      // Check if Firestore user doc exists for this user
+      const uid = userCredential.user.uid;
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        toast.success("Logged In! ✅", { 
+          autoClose: 2000,
+          onClose: () => navigate("/")
+        });
+      } else {
+        toast.info("Welcome! Please finish setting up your account.", {
+          autoClose: 2500,
+          onClose: () => navigate("/signup")
+        });
+      }
     } catch (error: any) {
       console.error("Login failed:", error);
-      setErrorMessage(firebaseErrorParser(error));
+      const message = firebaseErrorParser(error);
+      setErrorMessage(message);
+
+      if (error.code === "auth/user-not-found") {
+        toast.info("Account not found. Redirecting to signup...", {
+          autoClose: 2500,
+          onClose: () => navigate("/signup")
+        });
+      }
     }
   };
 

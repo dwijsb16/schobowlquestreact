@@ -1,8 +1,17 @@
 import React, { useState } from "react";
-import { addDocument } from "../hooks/firestore"; // adjust path if needed
-import { Tournament } from "../types/event"; // adjust path if needed
+import { gapi } from "gapi-script";
+import { addDocument } from "../hooks/firestore";
+import { Tournament } from "../types/event";
+
+// --------------- FILL THESE IN ---------------
+const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
+const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
+const CALENDAR_ID = "questsbclub@gmail.com"; // Use your shared calendar ID
+const SCOPES = "https://www.googleapis.com/auth/calendar.events";
+// ---------------------------------------------
 
 const TournamentForm: React.FC = () => {
+  // Tournament form state
   const [eventName, setEventName] = useState("");
   const [eventType, setEventType] = useState("");
   const [status, setStatus] = useState("");
@@ -15,10 +24,43 @@ const TournamentForm: React.FC = () => {
   const [location, setLocation] = useState("");
   const [shirtColor, setShirtColor] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  // INIT GOOGLE API (run once per session)
+  const initGapi = () => {
+    gapi.load("client:auth2", () => {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: [
+          "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+        ],
+        scope: SCOPES,
+      });
+    });
+  };
+
+  // Add event to Google Calendar API
+  const addEventToCalendar = async (eventObj: any) => {
+    // Make sure the user is logged in!
+    const authInstance = gapi.auth2.getAuthInstance();
+    if (!authInstance.isSignedIn.get()) {
+      await authInstance.signIn();
+    }
+    // Add event
+    const response = await gapi.client.calendar.events.insert({
+      calendarId: CALENDAR_ID,
+      resource: eventObj,
+    });
+    return response;
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
+    // Save tournament to Firestore
     const tournamentData: Tournament = {
       eventName,
       eventType: eventType as Tournament["eventType"],
@@ -33,12 +75,55 @@ const TournamentForm: React.FC = () => {
       shirtColor,
       additionalInfo,
     };
-
     const docId = await addDocument("tournaments", tournamentData);
-    if (docId) {
-      alert("Tournament created with ID: " + docId);
+
+    // Prepare Google Calendar event
+    const startDateTime = `${date}T${startTime}${getTimezoneOffset()}`;
+    const endDateTime = endTime ? `${date}T${endTime}${getTimezoneOffset()}` : startDateTime;
+
+    const description = [
+      additionalInfo && `Notes: ${additionalInfo}`,
+      rules && `Rules: ${rules}`,
+      shirtColor && `Shirt Color: ${shirtColor}`,
+      rsvpDate && `RSVP By: ${rsvpDate}${rsvpTime ? ` ${rsvpTime}` : ""}`,
+      status && `Status: ${status}`,
+      eventType && `Event Type: ${eventType}`,
+    ].filter(Boolean).join("\n");
+
+    const eventObj = {
+      summary: eventName,
+      location: location,
+      description: description,
+      start: {
+        dateTime: startDateTime,
+        timeZone: "America/Los_Angeles", // Change if not PST!
+      },
+      end: {
+        dateTime: endDateTime,
+        timeZone: "America/Los_Angeles",
+      },
+    };
+
+    // Init gapi and add to calendar
+    try {
+      initGapi();
+      await new Promise((res) => setTimeout(res, 600));
+      const calendarRes = await addEventToCalendar(eventObj);
+      alert("Event created in Firestore and added to shared Google Calendar!");
+      // Optionally: Show event link: calendarRes.result.htmlLink
+    } catch (err) {
+      alert("Event saved to Firestore, but could NOT be added to Google Calendar. " + err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  function getTimezoneOffset() {
+    const offset = new Date().getTimezoneOffset();
+    const sign = offset > 0 ? "-" : "+";
+    const pad = (n: number) => String(Math.abs(Math.floor(n))).padStart(2, "0");
+    return `${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+  }
 
   return (
     <div className="container d-flex justify-content-center align-items-center mt-5">
@@ -117,9 +202,15 @@ const TournamentForm: React.FC = () => {
           </div>
 
           <div className="text-center">
-            <button type="submit" className="btn btn-primary px-4 py-2">Create Event</button>
+            <button type="submit" className="btn btn-primary px-4 py-2" disabled={loading}>
+              {loading ? "Creating..." : "Create Event"}
+            </button>
           </div>
         </form>
+        <div className="text-center mt-3 text-muted" style={{ fontSize: 14 }}>
+          You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
+          (First time, a Google login popup will appear!)
+        </div>
       </div>
     </div>
   );

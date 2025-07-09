@@ -1,5 +1,6 @@
-import { collection, addDoc, getDocs, updateDoc, arrayUnion, doc } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
 import { db} from "../.firebase/utils/firebase";
+import { arrayRemove} from "firebase/firestore";
 import { useState, useEffect } from "react";
 
 
@@ -44,6 +45,60 @@ export async function addToArrayInDocument(
     console.log(`Added to array '${field}' in document ${docId}`);
   } catch (e) {
     console.error("Error updating document array:", e);
+    throw e;
+  }
+}
+export async function updateDocumentFields(
+  collectionName: string,
+  docId: string,
+  updatedFields: Partial<any>
+) {
+  try {
+    const ref = doc(db, collectionName, docId);
+    await updateDoc(ref, updatedFields);
+    console.log("Document updated");
+  } catch (e) {
+    console.error("Error updating document:", e);
+  }
+}
+export async function getDocumentById<T>(collectionName: string, docId: string): Promise<T & {
+  role: string;
+  firstName: string;
+  lastName: string;
+  linkedPlayers: never[]; id: string 
+} | null> {
+  try {
+    const ref = doc(db, collectionName, docId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return { 
+      id: snap.id, 
+      role: '', // default value
+      firstName: '', // default value
+      lastName: '', // default value
+      linkedPlayers: [], // default value
+      ...(snap.data() as T) 
+    };
+    return null;
+  } catch (e) {
+    console.error("Error fetching document:", e);
+    return null;
+  }
+}
+
+export async function removeFromArrayInDocument(
+  collectionName: string,
+  docId: string,
+  field: string,
+  value: any
+) {
+  try {
+    const ref = doc(db, collectionName, docId);
+    await updateDoc(ref, {
+      [field]: arrayRemove(value),
+    });
+    console.log(`Removed from array '${field}' in document ${docId}`);
+  } catch (e) {
+    console.error("Error removing from document array:", e);
     throw e;
   }
 }

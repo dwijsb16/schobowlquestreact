@@ -8,6 +8,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js"; // includes Popper.js
 import { BrowserRouter } from 'react-router-dom';
 //import { addToCalendar } from "./hooks/gcal"; // adjust path if needed
 
+
 //exports.addToCalendar = addToCalendar;
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);

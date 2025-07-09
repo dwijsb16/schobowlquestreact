@@ -1,174 +1,244 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, doc, updateDoc, arrayRemove, arrayUnion } from "firebase/firestore";
+import { setDoc, collection, doc } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
-import Navbar from "../components/Navbar";
-import Footer from "../components/footer";
-import { User } from "../types/user";
-import { Player } from "../types/player";
+import { useNavigate } from "react-router-dom";
+import {
+  getCollection,
+  getDocumentById,
+  addToArrayInDocument,
+  removeFromArrayInDocument,
+  updateDocumentFields,
+} from "../hooks/firestore";
 
 const ProfileScreen: React.FC = () => {
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [firstName, setFirstName] = useState("");
-  const [userId, setUserId] = useState("");
-  const [players, setPlayers] = useState<string[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState("");
-  const [linking, setLinking] = useState(false);
-  const [linkedPlayer, setLinkedPlayer] = useState<string | null>(null);
-  const [linkedUsers, setLinkedUsers] = useState<string[]>([]);
-  const [linkedUserNames, setLinkedUserNames] = useState<string[]>([]);
-  const [isPlayer, setIsPlayer] = useState(false);
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("player");
+  const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
+  const [editProfile, setEditProfile] = useState(false);
+  const [showEditLinked, setShowEditLinked] = useState(false);
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [selectedPlayerUid, setSelectedPlayerUid] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
 
+  // Check auth and profile
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setUserId(user.uid);
-        const userDocs = await getDocs(collection(db, "users"));
-        userDocs.forEach(async (docSnap) => {
-          const data = docSnap.data() as User;
-          if (data.uid === user.uid) {
-            setFirstName(data.firstName);
-            if (data.role === "player") {
-              setIsPlayer(true);
-              const playerDocs = await getDocs(collection(db, "players"));
-              playerDocs.forEach(async (playerDoc) => {
-                const pdata = playerDoc.data() as Player;
-                if (pdata.uid === user.uid) {
-                  const linked = pdata.linkedUsers || [];
-                  setLinkedUsers(linked);
-                  fetchLinkedUserNames(linked);
-                }
-              });
-            } else {
-              setLinkedPlayer(data.linkedPlayer || null);
-              setIsPlayer(false);
-            }
-          }
-        });
+        setFirebaseUser(user);
+        const userDoc = await getDocumentById("users", user.uid);
+        if (userDoc) {
+          setProfile(userDoc);
+          setNeedsProfile(false);
+          setFirstName(userDoc.firstName || "");
+          setLastName(userDoc.lastName || "");
+          setRole(userDoc.role || "player");
+          setLinkedPlayers(userDoc.linkedPlayers || []);
+        } else {
+          setNeedsProfile(true);
+        }
+      } else {
+        setFirebaseUser(null);
+        setProfile(null);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  const fetchLinkedUserNames = async (uids: string[]) => {
-    const names: string[] = [];
-    const userCollection = await getDocs(collection(db, "users"));
-    userCollection.forEach((docSnap) => {
-      const data = docSnap.data() as User;
-      if (uids.includes(data.uid)) {
-        names.push(`${data.firstName} ${data.lastName}`);
-      }
-    });
-    setLinkedUserNames(names);
-  };
-
-  const handleLinkClick = async () => {
-    setLinking(true);
-    try {
-      const snapshot = await getDocs(collection(db, "players"));
-      const playerList: string[] = snapshot.docs.map((doc) => doc.data().firstName + " " + doc.data().lastName);
-      setPlayers(playerList);
-    } catch (err) {
-      console.error("Error fetching players:", err);
+  // Fetch all players for dropdown
+  useEffect(() => {
+    if (showEditLinked && profile && profile.role !== "player") {
+      getCollection<any>("players").then(players => setAllPlayers(players));
     }
-  };
+  }, [showEditLinked, profile]);
 
-  const handleSubmit = async () => {
-    try {
-      const playerSnapshot = await getDocs(collection(db, "players"));
-      let oldPlayerId = null;
+  // Fetch names for linked players (from players collection)
+  useEffect(() => {
+    const fetchNames = async () => {
+      if (!linkedPlayers.length) {
+        setLinkedPlayerNames([]);
+        return;
+      }
+      const out: string[] = [];
+      for (const uid of linkedPlayers) {
+        const playerDoc = await getDocumentById<any>("players", uid);
+        if (playerDoc) {
+          out.push(`${playerDoc.firstName} ${playerDoc.lastName} (${playerDoc.email || playerDoc.id})`);
+        }
+      }
+      setLinkedPlayerNames(out);
+    };
+    fetchNames();
+  }, [linkedPlayers]);
 
-      const userDocs = await getDocs(collection(db, "users"));
-      for (const uDoc of userDocs.docs) {
-        const uData = uDoc.data() as User;
-        if (uData.uid === userId) {
-          if (uData.linkedPlayer) {
-            alert("You can only link to one player.");
+  // PROFILE CREATION FORM
+  if (needsProfile) {
+    return (
+      <div className="container mt-5">
+        <h2>Create Your Profile</h2>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          if (!firstName.trim() || !lastName.trim()) {
+            setError("Please enter your name.");
             return;
           }
-          oldPlayerId = uData.linkedPlayer;
-          const userRef = doc(db, "users", uDoc.id);
-          await updateDoc(userRef, { linkedPlayer: selectedPlayer });
-          setLinkedPlayer(selectedPlayer);
-          break;
-        }
-      }
-
-      for (const docSnap of playerSnapshot.docs) {
-        const data = docSnap.data() as Player;
-        const fullName = `${data.firstName} ${data.lastName}`;
-        const playerRef = doc(db, "players", docSnap.id);
-
-        if (fullName === selectedPlayer) {
-          if ((data.linkedUsers || []).includes(userId)) {
-            alert("You already linked to this player.");
-            return;
+          try {
+            const userDoc = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              firstName,
+              lastName,
+              role,
+              linkedPlayers: [],
+            };
+            await setDoc(doc(db, "users", firebaseUser.uid), userDoc);
+            setProfile(userDoc);
+            setNeedsProfile(false);
+            setError(null);
+          } catch (err: any) {
+            setError("Error creating profile. Try again.");
           }
-          await updateDoc(playerRef, {
-            linkedUsers: arrayUnion(userId),
-          });
-          alert("Player linked successfully!");
-        }
-
-        if (fullName === oldPlayerId && oldPlayerId !== selectedPlayer) {
-          await updateDoc(playerRef, {
-            linkedUsers: arrayRemove(userId),
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Error linking player:", err);
-      alert("Something went wrong.");
-    }
-  };
-
-  return (
-    <>
-      <Navbar />
-      <div className="container" style={{ paddingTop: "90px" }}>
-        <h2>Welcome, {firstName}!</h2>
-        <div className="mt-4">
-          <p>You're logged in.</p>
-
-          {linkedPlayer && <p>🔗 Account is linked to: <strong>{linkedPlayer}</strong></p>}
-
-          {isPlayer && linkedUserNames.length > 0 && (
-            <>
-              <p>👥 Users linked to your player account:</p>
-              <ul>
-                {linkedUserNames.map((name, index) => (
-                  <li key={index}>{name}</li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {!isPlayer && (
-            <>
-              <button className="btn btn-outline-primary" onClick={handleLinkClick}>
-                {linkedPlayer ? "Change linked player" : "Link your account to a player"}
-              </button>
-
-              {linking && (
-                <div className="mt-3">
-                  <select
-                    className="form-select mb-2"
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                  >
-                    <option value="" disabled>Select a player</option>
-                    {players.map((player, index) => (
-                      <option key={index} value={player}>{player}</option>
-                    ))}
-                  </select>
-                  <button className="btn btn-success" onClick={handleSubmit}>Submit</button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        }}>
+          <div className="form-group">
+            <label>First Name</label>
+            <input className="form-control" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Last Name</label>
+            <input className="form-control" value={lastName} onChange={e => setLastName(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Role</label>
+            <select className="form-control" value={role} onChange={e => setRole(e.target.value)}>
+              <option value="player">Player</option>
+              <option value="parent">Parent</option>
+              <option value="coach">Coach</option>
+            </select>
+          </div>
+          {error && <div className="alert alert-danger">{error}</div>}
+          <button className="btn btn-success mt-3" type="submit">Create Profile</button>
+        </form>
       </div>
-      <Footer />
-    </>
+    );
+  }
+
+  // PROFILE MAIN
+  return (
+    <div className="container mt-5">
+      <h2>Welcome, {profile ? `${profile.firstName} ${profile.lastName}` : ""}!</h2>
+      <button className="btn btn-link float-right" onClick={() => setEditProfile(v => !v)}>
+        {editProfile ? "Cancel" : "Edit Profile"}
+      </button>
+
+      {editProfile && (
+        <form className="mb-4" onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            await updateDocumentFields("users", firebaseUser.uid, { firstName, lastName, role });
+            setProfile({ ...profile, firstName, lastName, role });
+            setEditProfile(false);
+          } catch (err: any) {
+            alert("Error updating profile.");
+          }
+        }}>
+          <div className="form-group">
+            <label>First Name</label>
+            <input className="form-control" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Last Name</label>
+            <input className="form-control" value={lastName} onChange={e => setLastName(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Role</label>
+            <select className="form-control" value={role} onChange={e => setRole(e.target.value)}>
+              <option value="player">Player</option>
+              <option value="parent">Parent</option>
+              <option value="coach">Coach</option>
+            </select>
+          </div>
+          <button className="btn btn-primary mt-2" type="submit">Save</button>
+        </form>
+      )}
+
+      {/* LINKED PLAYERS - Only show for parent/coach */}
+      {profile && profile.role !== "player" && (
+        <div className="mb-4">
+          <h5>Linked Players:</h5>
+          {linkedPlayerNames.length ? (
+            <ul>
+              {linkedPlayerNames.map((n, i) => (
+                <li key={i}>
+                  {n}
+                  <button
+                    className="btn btn-sm btn-danger ml-2"
+                    onClick={async () => {
+                      const playerUid = linkedPlayers[i];
+                      // Remove from user
+                      await updateDocumentFields("users", firebaseUser.uid, {
+                        linkedPlayers: linkedPlayers.filter(uid => uid !== playerUid)
+                      });
+                      setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
+                      // Remove user from player
+                      await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
+                    }}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No linked players yet.</p>
+          )}
+          <button className="btn btn-outline-primary mt-2" onClick={() => setShowEditLinked(v => !v)}>
+            {showEditLinked ? "Cancel" : "Edit Linked Players"}
+          </button>
+        </div>
+      )}
+
+      {/* ADD LINKED PLAYERS */}
+      {showEditLinked && profile && profile.role !== "player" && (
+        <div className="card card-body mb-3">
+          <div className="form-group">
+            <label>Select a player to link:</label>
+            <select
+              className="form-control"
+              value={selectedPlayerUid}
+              onChange={e => setSelectedPlayerUid(e.target.value)}
+            >
+              <option value="">-- Select a player --</option>
+              {allPlayers
+                .filter(p => !linkedPlayers.includes(p.id))
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName} ({p.id})
+                  </option>
+                ))}
+            </select>
+          </div>
+          <button
+            className="btn btn-success mt-2"
+            disabled={!selectedPlayerUid}
+            onClick={async () => {
+              if (!selectedPlayerUid) return;
+              // Add player to user's linkedPlayers
+              await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
+              setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
+              setSelectedPlayerUid("");
+              // Add user to player's linkedUsers
+              await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
+            }}
+          >
+            Add Linked Player
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 

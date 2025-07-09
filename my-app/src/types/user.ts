@@ -1,9 +1,11 @@
-  export interface User {
-    uid: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: 'player' | 'parent' | 'coach';
-    grade?: string;
-    linkedPlayer?: string;
-  }
+export type UserRole = 'player' | 'parent' | 'coach';
+
+export interface User {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  // For non-players: which player(s) are they linked to?
+  linkedPlayers?: string[]; // array of Player ID
+}
