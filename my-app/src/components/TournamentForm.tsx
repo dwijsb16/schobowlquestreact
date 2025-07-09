@@ -61,6 +61,14 @@ const TournamentForm: React.FC = () => {
     const pad = (n: number) => String(Math.abs(Math.floor(n))).padStart(2, "0");
     return `${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
   }
+  function padTimeWithSeconds(time: string) {
+    // If already has seconds, leave alone
+    if (time.length === 8) return time;
+    // If empty or null, return empty
+    if (!time) return "";
+    // Otherwise, append :00
+    return time + ":00";
+  }
 
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,8 +93,8 @@ const TournamentForm: React.FC = () => {
     await addDocument("tournaments", tournamentData);
 
     // 2. Prepare Google Calendar event
-    const startDateTime = `${date}T${startTime}${getTimezoneOffset()}`;
-    const endDateTime = endTime ? `${date}T${endTime}${getTimezoneOffset()}` : startDateTime;
+    const startDateTime = `${date}T${padTimeWithSeconds(startTime)}${getTimezoneOffset()}`;
+    const endDateTime = endTime ? `${date}T${padTimeWithSeconds(endTime)}${getTimezoneOffset()}` : startDateTime;
     const description = [
       additionalInfo && `Notes: ${additionalInfo}`,
       rules && `Rules: ${rules}`,
