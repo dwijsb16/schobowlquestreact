@@ -18,6 +18,11 @@ const About: React.FC = () => {
       name: 'Amy Byrne',
       role: 'Assistant Coach',
       description: 'Specializing in history and literature'
+    },
+    {
+      name: 'Vikram smth',
+      role: 'Assistant Coach',
+      description: 'Specializing in history and literature'
     }
   ];
 

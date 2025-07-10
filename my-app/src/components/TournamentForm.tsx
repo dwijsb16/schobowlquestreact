@@ -150,86 +150,173 @@ const TournamentForm: React.FC = () => {
   };
 
   return (
-    <div className="container d-flex justify-content-center align-items-center mt-5">
-      <div className="card p-4 shadow" style={{ maxWidth: "700px", width: "100%" }}>
-        <h2 className="text-center mb-4">Add an Event</h2>
-        <form onSubmit={handleSubmit}>
+    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", background: "linear-gradient(110deg, #e8f1fa 60%, #fffbe7 100%)" }}>
+      <div className="card shadow" style={{
+        maxWidth: 700,
+        width: "100%",
+        borderRadius: 24,
+        border: "none",
+        boxShadow: "0 4px 36px #b4d3fb60",
+        margin: "40px 0"
+      }}>
+        <div style={{
+          background: "linear-gradient(90deg, #43b0f1 0, #ffe17b 120%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: "30px 28px 20px 28px"
+        }}>
+          <h2 className="mb-2 text-center" style={{
+            color: "#253c60",
+            fontWeight: 800,
+            letterSpacing: "1.2px"
+          }}>
+            Add a Tournament Event
+          </h2>
+          <p className="mb-0 text-center" style={{
+            color: "#2e3a59", fontSize: 15, opacity: 0.83
+          }}>
+            This form will add a tournament to both the club calendar and your database.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4">
+          {/* Event Name */}
           <div className="form-group mb-3">
-            <label htmlFor="tourn_name">Event Name</label>
-            <input type="text" id="tourn_name" className="form-control" value={eventName} onChange={(e) => setEventName(e.target.value)} required />
+            <label htmlFor="tourn_name" style={{ fontWeight: 600 }}>Event Name<span style={{ color: "#ef5350" }}> *</span></label>
+            <input type="text" id="tourn_name" className="form-control"
+              style={{ borderRadius: 14, padding: "10px 16px" }}
+              value={eventName} onChange={e => setEventName(e.target.value)} required />
           </div>
-          <div className="form-group mb-3">
-            <label htmlFor="event_type">Event Type</label>
-            <select id="event_type" className="form-control" value={eventType} onChange={(e) => setEventType(e.target.value)} required>
-              <option value="">Select an event type</option>
-              <option value="extra_practice">Extra Practice</option>
-              <option value="match_play">Match Play</option>
-              <option value="tournament">Tournament</option>
-            </select>
-          </div>
-          <div className="form-group mb-3">
-            <label htmlFor="status">Status</label>
-            <select id="status" className="form-control" value={status} onChange={(e) => setStatus(e.target.value)} required>
-              <option value="">Select status</option>
-              <option value="tentative">Tentative</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
+  
+          {/* Event Type & Status */}
           <div className="row mb-3">
             <div className="form-group col-md-6">
-              <label htmlFor="date">Date</label>
-              <input type="date" id="date" className="form-control" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <label htmlFor="event_type" style={{ fontWeight: 600 }}>Event Type<span style={{ color: "#ef5350" }}> *</span></label>
+              <select id="event_type" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={eventType} onChange={e => setEventType(e.target.value)} required>
+                <option value="">Select an event type</option>
+                <option value="extra_practice">Extra Practice</option>
+                <option value="match_play">Match Play</option>
+                <option value="tournament">Tournament</option>
+              </select>
             </div>
-            <div className="form-group col-md-3">
-              <label htmlFor="start_time">Start Time</label>
-              <input type="time" id="start_time" className="form-control" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
-            </div>
-            <div className="form-group col-md-3">
-              <label htmlFor="end_time">End Time</label>
-              <input type="time" id="end_time" className="form-control" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
-          </div>
-          <div className="row mb-3">
             <div className="form-group col-md-6">
-              <label htmlFor="rsvp_date">RSVP Date</label>
-              <input type="date" id="rsvp_date" className="form-control" value={rsvpDate} onChange={(e) => setRsvpDate(e.target.value)} />
+              <label htmlFor="status" style={{ fontWeight: 600 }}>Status<span style={{ color: "#ef5350" }}> *</span></label>
+              <select id="status" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={status} onChange={e => setStatus(e.target.value)} required>
+                <option value="">Select status</option>
+                <option value="tentative">Tentative</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+  
+          {/* Date, Start, End */}
+          <div className="row mb-3">
+            <div className="form-group col-md-5">
+              <label htmlFor="date" style={{ fontWeight: 600 }}>Date<span style={{ color: "#ef5350" }}> *</span></label>
+              <input type="date" id="date" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={date} onChange={e => setDate(e.target.value)} required />
             </div>
             <div className="form-group col-md-3">
-              <label htmlFor="rsvp_time">RSVP Time</label>
-              <input type="time" id="rsvp_time" className="form-control" value={rsvpTime} onChange={(e) => setRsvpTime(e.target.value)} />
+              <label htmlFor="start_time" style={{ fontWeight: 600 }}>Start Time<span style={{ color: "#ef5350" }}> *</span></label>
+              <input type="time" id="start_time" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={startTime} onChange={e => setStartTime(e.target.value)} required />
+            </div>
+            <div className="form-group col-md-4">
+              <label htmlFor="end_time" style={{ fontWeight: 600 }}>End Time</label>
+              <input type="time" id="end_time" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={endTime} onChange={e => setEndTime(e.target.value)} />
             </div>
           </div>
+  
+          {/* RSVP */}
+          <div className="row mb-3">
+            <div className="form-group col-md-7">
+              <label htmlFor="rsvp_date" style={{ fontWeight: 600 }}>RSVP Date</label>
+              <input type="date" id="rsvp_date" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} />
+            </div>
+            <div className="form-group col-md-5">
+              <label htmlFor="rsvp_time" style={{ fontWeight: 600 }}>RSVP Time</label>
+              <input type="time" id="rsvp_time" className="form-control"
+                style={{ borderRadius: 14 }}
+                value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} />
+            </div>
+          </div>
+  
+          {/* Rules */}
           <div className="form-group mb-3">
-            <label htmlFor="rules_tourn">Rules</label>
-            <textarea id="rules_tourn" className="form-control" rows={3} value={rules} onChange={(e) => setRules(e.target.value)} placeholder="Enter rules..." />
+            <label htmlFor="rules_tourn" style={{ fontWeight: 600 }}>Rules</label>
+            <textarea id="rules_tourn" className="form-control"
+              rows={2}
+              style={{ borderRadius: 14 }}
+              value={rules} onChange={e => setRules(e.target.value)} placeholder="Enter rules..." />
           </div>
+  
+          {/* Location */}
           <div className="form-group mb-3">
-            <label htmlFor="location">Location</label>
-            <input type="text" id="location" className="form-control" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Enter address" />
+            <label htmlFor="location" style={{ fontWeight: 600 }}>Location</label>
+            <input type="text" id="location" className="form-control"
+              style={{ borderRadius: 14 }}
+              value={location} onChange={e => setLocation(e.target.value)} placeholder="Enter address" />
           </div>
+  
+          {/* Shirt Color */}
           <div className="form-group mb-3">
-            <label htmlFor="shirt_color">Shirt Color</label>
-            <input type="text" id="shirt_color" className="form-control" value={shirtColor} onChange={(e) => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" />
+            <label htmlFor="shirt_color" style={{ fontWeight: 600 }}>Shirt Color</label>
+            <input type="text" id="shirt_color" className="form-control"
+              style={{ borderRadius: 14 }}
+              value={shirtColor} onChange={e => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" />
           </div>
-          <div className="form-group mb-4">
-            <label htmlFor="additional_info">Additional Information</label>
-            <input type="text" id="additional_info" className="form-control" value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} placeholder="Any notes..." />
+  
+          {/* Additional Info */}
+          <div className="form-group mb-3">
+            <label htmlFor="additional_info" style={{ fontWeight: 600 }}>Additional Information</label>
+            <input type="text" id="additional_info" className="form-control"
+              style={{ borderRadius: 14 }}
+              value={additionalInfo} onChange={e => setAdditionalInfo(e.target.value)} placeholder="Any notes..." />
           </div>
-          <div className="text-center">
-            <button type="submit" className="btn btn-primary px-4 py-2" disabled={loading}>
+  
+          {/* Button */}
+          <div className="text-center my-4">
+            <button type="submit"
+              className="btn"
+              style={{
+                background: "linear-gradient(90deg,#43b0f1,#ffe17b 120%)",
+                color: "#232e4a",
+                fontWeight: 700,
+                padding: "10px 38px",
+                fontSize: 18,
+                borderRadius: 24,
+                border: "none",
+                letterSpacing: 1,
+                boxShadow: "0 2px 10px #dae3f9a8"
+              }}
+              disabled={loading}
+            >
               {loading ? "Creating..." : "Create Event"}
             </button>
           </div>
         </form>
-        <div className="text-center mt-3 text-muted" style={{ fontSize: 14 }}>
-          You must be signed in with a Google account <b>with edit access</b> to the shared calendar.
-          <br />
-          (A Google login popup will appear only if needed!)
+        <div className="text-center pb-3 px-4" style={{
+          fontSize: 14,
+          color: "#546a85"
+        }}>
+          <b style={{ color: "#ef5350" }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
+          <span style={{ opacity: 0.7 }}>
+            (A Google login popup will appear only if needed!)
+          </span>
         </div>
       </div>
     </div>
   );
+  
 };
 
 export default TournamentForm;

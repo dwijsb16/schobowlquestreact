@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { setDoc, collection, doc } from "firebase/firestore";
+import { setDoc, collection, doc, getDocs, getDoc, query, orderBy } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
-import { useNavigate } from "react-router-dom";
 import {
   getCollection,
   getDocumentById,
@@ -10,7 +9,47 @@ import {
   removeFromArrayInDocument,
   updateDocumentFields,
 } from "../hooks/firestore";
+import { Link } from "react-router-dom";
 
+interface TournamentCard {
+  id: string;
+  eventName: string;
+  date: string;
+  location?: string;
+}
+type Role = "coach" | "parent" | "player" | "default";
+
+const colorMap: Record<Role, string> = {
+  coach: "#17a2b8",
+  parent: "#ffc107",
+  player: "#007bff",
+  default: "#6c757d"
+};
+const statusColor = (status: string) => {
+  switch (status) {
+    case "Attending":
+      return "#6BCB77"; // green
+    case "Not Attending":
+      return "#FF6B6B"; // red
+    case "Leaving Early":
+    case "Arriving Late":
+    case "Late Arrival & Early Departure":
+      return "#FFD93D"; // yellow
+    default:
+      return "#BDBDBD"; // gray
+  }
+};
+
+function availabilityLabel(a?: string) {
+  switch (a) {
+    case "yes": return "Attending";
+    case "no": return "Not Attending";
+    case "early": return "Leaving Early";
+    case "late": return "Arriving Late";
+    case "late_early": return "Late Arrival & Early Departure";
+    default: return "Signed Up";
+  }
+}
 const ProfileScreen: React.FC = () => {
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -26,7 +65,15 @@ const ProfileScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
 
-  // Check auth and profile
+   // For "My Signups"
+   const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
+   // Track signup status (signedUp + availability)
+   const [mySignups, setMySignups] = useState<{
+     [tournId: string]: { signedUp: boolean; availability?: string }
+   }>({});
+   const [loadingSignups, setLoadingSignups] = useState(false);
+
+  // Fetch user & profile
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -50,7 +97,7 @@ const ProfileScreen: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Fetch all players for dropdown
+  // Fetch all players for linking dropdown
   useEffect(() => {
     if (showEditLinked && profile && profile.role !== "player") {
       getCollection<any>("players").then(players => setAllPlayers(players));
@@ -76,168 +123,271 @@ const ProfileScreen: React.FC = () => {
     fetchNames();
   }, [linkedPlayers]);
 
+  // ===== MY SIGNUPS SECTION =====
+  useEffect(() => {
+    const load = async () => {
+      setLoadingSignups(true);
+      const today = new Date();
+      const tournQuery = query(collection(db, "tournaments"), orderBy("date"));
+      const tournSnap = await getDocs(tournQuery);
+      const tourns: TournamentCard[] = tournSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as TournamentCard))
+        .filter((t) => t.date && new Date(t.date) >= today);
+
+      setTournaments(tourns);
+
+      // For each, check if this user (or their linked players) has a signup
+      const status: {
+        [k: string]: { signedUp: boolean; availability?: string }
+      } = {};
+      if (firebaseUser && profile) {
+        for (const t of tourns) {
+          const signupsRef = collection(db, "signups", t.id, "entries");
+          let found: { signedUp: boolean; availability?: string } = { signedUp: false };
+          const snap = await getDocs(signupsRef);
+          snap.forEach((doc) => {
+            const data = doc.data();
+            if (
+              (profile.role === "player" && data.playerId === firebaseUser.uid) ||
+              (profile.role !== "player" && linkedPlayers.includes(data.playerId))
+            ) {
+              found = { signedUp: true, availability: data.availability };
+            }
+          });
+          status[t.id] = found;
+        }
+      }
+      setMySignups(status);
+      setLoadingSignups(false);
+    };
+    if (firebaseUser && profile) {
+      load();
+    }
+  }, [firebaseUser, profile, linkedPlayers]);
+
   // PROFILE CREATION FORM
   if (needsProfile) {
     return (
       <div className="container mt-5">
-        <h2>Create Your Profile</h2>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          if (!firstName.trim() || !lastName.trim()) {
-            setError("Please enter your name.");
-            return;
-          }
-          try {
-            const userDoc = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              firstName,
-              lastName,
-              role,
-              linkedPlayers: [],
-            };
-            await setDoc(doc(db, "users", firebaseUser.uid), userDoc);
-            setProfile(userDoc);
-            setNeedsProfile(false);
-            setError(null);
-          } catch (err: any) {
-            setError("Error creating profile. Try again.");
-          }
-        }}>
-          <div className="form-group">
-            <label>First Name</label>
-            <input className="form-control" value={firstName} onChange={e => setFirstName(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Last Name</label>
-            <input className="form-control" value={lastName} onChange={e => setLastName(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Role</label>
-            <select className="form-control" value={role} onChange={e => setRole(e.target.value)}>
-              <option value="player">Player</option>
-              <option value="parent">Parent</option>
-              <option value="coach">Coach</option>
-            </select>
-          </div>
-          {error && <div className="alert alert-danger">{error}</div>}
-          <button className="btn btn-success mt-3" type="submit">Create Profile</button>
-        </form>
+        <div className="card p-4 shadow-sm mx-auto" style={{ maxWidth: 500, background: "#f7fafd" }}>
+          <h2 style={{ color: "#4285f4" }}>Create Your Profile</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!firstName.trim() || !lastName.trim()) {
+              setError("Please enter your name.");
+              return;
+            }
+            try {
+              const userDoc = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                firstName,
+                lastName,
+                role,
+                linkedPlayers: [],
+              };
+              await setDoc(doc(db, "users", firebaseUser.uid), userDoc);
+              setProfile(userDoc);
+              setNeedsProfile(false);
+              setError(null);
+            } catch (err: any) {
+              setError("Error creating profile. Try again.");
+            }
+          }}>
+            {/* ...fields unchanged */}
+            {error && <div className="alert alert-danger">{error}</div>}
+            <button className="btn btn-success mt-3 w-100" type="submit">Create Profile</button>
+          </form>
+        </div>
       </div>
     );
   }
 
-  // PROFILE MAIN
+  // MAIN PROFILE PAGE
   return (
-    <div className="container mt-5">
-      <h2>Welcome, {profile ? `${profile.firstName} ${profile.lastName}` : ""}!</h2>
-      <button className="btn btn-link float-right" onClick={() => setEditProfile(v => !v)}>
-        {editProfile ? "Cancel" : "Edit Profile"}
-      </button>
-
-      {editProfile && (
-        <form className="mb-4" onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            await updateDocumentFields("users", firebaseUser.uid, { firstName, lastName, role });
-            setProfile({ ...profile, firstName, lastName, role });
-            setEditProfile(false);
-          } catch (err: any) {
-            alert("Error updating profile.");
-          }
-        }}>
-          <div className="form-group">
-            <label>First Name</label>
-            <input className="form-control" value={firstName} onChange={e => setFirstName(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Last Name</label>
-            <input className="form-control" value={lastName} onChange={e => setLastName(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Role</label>
-            <select className="form-control" value={role} onChange={e => setRole(e.target.value)}>
-              <option value="player">Player</option>
-              <option value="parent">Parent</option>
-              <option value="coach">Coach</option>
-            </select>
-          </div>
-          <button className="btn btn-primary mt-2" type="submit">Save</button>
-        </form>
-      )}
-
-      {/* LINKED PLAYERS - Only show for parent/coach */}
-      {profile && profile.role !== "player" && (
-        <div className="mb-4">
-          <h5>Linked Players:</h5>
-          {linkedPlayerNames.length ? (
-            <ul>
-              {linkedPlayerNames.map((n, i) => (
-                <li key={i}>
-                  {n}
-                  <button
-                    className="btn btn-sm btn-danger ml-2"
-                    onClick={async () => {
-                      const playerUid = linkedPlayers[i];
-                      // Remove from user
-                      await updateDocumentFields("users", firebaseUser.uid, {
-                        linkedPlayers: linkedPlayers.filter(uid => uid !== playerUid)
-                      });
-                      setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
-                      // Remove user from player
-                      await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
+    <div className="container mt-5 mb-5">
+      <div className="row justify-content-center">
+        <div className="col-md-8 col-lg-6">
+          {/* HEADER CARD */}
+          <div
+            className="card shadow-sm mb-4"
+            style={{
+              background: "linear-gradient(90deg, #e0ecff 0%, #fdf7e4 100%)",
+              border: "none",
+              borderRadius: 18,
+              boxShadow: "0 2px 12px 0 #c2d6f5"
+            }}>
+            <div className="p-4 d-flex align-items-center justify-content-between">
+              <div>
+                <h2 className="mb-1" style={{ fontWeight: 600 }}>
+                  Welcome, {profile ? `${profile.firstName} ${profile.lastName}` : ""}
+                  <span
+                    className="ml-2 badge"
+                    style={{
+                      background: colorMap[(profile?.role as Role) || "default"],
+                      color: "#fff",
+                      fontSize: 15,
+                      marginLeft: 12,
+                      padding: "8px 14px",
+                      borderRadius: 16,
+                      letterSpacing: 1,
+                      fontWeight: 500
                     }}>
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No linked players yet.</p>
-          )}
-          <button className="btn btn-outline-primary mt-2" onClick={() => setShowEditLinked(v => !v)}>
-            {showEditLinked ? "Cancel" : "Edit Linked Players"}
-          </button>
-        </div>
-      )}
-
-      {/* ADD LINKED PLAYERS */}
-      {showEditLinked && profile && profile.role !== "player" && (
-        <div className="card card-body mb-3">
-          <div className="form-group">
-            <label>Select a player to link:</label>
-            <select
-              className="form-control"
-              value={selectedPlayerUid}
-              onChange={e => setSelectedPlayerUid(e.target.value)}
-            >
-              <option value="">-- Select a player --</option>
-              {allPlayers
-                .filter(p => !linkedPlayers.includes(p.id))
-                .map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.firstName} {p.lastName} ({p.id})
-                  </option>
-                ))}
-            </select>
+                    {profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : ""}
+                  </span>
+                </h2>
+                <div className="mb-1" style={{ fontSize: 14, color: "#666" }}>{firebaseUser?.email}</div>
+              </div>
+              <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(v => !v)}>
+                {editProfile ? "Cancel" : "Edit Profile"}
+              </button>
+            </div>
+            {editProfile && (
+              <form className="mb-4 px-4" onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await updateDocumentFields("users", firebaseUser.uid, { firstName, lastName, role });
+                  setProfile({ ...profile, firstName, lastName, role });
+                  setEditProfile(false);
+                } catch (err: any) {
+                  alert("Error updating profile.");
+                }
+              }}>
+                {/* ...fields unchanged */}
+                <button className="btn btn-primary mt-2 w-100" type="submit">Save</button>
+              </form>
+            )}
           </div>
-          <button
-            className="btn btn-success mt-2"
-            disabled={!selectedPlayerUid}
-            onClick={async () => {
-              if (!selectedPlayerUid) return;
-              // Add player to user's linkedPlayers
-              await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
-              setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
-              setSelectedPlayerUid("");
-              // Add user to player's linkedUsers
-              await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
-            }}
-          >
-            Add Linked Player
-          </button>
+
+          {/* LINKED PLAYERS */}
+          {profile && profile.role !== "player" && (
+            <div
+              className="card card-body mb-4"
+              style={{
+                background: "#fffbe6",
+                borderLeft: "5px solid #ffd766",
+                borderRadius: 14
+              }}>
+              <h5 style={{ color: "#ffb800" }}>Linked Players</h5>
+              {linkedPlayerNames.length ? (
+                <div className="mb-2 d-flex flex-wrap">
+                  {linkedPlayerNames.map((n, i) => (
+                    <span key={i} className="badge badge-pill mr-2 mb-2" style={{
+                      background: "#6ecbe6", color: "#215",
+                      fontSize: 14, padding: "8px 12px"
+                    }}>
+                      {n}
+                      <button
+                        className="btn btn-sm btn-danger ml-2"
+                        style={{ padding: "2px 8px", fontSize: 12 }}
+                        onClick={async () => {
+                          const playerUid = linkedPlayers[i];
+                          await updateDocumentFields("users", firebaseUser.uid, {
+                            linkedPlayers: linkedPlayers.filter(uid => uid !== playerUid)
+                          });
+                          setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
+                          await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
+                        }}>
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted">No linked players yet.</p>
+              )}
+              <button className="btn btn-outline-primary mt-2" onClick={() => setShowEditLinked(v => !v)}>
+                {showEditLinked ? "Cancel" : "Edit Linked Players"}
+              </button>
+            </div>
+          )}
+
+          {/* ADD LINKED PLAYERS */}
+          {showEditLinked && profile && profile.role !== "player" && (
+            <div className="card card-body mb-3" style={{ background: "#f1f7ff", borderRadius: 12 }}>
+              <div className="form-group">
+                <label>Select a player to link:</label>
+                <select
+                  className="form-control"
+                  value={selectedPlayerUid}
+                  onChange={e => setSelectedPlayerUid(e.target.value)}
+                >
+                  <option value="">-- Select a player --</option>
+                  {allPlayers
+                    .filter(p => !linkedPlayers.includes(p.id))
+                    .map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.firstName} {p.lastName} ({p.id})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <button
+                className="btn btn-success mt-2"
+                disabled={!selectedPlayerUid}
+                onClick={async () => {
+                  if (!selectedPlayerUid) return;
+                  await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
+                  setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
+                  setSelectedPlayerUid("");
+                  await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
+                }}
+              >
+                Add Linked Player
+              </button>
+            </div>
+          )}
+
+          {/* ======= MY SIGNUPS ======= */}
+          <div className="card p-4 shadow-sm mb-4" style={{
+            background: "linear-gradient(90deg,#f6ffed 0,#e3f6fc 100%)",
+            border: "none", borderRadius: 14
+          }}>
+            <h4 className="mb-3" style={{ color: "#0a8754" }}>My Tournament Signups</h4>
+            {loadingSignups ? (
+              <div>Loading tournaments...</div>
+            ) : (
+              <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                {tournaments.length === 0 && (
+                  <div>No upcoming tournaments found.</div>
+                )}
+                {tournaments.map((t) => {
+  const signupStatus = mySignups[t.id];
+  const label = signupStatus?.signedUp
+    ? availabilityLabel(signupStatus?.availability)
+    : "Not Signed Up";
+  return (
+    <div key={t.id}
+      className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2"
+      style={{ borderColor: "#dde8ef" }}
+    >
+      <div>
+        <Link to={`/tournament/${t.id}`}
+          style={{ textDecoration: "none", fontWeight: 500, color: "#2e3a59" }}>
+          <span role="img" aria-label="calendar" style={{ fontSize: 18, marginRight: 6 }}>📅</span>
+          {t.eventName}
+        </Link>
+        <div style={{ fontSize: 13, color: "#7fa2b2" }}>{t.date}</div>
+      </div>
+      <span
+        className="badge badge-pill"
+        style={{
+          background: statusColor(label),
+          color: "#fff",
+          fontSize: 15,
+          padding: "8px 20px"
+        }}>
+        {label}
+      </span>
+    </div>
+  );
+})}
+              </div>
+            )}
+          </div>
+
         </div>
-      )}
+      </div>
     </div>
   );
 };

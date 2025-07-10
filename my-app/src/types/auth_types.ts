@@ -27,7 +27,9 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isCoach: boolean;
   isPlayer: boolean;
+  isParent: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   linkedPlayers: Player[]; // Player records this user is linked to (if applicable)
+  loading: boolean; // Loading state for async operations
 }

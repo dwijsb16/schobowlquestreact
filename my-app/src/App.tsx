@@ -17,100 +17,100 @@ import Resources from "./pages/Resources";
 import TournamentPage from "./pages/TournamentDetail";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import SignUpInfo from "./pages/SignUpInfo"; // Ensure the casing matches the actual file name
+import SignUpInfo from "./pages/SignUpInfo";
 import Profile from "./pages/Profile";
-import { AuthProvider } from "./hooks/AuthContext"; // Adjust the import path as needed
+import { AuthProvider } from "./hooks/AuthContext";
 
 const App = () => {
   return (
     <AuthProvider>
+      <>
+        <Navigation />
+        <div style={{ paddingTop: "90px" }}>
+          <Routes>
+            {/* PUBLIC ROUTES */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/signup" element={<SignUpInfo />} />
 
-    <>
-      <Navigation />
-      {/* Add padding below the navbar */}
-      <div style={{ paddingTop: "90px" }}>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/unauthorized" element={<UnauthorizedPage />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/signup" element={<SignUpInfo />} />
+            {/* 404 route */}
+            <Route path="*" element={<UnauthorizedPage />} />
 
+            {/* ANY LOGGED-IN USER ROUTES (player, parent, coach) */}
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute >
+                  <Calendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute >
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:id"
+              element={
+                /* some thing wrong with requiresAuth, will look into */
+                <ProtectedRoute >
+                  <TournamentPage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Catch-all route for 404 */}
-          <Route path="*" element={<UnauthorizedPage />} />
-          {/* player/parent only routes*/}
-          {/*<Route path="/calendar" element={<Calendar />} />*/}
-
-          <Route path="/calendar"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <Calendar />
-              </ProtectedRoute>
-            }/>
-          <Route path="/profile"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <Profile />
-              </ProtectedRoute>
-            }/>
-          {/*<Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/tournament" element={<TournamentPage />} /> */}
-
-<Route
-  path="/tournament/:id"
-  element={
-    <ProtectedRoute requiresCoach={true}>
-      <TournamentPage />
-    </ProtectedRoute>
-  }
-/>
-
-          {/* Coaches-only routes */}
-          {/*<Route path="/coaches" element={<CoachesOnlyPage />} />
-          <Route path="/coaches/add-tournament" element={<AddTournamentPage />} />
-          <Route path="/coaches/make-teams" element={<MakeTeamsPage />} />
-          <Route path="/coaches/manage-tournaments" element={<ManageTournamentsPage />} />
-          <Route path="/coaches/calendar" element={<CoachesCalendarPage />} />*/}
-
-          <Route path="/coaches"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <CoachesOnlyPage />
-              </ProtectedRoute>
-            }/>
-            <Route path="/coaches/add-tournament"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <AddTournamentPage />
-              </ProtectedRoute>
-            }/>
-            <Route path="/coaches/make-teams"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <MakeTeamsPage />
-              </ProtectedRoute>
-            }/>
-            <Route path="/coaches/manage-tournaments"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <ManageTournamentsPage />
-              </ProtectedRoute>
-            }/>
-            <Route path="/coaches/calendar"
-            element={
-              <ProtectedRoute requiresCoach={true}>
-                <CoachesCalendarPage />
-              </ProtectedRoute>
-            }/>
-        </Routes>
-      </div>
-    </>
+            {/* COACH-ONLY ROUTES */}
+            <Route
+              path="/coaches"
+              element={
+                <ProtectedRoute  requiresCoach>
+                  <CoachesOnlyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coaches/add-tournament"
+              element={
+                <ProtectedRoute requiresCoach>
+                  <AddTournamentPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coaches/make-teams"
+              element={
+                <ProtectedRoute requiresCoach>
+                  <MakeTeamsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coaches/manage-tournaments"
+              element={
+                <ProtectedRoute requiresCoach>
+                  <ManageTournamentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coaches/calendar"
+              element={
+                <ProtectedRoute requiresCoach>
+                  <CoachesCalendarPage />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </div>
+      </>
     </AuthProvider>
   );
 };

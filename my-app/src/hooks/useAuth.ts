@@ -7,6 +7,7 @@ import { User, Player, AuthContextType } from '../types/auth_types';
 export const useAuth = (): AuthContextType => {
   const [user, setUser] = useState<User | null>(null);
   const [linkedPlayers, setLinkedPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -83,10 +84,12 @@ export const useAuth = (): AuthContextType => {
   return {
     user,
     isAuthenticated: !!user,
-    isCoach: user?.role === 'coach' || user?.role === 'parent',
+    isCoach: user?.role === 'coach', 
+    isParent:user?.role === 'parent',
     isPlayer: user?.role === 'player',
     login,
     logout,
     linkedPlayers,
+    loading,
   };
 };

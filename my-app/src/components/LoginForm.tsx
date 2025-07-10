@@ -1,15 +1,13 @@
-// components/LoginForm.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, signInWithGooglePopup, db } from "../.firebase/utils/firebase";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { getDoc, doc,  collection, query, where, getDocs } from "firebase/firestore";
+import { getDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,33 +20,30 @@ const LoginForm: React.FC = () => {
       const firebaseUser = response.user;
       const uid = firebaseUser.uid;
       const email = firebaseUser.email;
-  
-      // 1. Fastest: try direct UID doc first
+
+      // 1. Try direct UID doc first
       const userRef = doc(db, "users", uid);
       const userSnap = await getDoc(userRef);
-  
+
       if (userSnap.exists()) {
-        // All good!
         navigate("/");
         return;
       }
-  
+
       // 2. Not found by UID, try to find by email
       const q = query(collection(db, "users"), where("email", "==", email));
       const querySnap = await getDocs(q);
-  
+
       if (!querySnap.empty) {
-        // Migration/legacy case: optionally merge or migrate to new UID
-        // For now, just treat as profile found:
         navigate("/");
         return;
       }
-  
+
       // 3. No doc by uid or email: must create profile
       navigate("/signup");
-  
+
     } catch (error) {
-      // Handle errors
+      toast.error("Google sign-in failed. Try again!");
     }
   };
 
@@ -58,33 +53,32 @@ const LoginForm: React.FC = () => {
     setErrorMessage(null);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-
-      // Check if Firestore user doc exists for this user
       const uid = userCredential.user.uid;
       const userRef = doc(db, "users", uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
-        toast.success("Logged In! ✅", { 
-          autoClose: 2000,
+        toast.success("Logged In! ✅", {
+          autoClose: 1800,
           onClose: () => navigate("/")
         });
       } else {
         toast.info("Welcome! Please finish setting up your account.", {
-          autoClose: 2500,
+          autoClose: 2000,
           onClose: () => navigate("/signup")
         });
       }
     } catch (error: any) {
-      console.error("Login failed:", error);
       const message = firebaseErrorParser(error);
       setErrorMessage(message);
 
       if (error.code === "auth/user-not-found") {
         toast.info("Account not found. Redirecting to signup...", {
-          autoClose: 2500,
+          autoClose: 1800,
           onClose: () => navigate("/signup")
         });
+      } else {
+        toast.error(message, { autoClose: 2000 });
       }
     }
   };
@@ -101,49 +95,105 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="container">
-      <h1 className="text-center">Quest Academy Scholastic Bowl Club</h1>
-      <form onSubmit={handleLogin}>
-        <div className="form-group">
-          <label htmlFor="email">Email address</label>
-          <input type="email" className="form-control" id="email"
-            placeholder="Enter email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+    <div className="d-flex justify-content-center align-items-center min-vh-100" style={{ background: "linear-gradient(90deg,#e3f2fd 0,#e8f9fd 100%)" }}>
+      <div className="card p-4 shadow-lg" style={{
+        minWidth: 340, maxWidth: 400, borderRadius: 18, border: "none", background: "#fff"
+      }}>
+        <div className="mb-4 text-center">
+          <h2 style={{
+            color: "#2155CD", fontWeight: 700, letterSpacing: 0.5
+          }}>Quest Academy <span style={{ color: "#5C7AEA" }}>Scholastic Bowl</span></h2>
+          <div style={{
+            fontSize: 16, color: "#7fa2b2", fontWeight: 400
+          }}>Sign in to your account</div>
+        </div>
+        <form onSubmit={handleLogin}>
+          <div className="form-group mb-3">
+            <label htmlFor="email" style={{ fontWeight: 500 }}>Email</label>
+            <input type="email" className="form-control" id="email"
+              placeholder="Enter email" value={email}
+              onChange={(e) => setEmail(e.target.value)} required
+              style={{
+                borderRadius: 12,
+                border: "1px solid #e7eaf6",
+                padding: "12px",
+                fontSize: 15
+              }}
+            />
+          </div>
+          <div className="form-group mb-2">
+            <label htmlFor="password" style={{ fontWeight: 500 }}>Password</label>
+            <input type="password" className="form-control" id="password"
+              placeholder="Password" value={password}
+              onChange={(e) => setPassword(e.target.value)} required
+              style={{
+                borderRadius: 12,
+                border: "1px solid #e7eaf6",
+                padding: "12px",
+                fontSize: 15
+              }}
+            />
+          </div>
+          <div className="text-center mt-4 mb-2">
+            <button type="submit"
+              className="btn"
+              style={{
+                background: "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
+                color: "#fff", fontWeight: 600,
+                borderRadius: 12, padding: "12px 0",
+                width: "100%", fontSize: 16, boxShadow: "0 2px 8px #c7e0ff33"
+              }}>
+              Login
+            </button>
+          </div>
+        </form>
+
+        {/* Error message */}
+        {errorMessage && <div className="alert alert-danger text-center mt-2 mb-0" style={{
+          borderRadius: 12, fontWeight: 500
+        }}>{errorMessage}</div>}
+
+        <hr style={{ background: "#d7e6fc", margin: "30px 0 18px 0" }} />
+
+        <div className="text-center">
+          <button
+            onClick={logGoogleUser}
+            className="btn d-flex align-items-center justify-content-center mx-auto"
+            style={{
+              background: "#fff",
+              color: "#21325b",
+              border: "1px solid #b4c4ec",
+              borderRadius: 14,
+              boxShadow: "0 2px 8px #b4c4ec2d",
+              padding: "10px 24px",
+              fontWeight: 600,
+              fontSize: 15,
+              minWidth: 220
+            }}
+          >
+            <svg width="22" height="22" style={{ marginRight: 10 }} viewBox="0 0 48 48">
+              <g>
+                <path fill="#4285F4" d="M43.6 20.5h-1.7V20H24v8h11.3c-1.2 3.2-4.1 5.5-7.6 5.5A8.5 8.5 0 1 1 36.5 24c0-.7-.1-1.3-.2-1.9H24v4.2h8.9A4.3 4.3 0 0 0 36.5 24c0-2.5-2.1-4.5-4.5-4.5S27.5 21.5 27.5 24H24v4.2h8.9A4.3 4.3 0 0 0 36.5 24c0-2.5-2.1-4.5-4.5-4.5S27.5 21.5 27.5 24"></path>
+                <path fill="#34A853" d="M24 44c5.3 0 9.8-1.7 13.1-4.7l-6.3-5.1C29.3 36.1 26.8 36.9 24 36.9c-4.1 0-7.7-2.6-9-6.2H8.7v5.5A19.9 19.9 0 0 0 24 44z"></path>
+                <path fill="#FBBC05" d="M15 28.7a8.7 8.7 0 0 1 0-5.5V17.7H8.7a20 20 0 0 0 0 12.6L15 28.7z"></path>
+                <path fill="#EA4335" d="M24 15.1c2.3 0 4.4.8 6 2.4l4.5-4.5A14 14 0 0 0 24 8a16 16 0 0 0-15.3 11.7l6.3 5.1c1.3-3.7 4.9-6.3 9-6.3z"></path>
+                <path fill="none" d="M0 0h48v48H0z"></path>
+              </g>
+            </svg>
+            Sign in with Google
+          </button>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="password">Password</label>
-          <input type="password" className="form-control" id="password"
-            placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <div className="text-center mt-4" style={{ fontSize: 15 }}>
+          <span style={{ color: "#888" }}>First time? </span>
+          <a href="/signup" style={{
+            color: "#2155CD",
+            textDecoration: "underline",
+            fontWeight: 600
+          }}>Create an account</a>
         </div>
 
-        <div className="text-center mt-3">
-          <button type="submit" className="btn btn-primary">Login</button>
-        </div>
-      </form>
-
-      {errorMessage && <div className="alert alert-danger text-center mt-3">{errorMessage}</div>}
-
-      <hr />
-
-      <div className="text-center mt-3">
-        <button 
-          onClick={logGoogleUser} 
-          className="btn btn-light border p-2 shadow-sm d-flex align-items-center justify-content-center"
-          style={{ width: "250px", margin: "0 auto" }}
-        >
-          <img 
-            src="/images/google-logo.png" 
-            alt="Google Logo" 
-            style={{ width: "24px", height: "24px", marginRight: "10px" }} 
-          />
-          Sign in with Google
-        </button>
       </div>
-
-      <div className="text-center mt-4">
-        First time signing in? <a href="/signup">Create an account</a>
-      </div>
-
       <ToastContainer />
     </div>
   );

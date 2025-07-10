@@ -1,12 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../.firebase/utils/firebase"; // adjust the path if needed
+import { db } from "../.firebase/utils/firebase";
 
 interface TournamentCard {
   id: string;
   eventName: string;
-  date: string;
+  date: string; // YYYY-MM-DD
   location?: string;
+  status?: string;
+  eventType?: string;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  confirmed: "success",
+  tentative: "warning",
+  cancelled: "danger",
+};
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  tournament: "primary",
+  match_play: "info",
+  extra_practice: "secondary",
+};
+
+function formatDateString(date: string) {
+  const d = new Date(date + "T00:00:00");
+  return {
+    month: d.toLocaleString("en-US", { month: "short" }).toUpperCase(),
+    day: d.getDate().toString().padStart(2, "0"),
+    year: d.getFullYear(),
+    weekday: d.toLocaleString("en-US", { weekday: "short" }),
+  };
 }
 
 const Cards: React.FC = () => {
@@ -17,11 +40,26 @@ const Cards: React.FC = () => {
       try {
         const q = query(collection(db, "tournaments"), orderBy("date"));
         const querySnapshot = await getDocs(q);
-        const data: TournamentCard[] = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as TournamentCard[];
-        setTournaments(data);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const data: TournamentCard[] = querySnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as TournamentCard[];
+
+        // Only keep tournaments whose date >= today, then get the 3 closest
+        const upcoming = data
+          .filter((tourn) => {
+            if (!tourn.date) return false;
+            const tournDate = new Date(tourn.date + "T00:00:00");
+            return tournDate >= today;
+          })
+          .sort((a, b) => (a.date > b.date ? 1 : -1))
+          .slice(0, 3);
+
+        setTournaments(upcoming);
       } catch (error) {
         console.error("Error fetching tournaments:", error);
       }
@@ -31,27 +69,72 @@ const Cards: React.FC = () => {
   }, []);
 
   return (
-    <div className="row">
-      {tournaments.map((tourn, index) => (
-        <div className="col-xl-4" key={index}>
-          <div className="card col-md-4 col-xl-12">
-            <img
-              src="/images/tournament-logo-860-16353.png"
-              alt="Tournament Logo"
-              width="800"
-              height="281"
-              className="img-fluid"
-            />
-            <div className="card-body">
-              <h5 className="card-title">{tourn.date}</h5>
-              <p className="card-text">{tourn.eventName}</p>
-              <a href={`/tournament/${tourn.id}`} className="btn btn-primary">
-                Details
-              </a>
+    <div className="row justify-content-center" style={{ padding: "32px 8px 32px 8px" }}>
+      {tournaments.length === 0 && (
+        <div className="col-12 text-center text-muted my-5">
+          <h4>No upcoming events!</h4>
+        </div>
+      )}
+      {tournaments.map((tourn) => {
+        const { month, day, year, weekday } = formatDateString(tourn.date);
+        return (
+          <div className="col-md-6 col-xl-4 mb-5" key={tourn.id}>
+            <div className="card shadow-sm h-100" style={{ padding: "16px 0" }}>
+              <div className="d-flex justify-content-center" style={{ marginTop: "-1.7em" }}>
+                <div style={{
+                  background: "#f6f6f6",
+                  border: "2px solid #007bff",
+                  borderRadius: "1em",
+                  width: "90px",
+                  height: "90px",
+                  boxShadow: "0 2px 10px rgba(0,0,0,.05)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  <span style={{ fontWeight: 700, fontSize: "1.1em", color: "#007bff", letterSpacing: 1 }}>
+                    {month}
+                  </span>
+                  <span style={{ fontWeight: 900, fontSize: "2.3em", lineHeight: 1, color: "#222" }}>
+                    {day}
+                  </span>
+                  <span style={{ fontSize: "0.9em", color: "#888" }}>
+                    {weekday}
+                  </span>
+                </div>
+              </div>
+              <div className="card-body pt-3 text-center">
+                <h5 className="card-title mb-1" style={{ fontWeight: 700 }}>{tourn.eventName}</h5>
+                <div className="mb-2">
+                  {tourn.status && (
+                    <span className={`badge bg-${STATUS_COLORS[tourn.status] || "secondary"} mx-1`}>
+                      {tourn.status.charAt(0).toUpperCase() + tourn.status.slice(1)}
+                    </span>
+                  )}
+                  {tourn.eventType && (
+                    <span className={`badge bg-${EVENT_TYPE_COLORS[tourn.eventType] || "secondary"} mx-1`}>
+                      {tourn.eventType.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())}
+                    </span>
+                  )}
+                </div>
+                <div className="mb-2 text-muted" style={{ fontSize: 15 }}>
+                  {tourn.location && (
+                    <span>
+                      {tourn.location}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <a href={`/tournament/${tourn.id}`} className="btn btn-outline-primary btn-sm mt-2">
+                    Sign Up
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

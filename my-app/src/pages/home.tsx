@@ -21,7 +21,7 @@ const Home: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ paddingTop: "70px" }}>
+    <div>
       <Navbar />
       <Carousel />
       <Cards />

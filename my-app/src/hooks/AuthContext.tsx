@@ -4,33 +4,33 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
 import { User, Player, AuthContextType } from "../types/auth_types";
 
-// 1. Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 2. Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [linkedPlayers, setLinkedPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true); // <-- add loading
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (!firebaseUser) {
         setUser(null);
         setLinkedPlayers([]);
+        setLoading(false);
         return;
       }
 
       try {
-        // 1. Get user Firestore doc
+        // Get user Firestore doc
         const userRef = doc(db, "users", firebaseUser.uid);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
           setUser(null);
           setLinkedPlayers([]);
+          setLoading(false);
           return;
         }
         const userData = userSnap.data();
-        // Build User object
         const loadedUser: User = {
           uid: firebaseUser.uid,
           firstName: userData.firstName || "",
@@ -41,9 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(loadedUser);
 
-        // 2. If user has linked players, load them from players collection
         if (Array.isArray(loadedUser.linkedPlayers) && loadedUser.linkedPlayers.length > 0) {
-          // Fetch all linked player docs in parallel
           const playerPromises = loadedUser.linkedPlayers.map((playerId: string) =>
             getDoc(doc(db, "players", playerId))
           );
@@ -65,10 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setLinkedPlayers([]);
         }
+        setLoading(false);
       } catch (err) {
         console.error("Error loading auth context:", err);
         setUser(null);
         setLinkedPlayers([]);
+        setLoading(false);
       }
     });
 
@@ -85,14 +85,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLinkedPlayers([]);
   };
 
-  const value: AuthContextType = {
+  const value: AuthContextType & { loading: boolean } = {
     user,
     isAuthenticated: !!user,
-    isCoach: user?.role === "coach" || user?.role === "parent",
+    isCoach: user?.role === "coach",
     isPlayer: user?.role === "player",
+    isParent: user?.role === "parent",
     login,
     logout,
     linkedPlayers,
+    loading, // <-- expose loading state
   };
 
   return (
@@ -102,8 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// 3. Hook for easy usage
-export const useAuth = (): AuthContextType => {
+export const useAuth = (): AuthContextType & { loading: boolean } => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
