@@ -2,14 +2,20 @@
 
 ## Public Routes
 
-- [ ] Home page loads at `/`
-- [ ] Login page loads at `/login`
-- [ ] Unauthorized page loads at `/unauthorized`
-- [ ] About page loads at `/about`
-- [ ] Contact page loads at `/contact`
-- [ ] Resources page loads at `/resources`
-- [ ] Sign Up page loads at `/signup`
+- [x] Home page loads at `/`
+- [x] Login page loads at `/login`
+- [x] Unauthorized page loads at `/unauthorized`
+- [x] About page loads at `/about`
+- [x] Contact page loads at `/contact`
+- [x] Resources page loads at `/resources`
+- [x] Sign Up page loads at `/signup`
 - [ ] Navigating to an unknown route shows Unauthorized/404 page
+- [x] Clicking Quest Logo routes back to `/`
+
+### Observations
+
+- Footer is not consistent and aligned in all the pages
+- Home page accordion not working well
 
 ## Authentication
 
