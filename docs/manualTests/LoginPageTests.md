@@ -4,26 +4,25 @@
 
 - [x] Navbar is visible and displays correct navigation links
 - [ ] Login illustration image is visible, properly sized, and has correct alt text
-    - <span style="color: orange;">Image needs to be updated?</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png)Image needs to be updated?
 - [x] LoginForm component is visible and all form fields are present
 - [ ] Footer is visible and displays expected information  
-    - <span style="color:red;"> Footer logo is left-algined. Needs to be in center with the copyright</span>
-
+    ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) Footer logo is left-algined. Needs to be in center with the copyright
 
 ## Login Functionality
 
 - [x] User can enter email and password to log in
 - [x] Form validation prevents submission with missing or invalid data
 - [ ] Error message appears for incorrect email or password
-    - <span style="color:red;"> Need useful error message that is actionable</span>
+    ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) Need useful error message that is actionable
 - [x] Error message appears for invalid email format
 - [x] User is redirected to the correct page after successful login
 - [ ] Loading indicator appears during login process (if applicable)
 - [ ] "Forgot password" link works as expected (if present)
-    - <span style="color:orange;"> Needs to be added</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 - [x] "Sign up" link works as expected (if present)
 - [ ] Login page password should also have an `eyeball` to check password
-    - <span style="color:orange;"> Needs to be added</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
 ## Navigation
 

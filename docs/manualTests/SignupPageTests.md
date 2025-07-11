@@ -12,9 +12,9 @@
 - [x] User is redirected to home page upon acknowledgement of the modal
 - [x] Homepage has Signout button as a logout option
 - [ ] User should be logged out automatically after a period of inactivity
-    - <span style="color:orange;"> Needs to be added</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 - [ ] Password verification should be added
-    - <span style="color:orange;"> Needs to be added</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
 ### Observations
 - ~~email textbox should dynamically authenticate for email addr pattern. Not only on `submit` action~~
@@ -27,12 +27,12 @@
 
 - [x] User can enter first name and last name (required)
 - [ ] User can select a role (Player, Parent)
-    - <span style="color:orange;"> Needs to be updated</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be updated
 - [x] If role is "Player", grade dropdown is visible and required
 - [x] If role is "Coach" or "Parent", grade dropdown is hidden
 - [x] Error message appears if required fields are missing
 - [ ] User should be able to edit their profile information
-    - <span style="color:orange;"> Needs to be added</span>
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
 
 ## Existing User Handling

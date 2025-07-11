@@ -51,7 +51,7 @@
 - [ ] Navigation bar displays correct links for logged-out users
 - [ ] Navigation links route to correct pages
 - [ ] Footer is visible and displays expected information  
-    - <span style="color:red;"> Footer logo is left-algined. Needs to be in center with the copyright</span>
+    ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) Footer logo is left-algined. Needs to be in center with the copyright
 
 ## Edge Cases
 
