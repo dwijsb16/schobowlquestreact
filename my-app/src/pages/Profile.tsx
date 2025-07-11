@@ -50,6 +50,7 @@ function availabilityLabel(a?: string) {
     default: return "Signed Up";
   }
 }
+
 const ProfileScreen: React.FC = () => {
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -59,19 +60,21 @@ const ProfileScreen: React.FC = () => {
   const [role, setRole] = useState("player");
   const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
   const [editProfile, setEditProfile] = useState(false);
+  const [editValues, setEditValues] = useState({ firstName: "", lastName: "", role: "player" });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showEditLinked, setShowEditLinked] = useState(false);
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [selectedPlayerUid, setSelectedPlayerUid] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
 
-   // For "My Signups"
-   const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
-   // Track signup status (signedUp + availability)
-   const [mySignups, setMySignups] = useState<{
-     [tournId: string]: { signedUp: boolean; availability?: string }
-   }>({});
-   const [loadingSignups, setLoadingSignups] = useState(false);
+  // For "My Signups"
+  const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
+  const [mySignups, setMySignups] = useState<{
+    [tournId: string]: { signedUp: boolean; availability?: string }
+  }>({});
+  const [loadingSignups, setLoadingSignups] = useState(false);
 
   // Fetch user & profile
   useEffect(() => {
@@ -165,6 +168,18 @@ const ProfileScreen: React.FC = () => {
     }
   }, [firebaseUser, profile, linkedPlayers]);
 
+  // Preload edit form with current profile data when toggling
+  useEffect(() => {
+    if (editProfile && profile) {
+      setEditValues({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        role: profile.role || "player",
+      });
+      setEditError(null);
+    }
+  }, [editProfile, profile]);
+
   // PROFILE CREATION FORM
   if (needsProfile) {
     return (
@@ -194,8 +209,37 @@ const ProfileScreen: React.FC = () => {
               setError("Error creating profile. Try again.");
             }
           }}>
-            {/* ...fields unchanged */}
-            {error && <div className="alert alert-danger">{error}</div>}
+            <div className="form-group">
+              <label>First Name:</label>
+              <input
+                className="form-control"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Last Name:</label>
+              <input
+                className="form-control"
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Role:</label>
+              <select
+                className="form-control"
+                value={role}
+                onChange={e => setRole(e.target.value)}
+              >
+                <option value="player">Player</option>
+                <option value="coach">Coach</option>
+                <option value="parent">Parent</option>
+              </select>
+            </div>
+            {error && <div className="alert alert-danger mt-2">{error}</div>}
             <button className="btn btn-success mt-3 w-100" type="submit">Create Profile</button>
           </form>
         </div>
@@ -220,7 +264,25 @@ const ProfileScreen: React.FC = () => {
             <div className="p-4 d-flex align-items-center justify-content-between">
               <div>
                 <h2 className="mb-1" style={{ fontWeight: 600 }}>
-                  Welcome, {profile ? `${profile.firstName} ${profile.lastName}` : ""}
+                  Welcome,{" "}
+                  {editProfile
+                    ? <>
+                        <input
+                          className="form-control d-inline-block"
+                          style={{ width: 120, display: "inline", fontWeight: 600, marginRight: 4 }}
+                          placeholder="First Name"
+                          value={editValues.firstName}
+                          onChange={e => setEditValues(v => ({ ...v, firstName: e.target.value }))}
+                        />
+                        <input
+                          className="form-control d-inline-block"
+                          style={{ width: 120, display: "inline", fontWeight: 600, marginLeft: 4 }}
+                          placeholder="Last Name"
+                          value={editValues.lastName}
+                          onChange={e => setEditValues(v => ({ ...v, lastName: e.target.value }))}
+                        />
+                      </>
+                    : `${profile?.firstName || ""} ${profile?.lastName || ""}`}
                   <span
                     className="ml-2 badge"
                     style={{
@@ -233,29 +295,76 @@ const ProfileScreen: React.FC = () => {
                       letterSpacing: 1,
                       fontWeight: 500
                     }}>
-                    {profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : ""}
+                    {editProfile
+                      ? (
+                        <select
+                          className="form-select d-inline-block"
+                          style={{ width: 120, display: "inline", fontWeight: 500, fontSize: 15, color: "#222" }}
+                          value={editValues.role}
+                          onChange={e => setEditValues(v => ({ ...v, role: e.target.value }))}
+                        >
+                          <option value="player">Player</option>
+                          <option value="coach">Coach</option>
+                          <option value="parent">Parent</option>
+                        </select>
+                      ) : (
+                        profile?.role
+                          ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
+                          : ""
+                      )
+                    }
                   </span>
                 </h2>
                 <div className="mb-1" style={{ fontSize: 14, color: "#666" }}>{firebaseUser?.email}</div>
               </div>
-              <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(v => !v)}>
-                {editProfile ? "Cancel" : "Edit Profile"}
-              </button>
+              <div>
+                {editProfile ? (
+                  <>
+                    <button
+                      className="btn btn-success btn-sm me-2"
+                      disabled={savingEdit}
+                      onClick={async () => {
+                        setEditError(null);
+                        if (!editValues.firstName.trim() || !editValues.lastName.trim()) {
+                          setEditError("Please enter your first and last name.");
+                          return;
+                        }
+                        setSavingEdit(true);
+                        try {
+                          await updateDocumentFields("users", firebaseUser.uid, {
+                            firstName: editValues.firstName,
+                            lastName: editValues.lastName,
+                            role: editValues.role
+                          });
+                          setProfile({ ...profile, ...editValues });
+                          setEditProfile(false);
+                        } catch (err: any) {
+                          setEditError("Error saving changes. Try again.");
+                        }
+                        setSavingEdit(false);
+                      }}
+                    >
+                      {savingEdit ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      className="btn btn-outline-secondary btn-sm"
+                      disabled={savingEdit}
+                      onClick={() => setEditProfile(false)}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(true)}>
+                    Edit Profile
+                  </button>
+                )}
+              </div>
             </div>
-            {editProfile && (
-              <form className="mb-4 px-4" onSubmit={async (e) => {
-                e.preventDefault();
-                try {
-                  await updateDocumentFields("users", firebaseUser.uid, { firstName, lastName, role });
-                  setProfile({ ...profile, firstName, lastName, role });
-                  setEditProfile(false);
-                } catch (err: any) {
-                  alert("Error updating profile.");
-                }
-              }}>
-                {/* ...fields unchanged */}
-                <button className="btn btn-primary mt-2 w-100" type="submit">Save</button>
-              </form>
+            {editError && (
+              <div className="px-4 pb-2">
+                <div className="alert alert-danger py-2 mb-0">{editError}</div>
+              </div>
             )}
           </div>
 
@@ -352,36 +461,36 @@ const ProfileScreen: React.FC = () => {
                   <div>No upcoming tournaments found.</div>
                 )}
                 {tournaments.map((t) => {
-  const signupStatus = mySignups[t.id];
-  const label = signupStatus?.signedUp
-    ? availabilityLabel(signupStatus?.availability)
-    : "Not Signed Up";
-  return (
-    <div key={t.id}
-      className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2"
-      style={{ borderColor: "#dde8ef" }}
-    >
-      <div>
-        <Link to={`/tournament/${t.id}`}
-          style={{ textDecoration: "none", fontWeight: 500, color: "#2e3a59" }}>
-          <span role="img" aria-label="calendar" style={{ fontSize: 18, marginRight: 6 }}>📅</span>
-          {t.eventName}
-        </Link>
-        <div style={{ fontSize: 13, color: "#7fa2b2" }}>{t.date}</div>
-      </div>
-      <span
-        className="badge badge-pill"
-        style={{
-          background: statusColor(label),
-          color: "#fff",
-          fontSize: 15,
-          padding: "8px 20px"
-        }}>
-        {label}
-      </span>
-    </div>
-  );
-})}
+                  const signupStatus = mySignups[t.id];
+                  const label = signupStatus?.signedUp
+                    ? availabilityLabel(signupStatus?.availability)
+                    : "Not Signed Up";
+                  return (
+                    <div key={t.id}
+                      className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2"
+                      style={{ borderColor: "#dde8ef" }}
+                    >
+                      <div>
+                        <Link to={`/tournament/${t.id}`}
+                          style={{ textDecoration: "none", fontWeight: 500, color: "#2e3a59" }}>
+                          <span role="img" aria-label="calendar" style={{ fontSize: 18, marginRight: 6 }}>📅</span>
+                          {t.eventName}
+                        </Link>
+                        <div style={{ fontSize: 13, color: "#7fa2b2" }}>{t.date}</div>
+                      </div>
+                      <span
+                        className="badge badge-pill"
+                        style={{
+                          background: statusColor(label),
+                          color: "#fff",
+                          fontSize: 15,
+                          padding: "8px 20px"
+                        }}>
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

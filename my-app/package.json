@@ -26,11 +26,13 @@
     "popper.js": "^1.16.1",
     "react": "^19.1.0",
     "react-bootstrap": "^2.10.10",
+    "react-clock": "^6.0.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.6.2",
     "react-scripts": "^5.0.1",
+    "react-time-picker": "^7.0.0",
     "react-toastify": "^11.0.5",
     "web-vitals": "^2.1.4"
   },
@@ -61,7 +63,9 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.18",
     "@types/react": "^19.1.6",
+    "@types/react-clock": "^3.0.1",
     "@types/react-dom": "^19.1.5",
+    "@types/react-time-picker": "^4.0.3",
     "cross-env": "^7.0.3",
     "typescript": "^4.9.5"
   }

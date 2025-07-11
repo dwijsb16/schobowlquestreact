@@ -1,6 +1,6 @@
 import { collection, addDoc, getDocs, getDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
 import { db} from "../.firebase/utils/firebase";
-import { arrayRemove} from "firebase/firestore";
+import { arrayRemove, deleteDoc} from "firebase/firestore";
 import { useState, useEffect } from "react";
 
 
@@ -100,5 +100,14 @@ export async function removeFromArrayInDocument(
   } catch (e) {
     console.error("Error removing from document array:", e);
     throw e;
+  }
+}
+export async function deleteDocument(collectionName: string, docId: string) {
+  try {
+    const ref = doc(db, collectionName, docId);
+    await deleteDoc(ref);
+    console.log("Document deleted");
+  } catch (e) {
+    console.error("Error deleting document:", e);
   }
 }

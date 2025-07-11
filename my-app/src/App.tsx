@@ -19,6 +19,7 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SignUpInfo from "./pages/SignUpInfo";
 import Profile from "./pages/Profile";
+import EditTournament from "./pages/EditTournament";
 import { AuthProvider } from "./hooks/AuthContext";
 
 const App = () => {
@@ -73,6 +74,14 @@ const App = () => {
               element={
                 <ProtectedRoute  requiresCoach>
                   <CoachesOnlyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/edit-tournament"
+              element={
+                <ProtectedRoute  requiresCoach>
+                  <EditTournament />
                 </ProtectedRoute>
               }
             />

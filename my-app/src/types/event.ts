@@ -11,4 +11,5 @@ export interface Tournament {
     location: string;
     shirtColor?: string;
     additionalInfo?: string;
+    googleEventID?: string; // ID for Google Calendar event
   }

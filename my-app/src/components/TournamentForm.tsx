@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { gapi } from "gapi-script";
 import { addDocument } from "../hooks/firestore";
 import { Tournament } from "../types/event";
+import TimePicker from 'react-time-picker';
+import 'react-time-picker/dist/TimePicker.css';
+import 'react-clock/dist/Clock.css';
 
 // Credentials
 const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
@@ -25,13 +28,15 @@ const TournamentForm: React.FC = () => {
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Alert state for errors and success
+  const [alert, setAlert] = useState<{ type: "error" | "success", message: string } | null>(null);
+
   // GIS token client
   const tokenClient = useRef<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-
+  
   // GAPI and GIS setup (run once)
   useEffect(() => {
-    // Load gapi
     gapi.load("client", async () => {
       await gapi.client.init({
         apiKey: API_KEY,
@@ -41,7 +46,6 @@ const TournamentForm: React.FC = () => {
       });
     });
 
-    // Setup Google Identity Services token client
     if (!tokenClient.current && (window as any).google?.accounts?.oauth2) {
       tokenClient.current = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
@@ -62,17 +66,58 @@ const TournamentForm: React.FC = () => {
     return `${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
   }
   function padTimeWithSeconds(time: string) {
-    // If already has seconds, leave alone
     if (time.length === 8) return time;
-    // If empty or null, return empty
     if (!time) return "";
-    // Otherwise, append :00
     return time + ":00";
   }
+  function to24Hour(time12: string) {
+    if (!time12) return "";
+    const [time, modifier] = time12.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours < 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
+  }
+  
 
-  // Form submission handler
+  // --- CLIENT-SIDE VALIDATION ---
+  function validateForm() {
+    if (!eventName.trim()) return "Event name is required.";
+    if (!eventType) return "Event type is required.";
+    if (!status) return "Status is required.";
+    if (!date) return "Date is required.";
+    if (!startTime) return "Start time is required.";
+  
+    // End time must be after start time
+    if (endTime) {
+      const start = new Date(`${date}T${padTimeWithSeconds(startTime)}`);
+      const end = new Date(`${date}T${padTimeWithSeconds(endTime)}`);
+      if (end <= start) return "End time must be after start time.";
+    }
+  
+    // RSVP date must be before event date
+    if (rsvpDate && date) {
+      const eventD = new Date(date);
+      const rsvpD = new Date(rsvpDate);
+      if (rsvpD >= eventD) return "RSVP date must be before event date.";
+    }
+  
+    return null;
+  }
+  
+
+  // --- FORM SUBMISSION HANDLER ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAlert(null);
+
+    // Validate before proceeding
+    const validationError = validateForm();
+    if (validationError) {
+      setAlert({ type: "error", message: validationError });
+      return;
+    }
+
     setLoading(true);
 
     // 1. Save tournament to Firestore
@@ -90,61 +135,96 @@ const TournamentForm: React.FC = () => {
       shirtColor,
       additionalInfo,
     };
-    await addDocument("tournaments", tournamentData);
 
-    // 2. Prepare Google Calendar event
-    const startDateTime = `${date}T${padTimeWithSeconds(startTime)}${getTimezoneOffset()}`;
-    const endDateTime = endTime ? `${date}T${padTimeWithSeconds(endTime)}${getTimezoneOffset()}` : startDateTime;
-    const description = [
-      additionalInfo && `Notes: ${additionalInfo}`,
-      rules && `Rules: ${rules}`,
-      shirtColor && `Shirt Color: ${shirtColor}`,
-      rsvpDate && `RSVP By: ${rsvpDate}${rsvpTime ? ` ${rsvpTime}` : ""}`,
-      status && `Status: ${status}`,
-      eventType && `Event Type: ${eventType}`,
-    ].filter(Boolean).join("\n");
-
-    const eventObj = {
-      summary: eventName,
-      location: location,
-      description: description,
-      start: {
-        dateTime: startDateTime,
-        timeZone: "America/Chicago",
-      },
-      end: {
-        dateTime: endDateTime,
-        timeZone: "America/Chicago",
-      },
-    };
-
-    // 3. Add to Calendar (trigger Google login if needed)
     try {
-      const insertEvent = async () => {
-        const calendarRes = await gapi.client.calendar.events.insert({
-          calendarId: CALENDAR_ID,
-          resource: eventObj,
-        });
-        alert("Event created in Firestore and added to shared Google Calendar!");
-      };
-
-      if (!accessToken) {
-        // User not signed in: trigger OAuth popup
-        tokenClient.current.requestAccessToken();
-        // Wait for accessToken to be set, then retry event creation (callback)
-        tokenClient.current.callback = async (response: any) => {
-          setAccessToken(response.access_token);
-          gapi.client.setToken({ access_token: response.access_token });
-          await insertEvent();
-          setLoading(false);
+      try {
+        // 1. Prepare Google Calendar event
+        const startDateTime = `${date}T${to24Hour(startTime)}${getTimezoneOffset()}`;
+        const endDateTime = endTime ? `${date}T${to24Hour(endTime)}${getTimezoneOffset()}` : startDateTime;
+        const description = [
+          additionalInfo && `Notes: ${additionalInfo}`,
+          rules && `Rules: ${rules}`,
+          shirtColor && `Shirt Color: ${shirtColor}`,
+          rsvpDate && `RSVP By: ${rsvpDate}${rsvpTime ? ` ${rsvpTime}` : ""}`,
+          status && `Status: ${status}`,
+          eventType && `Event Type: ${eventType}`,
+        ].filter(Boolean).join("\n");
+      
+        const eventObj = {
+          summary: eventName,
+          location: location,
+          description: description,
+          start: {
+            dateTime: startDateTime,
+            timeZone: "America/Chicago",
+          },
+          end: {
+            dateTime: endDateTime,
+            timeZone: "America/Chicago",
+          },
         };
-      } else {
-        // User is already signed in
-        await insertEvent();
+      
+        // 2. Add to Google Calendar (get the eventId!)
+        const insertEvent = async () => {
+          try {
+            const calendarRes = await gapi.client.calendar.events.insert({
+              calendarId: CALENDAR_ID,
+              resource: eventObj,
+            });
+            const googleEventID = calendarRes.result.id;
+      
+            // 3. Add to Firestore WITH googleEventID
+            const tournamentData: Tournament = {
+              eventName,
+              eventType: eventType as Tournament["eventType"],
+              status: status as Tournament["status"],
+              date,
+              startTime,
+              endTime,
+              rsvpDate,
+              rsvpTime,
+              rules,
+              location,
+              shirtColor,
+              additionalInfo,
+              googleEventID, // <--- Save it here!
+            };
+            await addDocument("tournaments", tournamentData);
+      
+            setAlert({ type: "success", message: "Event created in Firestore and added to Google Calendar!" });
+          } catch (googleErr: any) {
+            // Google Calendar error handling...
+            let googleMessage = "Event could NOT be added to Google Calendar.";
+            if (googleErr?.result?.error?.message) {
+              if (googleErr.result.error.message.includes("requiredAccessLevel")) {
+                googleMessage = "You don't have edit permission on the club calendar. Ask the owner to grant you access or try a different Google account.";
+              } else {
+                googleMessage = googleErr.result.error.message;
+              }
+            }
+            setAlert({ type: "error", message: googleMessage });
+          } finally {
+            setLoading(false);
+          }
+        };
+      
+        if (!accessToken) {
+          tokenClient.current.requestAccessToken();
+          tokenClient.current.callback = async (response: any) => {
+            setAccessToken(response.access_token);
+            gapi.client.setToken({ access_token: response.access_token });
+            await insertEvent();
+          };
+        } else {
+          await insertEvent();
+        }
+      } catch (err: any) {
+        setAlert({ type: "error", message: "Could not save tournament to Firestore. Please try again." });
         setLoading(false);
       }
-    } catch (err) {
-      alert("Event saved to Firestore, but could NOT be added to Google Calendar. " + err);
+      
+    } catch (err: any) {
+      setAlert({ type: "error", message: "Could not save tournament to Firestore. Please try again." });
       setLoading(false);
     }
   };
@@ -169,21 +249,29 @@ const TournamentForm: React.FC = () => {
             fontWeight: 800,
             letterSpacing: "1.2px"
           }}>
-            Add a Tournament Event
+            Add an Event
           </h2>
           <p className="mb-0 text-center" style={{
             color: "#2e3a59", fontSize: 15, opacity: 0.83
           }}>
-            This form will add a tournament to both the club calendar and your database.
+            This form will add an event to both the club calendar and your database.
           </p>
         </div>
+        {/* ALERTS */}
+        {alert && (
+          <div className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-4 mt-3 mb-0`} role="alert">
+            {alert.message}
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)}></button>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="p-4">
+          {/* ... rest of your fields unchanged ... */}
           {/* Event Name */}
           <div className="form-group mb-3">
             <label htmlFor="tourn_name" style={{ fontWeight: 600 }}>Event Name<span style={{ color: "#ef5350" }}> *</span></label>
             <input type="text" id="tourn_name" className="form-control"
               style={{ borderRadius: 14, padding: "10px 16px" }}
-              value={eventName} onChange={e => setEventName(e.target.value)} required />
+              value={eventName} onChange={e => setEventName(e.target.value)} required disabled={loading}/>
           </div>
   
           {/* Event Type & Status */}
@@ -192,7 +280,7 @@ const TournamentForm: React.FC = () => {
               <label htmlFor="event_type" style={{ fontWeight: 600 }}>Event Type<span style={{ color: "#ef5350" }}> *</span></label>
               <select id="event_type" className="form-control"
                 style={{ borderRadius: 14 }}
-                value={eventType} onChange={e => setEventType(e.target.value)} required>
+                value={eventType} onChange={e => setEventType(e.target.value)} required disabled={loading}>
                 <option value="">Select an event type</option>
                 <option value="extra_practice">Extra Practice</option>
                 <option value="match_play">Match Play</option>
@@ -203,7 +291,7 @@ const TournamentForm: React.FC = () => {
               <label htmlFor="status" style={{ fontWeight: 600 }}>Status<span style={{ color: "#ef5350" }}> *</span></label>
               <select id="status" className="form-control"
                 style={{ borderRadius: 14 }}
-                value={status} onChange={e => setStatus(e.target.value)} required>
+                value={status} onChange={e => setStatus(e.target.value)} required disabled={loading}>
                 <option value="">Select status</option>
                 <option value="tentative">Tentative</option>
                 <option value="confirmed">Confirmed</option>
@@ -218,20 +306,39 @@ const TournamentForm: React.FC = () => {
               <label htmlFor="date" style={{ fontWeight: 600 }}>Date<span style={{ color: "#ef5350" }}> *</span></label>
               <input type="date" id="date" className="form-control"
                 style={{ borderRadius: 14 }}
-                value={date} onChange={e => setDate(e.target.value)} required />
+                value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
             </div>
-            <div className="form-group col-md-3">
-              <label htmlFor="start_time" style={{ fontWeight: 600 }}>Start Time<span style={{ color: "#ef5350" }}> *</span></label>
-              <input type="time" id="start_time" className="form-control"
-                style={{ borderRadius: 14 }}
-                value={startTime} onChange={e => setStartTime(e.target.value)} required />
-            </div>
-            <div className="form-group col-md-4">
-              <label htmlFor="end_time" style={{ fontWeight: 600 }}>End Time</label>
-              <input type="time" id="end_time" className="form-control"
-                style={{ borderRadius: 14 }}
-                value={endTime} onChange={e => setEndTime(e.target.value)} />
-            </div>
+            <div className="form-group col-md-3 d-flex flex-column align-items-start">
+  <label style={{ fontWeight: 600 }}>Start Time<span style={{ color: "#ef5350" }}> *</span></label>
+  <TimePicker
+    onChange={(value: string | null) => setStartTime(value || "")}
+    value={startTime}
+    disableClock={false}
+    clearIcon={null}
+    format="hh:mm a"
+    amPmAriaLabel="Select AM/PM"
+    required
+    disabled={loading}
+    className="w-100 custom-timepicker"
+    clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+  />
+</div>
+<div className="form-group col-md-4 d-flex flex-column align-items-start">
+  <label style={{ fontWeight: 600 }}>End Time</label>
+  <TimePicker
+    onChange={(value: string | null) => setEndTime(value || "")}
+    value={endTime}
+    disableClock={false}
+    clearIcon={null}
+    format="hh:mm a"
+    amPmAriaLabel="Select AM/PM"
+    disabled={loading}
+    className="w-100 custom-timepicker"
+    clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+  />
+</div>
+
+
           </div>
   
           {/* RSVP */}
@@ -240,13 +347,13 @@ const TournamentForm: React.FC = () => {
               <label htmlFor="rsvp_date" style={{ fontWeight: 600 }}>RSVP Date</label>
               <input type="date" id="rsvp_date" className="form-control"
                 style={{ borderRadius: 14 }}
-                value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} />
+                value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
             </div>
             <div className="form-group col-md-5">
               <label htmlFor="rsvp_time" style={{ fontWeight: 600 }}>RSVP Time</label>
               <input type="time" id="rsvp_time" className="form-control"
                 style={{ borderRadius: 14 }}
-                value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} />
+                value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
             </div>
           </div>
   
@@ -256,7 +363,7 @@ const TournamentForm: React.FC = () => {
             <textarea id="rules_tourn" className="form-control"
               rows={2}
               style={{ borderRadius: 14 }}
-              value={rules} onChange={e => setRules(e.target.value)} placeholder="Enter rules..." />
+              value={rules} onChange={e => setRules(e.target.value)} placeholder="Enter rules..." disabled={loading}/>
           </div>
   
           {/* Location */}
@@ -264,7 +371,7 @@ const TournamentForm: React.FC = () => {
             <label htmlFor="location" style={{ fontWeight: 600 }}>Location</label>
             <input type="text" id="location" className="form-control"
               style={{ borderRadius: 14 }}
-              value={location} onChange={e => setLocation(e.target.value)} placeholder="Enter address" />
+              value={location} onChange={e => setLocation(e.target.value)} placeholder="Enter address" disabled={loading}/>
           </div>
   
           {/* Shirt Color */}
@@ -272,7 +379,7 @@ const TournamentForm: React.FC = () => {
             <label htmlFor="shirt_color" style={{ fontWeight: 600 }}>Shirt Color</label>
             <input type="text" id="shirt_color" className="form-control"
               style={{ borderRadius: 14 }}
-              value={shirtColor} onChange={e => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" />
+              value={shirtColor} onChange={e => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" disabled={loading}/>
           </div>
   
           {/* Additional Info */}
@@ -280,7 +387,7 @@ const TournamentForm: React.FC = () => {
             <label htmlFor="additional_info" style={{ fontWeight: 600 }}>Additional Information</label>
             <input type="text" id="additional_info" className="form-control"
               style={{ borderRadius: 14 }}
-              value={additionalInfo} onChange={e => setAdditionalInfo(e.target.value)} placeholder="Any notes..." />
+              value={additionalInfo} onChange={e => setAdditionalInfo(e.target.value)} placeholder="Any notes..." disabled={loading}/>
           </div>
   
           {/* Button */}
@@ -316,7 +423,6 @@ const TournamentForm: React.FC = () => {
       </div>
     </div>
   );
-  
 };
 
 export default TournamentForm;
