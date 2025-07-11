@@ -2,7 +2,7 @@
 
 ## Authentication & Profile
 
-- [ ] Page loads for authenticated users
+- [x] Page loads for authenticated users
 - [ ] If user has no profile, "Create Your Profile" form is shown
 - [ ] User can create a profile with valid first name, last name, and role
 - [ ] Error message appears if profile creation fields are incomplete

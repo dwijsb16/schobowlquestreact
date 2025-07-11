@@ -15,7 +15,7 @@
 ### Observations
 
 - Footer is not consistent and aligned in all the pages
-- Home page accordion not working well
+- ~~Home page accordion not working well~~
 
 ## Authentication
 
@@ -30,15 +30,15 @@
 
 ## Protected Routes (Any Logged-in User)
 
-- [ ] Calendar page loads at `/calendar` for logged-in users
+- [x] Calendar page loads at `/calendar` for logged-in users
 - [x] Profile page loads at `/profile` for logged-in users
 - [x] Tournament detail page loads at `/tournament/:id` for logged-in users
-- [ ] Accessing protected routes without login redirects to `/login`
+- [x] Accessing protected routes without login redirects to `/login`
 
 ## Coach-Only Routes
 
-- [ ] Coaches Only page loads at `/coaches` for coach users
-- [ ] Add Tournament page loads at `/coaches/add-tournament` for coach users
+- [x] Coaches Only page loads at `/coaches` for coach users
+- [x] Add Tournament page loads at `/coaches/add-tournament` for coach users
 - [ ] Make Teams page loads at `/coaches/make-teams` for coach users
 - [ ] Manage Tournaments page loads at `/coaches/manage-tournaments` for coach users
 - [ ] Coaches Calendar page loads at `/coaches/calendar` for coach users
@@ -50,6 +50,8 @@
 - [ ] Navigation bar displays correct links for coach users
 - [ ] Navigation bar displays correct links for logged-out users
 - [ ] Navigation links route to correct pages
+- [ ] Footer is visible and displays expected information  
+    - <span style="color:red;"> Footer logo is left-algined. Needs to be in center with the copyright</span>
 
 ## Edge Cases
 
