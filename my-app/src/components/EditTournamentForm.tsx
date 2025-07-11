@@ -61,24 +61,27 @@ const EditTournamentForm: React.FC = () => {
     setFormData({ ...formData, [field]: value });
   }
 
-  async function handleEditSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setAlert(null);
-    try {
-      // Replace with your Firestore update logic!
-      await updateTournament(formData.id, formData);
-
-      // Replace with your Google Calendar update logic!
-      // You'll need to store googleEventId or similar on each tournament.
-      await updateGoogleCalendarEvent(formData.googleEventId, formData);
-
-      setAlert({ type: "success", message: "Tournament updated!" });
-    } catch (err) {
-      setAlert({ type: "error", message: "Failed to update tournament." });
+    async function handleEditSubmit(e: React.FormEvent) {
+      e.preventDefault();
+      setLoading(true);
+      setAlert(null);
+      try {
+        await updateTournament(formData.id, formData);
+    
+        // Sanitize for Google Calendar
+        if (formData.googleEventId) {
+          const gcalObj = getGoogleCalendarEventObj(formData);
+    
+          await updateGoogleCalendarEvent(formData.googleEventId, gcalObj);
+        }
+    
+        setAlert({ type: "success", message: "Tournament updated!" });
+      } catch (err: any) {
+        setAlert({ type: "error", message: "Failed to update tournament." });
+        console.error("Edit failed:", err?.result?.error?.message || err);
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }
 
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this tournament? This cannot be undone.")) return;
@@ -100,6 +103,31 @@ const EditTournamentForm: React.FC = () => {
     }
     setLoading(false);
   }
+  function getGoogleCalendarEventObj(formData: any) {
+    return {
+      summary: formData.eventName,
+      location: formData.location,
+      description: [
+        formData.additionalInfo && `Notes: ${formData.additionalInfo}`,
+        formData.rules && `Rules: ${formData.rules}`,
+        formData.shirtColor && `Shirt Color: ${formData.shirtColor}`,
+        formData.rsvpDate && `RSVP By: ${formData.rsvpDate}${formData.rsvpTime ? ` ${formData.rsvpTime}` : ""}`,
+        formData.status && `Status: ${formData.status}`,
+        formData.eventType && `Event Type: ${formData.eventType}`,
+      ].filter(Boolean).join("\n"),
+      start: {
+        dateTime: `${formData.date}T${formData.startTime.length === 5 ? formData.startTime + ":00" : formData.startTime}-05:00`, // Or your local offset
+        timeZone: "America/Chicago"
+      },
+      end: {
+        dateTime: formData.endTime
+          ? `${formData.date}T${formData.endTime.length === 5 ? formData.endTime + ":00" : formData.endTime}-05:00`
+          : `${formData.date}T${formData.startTime.length === 5 ? formData.startTime + ":00" : formData.startTime}-05:00`,
+        timeZone: "America/Chicago"
+      }
+    };
+  }
+  
 
   // -- Dropdown + "Go" Button --
   return (
