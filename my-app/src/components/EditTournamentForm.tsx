@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from "react";
-// import your Firestore and Google Calendar functions here
-import { getCollection } from "../hooks/firestore";
-import { getDocumentById } from "../hooks/firestore";
-import { updateDocumentFields } from "../hooks/firestore";
-import { deleteDocument } from "../hooks/firestore";
-import TimePicker from 'react-time-picker';
-import 'react-time-picker/dist/TimePicker.css';
-import 'react-clock/dist/Clock.css';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  getCollection,
+  getDocumentById,
+  updateDocumentFields,
+  deleteDocument
+} from "../hooks/firestore";
+import TimePicker from "react-time-picker";
+import "react-time-picker/dist/TimePicker.css";
+import "react-clock/dist/Clock.css";
 
+// @ts-ignore
 declare const gapi: any;
 
 // Credentials
@@ -15,7 +17,6 @@ const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleuser
 const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
 const CALENDAR_ID = "questsbclub@gmail.com";
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
-
 
 const EditTournamentForm: React.FC = () => {
   // --- Data State ---
@@ -25,14 +26,40 @@ const EditTournamentForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success", message: string } | null>(null);
 
-  // Fetch all tournaments on mount
+  // Google auth state
+  const tokenClient = useRef<any>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // --- GAPI INIT ---
+  useEffect(() => {
+    gapi.load("client", async () => {
+      await gapi.client.init({
+        apiKey: API_KEY,
+        discoveryDocs: [
+          "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
+        ]
+      });
+    });
+
+    if (!tokenClient.current && (window as any).google?.accounts?.oauth2) {
+      tokenClient.current = (window as any).google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (response: any) => {
+          setAccessToken(response.access_token);
+          gapi.client.setToken({ access_token: response.access_token });
+        }
+      });
+    }
+  }, []);
+
+  // --- Load tournaments on mount ---
   useEffect(() => {
     async function load() {
       setLoading(true);
       setAlert(null);
       try {
-        // Replace with your Firestore fetch logic!
-        const data = await fetchTournaments(); // returns array of tournaments
+        const data = await getCollection("tournaments");
         setTournaments(data);
       } catch (err) {
         setAlert({ type: "error", message: "Could not load tournaments." });
@@ -42,13 +69,12 @@ const EditTournamentForm: React.FC = () => {
     load();
   }, []);
 
-  // Fetch the selected tournament
+  // --- Load selected tournament ---
   async function handleGo() {
     setLoading(true);
     setAlert(null);
     try {
-      // Replace with your logic to fetch one tournament by ID
-      const tourn = await fetchTournamentById(selectedTournId);
+      const tourn = await getDocumentById("tournaments", selectedTournId);
       setFormData(tourn);
     } catch (err) {
       setAlert({ type: "error", message: "Could not load selected tournament." });
@@ -56,80 +82,133 @@ const EditTournamentForm: React.FC = () => {
     setLoading(false);
   }
 
-  // --- Form Handling ---
-  function handleChange(field: string, value: any) {
-    setFormData({ ...formData, [field]: value });
+  // --- Helper for time conversion ---
+  function to24Hour(time12: string) {
+    if (!time12) return "";
+    if (time12.includes("AM") || time12.includes("PM")) {
+      // react-time-picker already returns 24h in "HH:mm" format by default
+      // If using 12h format with AM/PM, convert as in your other code
+      const [time, modifier] = time12.split(" ");
+      let [hours, minutes] = time.split(":").map(Number);
+      if (modifier === "PM" && hours < 12) hours += 12;
+      if (modifier === "AM" && hours === 12) hours = 0;
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
+    }
+    // Already 24h
+    return time12.length === 5 ? `${time12}:00` : time12;
+  }
+  function getTimezoneOffset() {
+    const offset = new Date().getTimezoneOffset();
+    const sign = offset > 0 ? "-" : "+";
+    const pad = (n: number) => String(Math.abs(Math.floor(n))).padStart(2, "0");
+    return `${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
   }
 
-    async function handleEditSubmit(e: React.FormEvent) {
-      e.preventDefault();
-      setLoading(true);
-      setAlert(null);
-      try {
-        await updateTournament(formData.id, formData);
-    
-        // Sanitize for Google Calendar
-        if (formData.googleEventId) {
-          const gcalObj = getGoogleCalendarEventObj(formData);
-    
-          await updateGoogleCalendarEvent(formData.googleEventId, gcalObj);
-        }
-    
-        setAlert({ type: "success", message: "Tournament updated!" });
-      } catch (err: any) {
-        setAlert({ type: "error", message: "Failed to update tournament." });
-        console.error("Edit failed:", err?.result?.error?.message || err);
-      }
-      setLoading(false);
-    }
+  // --- Edit logic ---
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setAlert(null);
 
+    // 1. Update Firestore
+    await updateDocumentFields("tournaments", formData.id, formData);
+
+    // 2. Update Google Calendar (if googleEventId exists)
+    const doCalendar = async () => {
+      if (formData.googleEventID) {
+        const startDateTime = `${formData.date}T${to24Hour(formData.startTime)}${getTimezoneOffset()}`;
+        const endDateTime = formData.endTime
+          ? `${formData.date}T${to24Hour(formData.endTime)}${getTimezoneOffset()}`
+          : startDateTime;
+        const description = [
+          formData.additionalInfo && `Notes: ${formData.additionalInfo}`,
+          formData.rules && `Rules: ${formData.rules}`,
+          formData.shirtColor && `Shirt Color: ${formData.shirtColor}`,
+          formData.rsvpDate && `RSVP By: ${formData.rsvpDate}${formData.rsvpTime ? ` ${formData.rsvpTime}` : ""}`,
+          formData.status && `Status: ${formData.status}`,
+          formData.eventType && `Event Type: ${formData.eventType}`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        const gcalObj = {
+          summary: formData.eventName,
+          location: formData.location,
+          description: description,
+          start: {
+            dateTime: startDateTime,
+            timeZone: "America/Chicago",
+          },
+          end: {
+            dateTime: endDateTime,
+            timeZone: "America/Chicago",
+          },
+        };
+        await gapi.client.calendar.events.update({
+          calendarId: CALENDAR_ID,
+          eventId: formData.googleEventID,
+          resource: gcalObj,
+        });
+      }
+      setAlert({ type: "success", message: "Tournament updated!" });
+      setLoading(false);
+    };
+
+    // Auth for Google Calendar
+    if (!accessToken) {
+      tokenClient.current.requestAccessToken();
+      tokenClient.current.callback = async (response: any) => {
+        setAccessToken(response.access_token);
+        gapi.client.setToken({ access_token: response.access_token });
+        await doCalendar();
+      };
+    } else {
+      await doCalendar();
+    }
+  }
+
+  // --- Delete logic ---
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this tournament? This cannot be undone.")) return;
     setLoading(true);
     setAlert(null);
-    try {
-      // Firestore delete
-      await deleteTournament(formData.id);
-      // Google Calendar delete
-      await deleteGoogleCalendarEvent(formData.googleEventId);
 
+    // 1. Delete Firestore
+    await deleteDocument("tournaments", formData.id);
+
+    // 2. Delete Google Calendar (if googleEventId exists)
+    const doCalendarDelete = async () => {
+      if (formData.googleEventID) {
+        await gapi.client.calendar.events.delete({
+          calendarId: CALENDAR_ID,
+          eventId: formData.googleEventID,
+        });
+      }
       setAlert({ type: "success", message: "Tournament deleted." });
       setFormData(null);
       setSelectedTournId("");
-      // Optionally refresh tournaments list
-      setTournaments(await fetchTournaments());
-    } catch (err) {
-      setAlert({ type: "error", message: "Failed to delete tournament." });
-    }
-    setLoading(false);
-  }
-  function getGoogleCalendarEventObj(formData: any) {
-    return {
-      summary: formData.eventName,
-      location: formData.location,
-      description: [
-        formData.additionalInfo && `Notes: ${formData.additionalInfo}`,
-        formData.rules && `Rules: ${formData.rules}`,
-        formData.shirtColor && `Shirt Color: ${formData.shirtColor}`,
-        formData.rsvpDate && `RSVP By: ${formData.rsvpDate}${formData.rsvpTime ? ` ${formData.rsvpTime}` : ""}`,
-        formData.status && `Status: ${formData.status}`,
-        formData.eventType && `Event Type: ${formData.eventType}`,
-      ].filter(Boolean).join("\n"),
-      start: {
-        dateTime: `${formData.date}T${formData.startTime.length === 5 ? formData.startTime + ":00" : formData.startTime}-05:00`, // Or your local offset
-        timeZone: "America/Chicago"
-      },
-      end: {
-        dateTime: formData.endTime
-          ? `${formData.date}T${formData.endTime.length === 5 ? formData.endTime + ":00" : formData.endTime}-05:00`
-          : `${formData.date}T${formData.startTime.length === 5 ? formData.startTime + ":00" : formData.startTime}-05:00`,
-        timeZone: "America/Chicago"
-      }
+      setTournaments(await getCollection("tournaments"));
+      setLoading(false);
     };
-  }
-  
 
-  // -- Dropdown + "Go" Button --
+    if (!accessToken) {
+      tokenClient.current.requestAccessToken();
+      tokenClient.current.callback = async (response: any) => {
+        setAccessToken(response.access_token);
+        gapi.client.setToken({ access_token: response.access_token });
+        await doCalendarDelete();
+      };
+    } else {
+      await doCalendarDelete();
+    }
+  }
+
+  // --- Form change handler ---
+  function handleChange(field: string, value: any) {
+    setFormData({ ...formData, [field]: value });
+  }
+
+  // --- Render ---
   return (
     <div className="container d-flex flex-column align-items-center py-5" style={{ minHeight: "90vh" }}>
       <div className="card shadow" style={{
@@ -210,23 +289,28 @@ const EditTournamentForm: React.FC = () => {
               </div>
               <div className="col-6 col-md-4 mb-2">
                 <label className="fw-semibold mb-1">Start Time:</label>
-                <input
-                  type="time"
-                  className="form-control rounded-3"
+                <TimePicker
+                  onChange={(val: string | null) => handleChange("startTime", val || "")}
                   value={formData.startTime || ""}
-                  onChange={e => handleChange("startTime", e.target.value)}
+                  disableClock={true}
+                  format="HH:mm"
+                  className="w-100 custom-timepicker"
                   required
+                  clearIcon={null}
+                  clockIcon={null}
                   disabled={loading}
                 />
-                {/* For react-time-picker, replace above with your custom component */}
               </div>
               <div className="col-6 col-md-4 mb-2">
                 <label className="fw-semibold mb-1">End Time:</label>
-                <input
-                  type="time"
-                  className="form-control rounded-3"
+                <TimePicker
+                  onChange={(val: string | null) => handleChange("endTime", val || "")}
                   value={formData.endTime || ""}
-                  onChange={e => handleChange("endTime", e.target.value)}
+                  disableClock={true}
+                  format="HH:mm"
+                  className="w-100 custom-timepicker"
+                  clearIcon={null}
+                  clockIcon={null}
                   disabled={loading}
                 />
               </div>
@@ -293,40 +377,3 @@ const EditTournamentForm: React.FC = () => {
 };
 
 export default EditTournamentForm;
-
-// ----
-// Replace these with your real Firestore & Google Calendar logic!
-// For now, these are dummy placeholders:
-
-async function fetchTournaments() {
-  return await getCollection("tournaments");
-}
-
-async function fetchTournamentById(id: string) {
-  return await getDocumentById("tournaments", id);
-}
-
-
-async function updateTournament(id: string, data: any) {
-  // e.g. return await updateDocumentFields("tournaments", id, data);
-  return await updateDocumentFields("tournaments", id, data);
-}
-
-async function deleteTournament(id: string) {
-  return await deleteDocument("tournaments", id);
-}
-
-async function updateGoogleCalendarEvent(googleEventId: string, eventObj: any) {
-  return await gapi.client.calendar.events.update({
-    calendarId: CALENDAR_ID,
-    eventId: googleEventId,
-    resource: eventObj,
-  });
-}
-
-async function deleteGoogleCalendarEvent(googleEventId: string) {
-  return await gapi.client.calendar.events.delete({
-    calendarId: CALENDAR_ID,
-    eventId: googleEventId,
-  });
-}
