@@ -1,49 +1,64 @@
-import React from "react";
+import React, { useState } from "react";
+
+// Demo Data
+const accordionData = [
+  {
+    title: "Announcements for Tournament Day",
+    content:
+      "Be sure to arrive 15 minutes early for check-in. Bring a water bottle and your team shirt.",
+  },
+  {
+    title: "Announcements for Tournament Teams",
+    content:
+      "Team rosters will be posted at 9:00 AM. Coaches, please check in with all players.",
+  },
+  {
+    title: "News",
+    content:
+      "Our team made it to Regionals! Check back soon for a new practice schedule.",
+  },
+];
 
 const Accordion: React.FC = () => {
-  const accordionData = [
-    {
-      title: "Announcements for Tournament Day",
-      content:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    },
-    {
-      title: "Announcements for Tournament Teams",
-      content:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    },
-    {
-      title: "News",
-      content:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    },
-  ];
+  const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <div id="accordion1" role="tablist">
-      {accordionData.map((item, index) => (
-        <div className="card" key={index}>
-          <div className="card-header" role="tab" id={`heading${index}`}>
-            <h5 className="mb-0">
-              <a
-                data-toggle="collapse"
-                href={`#collapse${index}`}
-                role="button"
-                aria-expanded={index === 0}
-                aria-controls={`collapse${index}`}
-              >
-                {item.title}
-              </a>
-            </h5>
-          </div>
+    <div className="accordion my-5 shadow-sm rounded" id="qaAccordion">
+      {accordionData.map((item, idx) => (
+        <div className="accordion-item" key={idx}>
+          <h2 className="accordion-header" id={`heading${idx}`}>
+            <button
+              className={`accordion-button ${openIdx === idx ? "" : "collapsed"}`}
+              type="button"
+              aria-expanded={openIdx === idx}
+              aria-controls={`collapse${idx}`}
+              onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
+              style={{
+                fontWeight: 600,
+                fontSize: "1.1rem",
+                background: openIdx === idx ? "#f4f8fc" : "#fff",
+                color: openIdx === idx ? "#0a7de1" : "#333",
+                border: "none",
+                borderRadius: openIdx === idx ? "14px 14px 0 0" : "14px",
+                transition: "background 0.2s",
+              }}
+            >
+              {item.title}
+            </button>
+          </h2>
           <div
-            id={`collapse${index}`}
-            className={`collapse ${index === 0 ? "show" : ""}`}
-            role="tabpanel"
-            aria-labelledby={`heading${index}`}
-            data-parent="#accordion1"
+            id={`collapse${idx}`}
+            className={`accordion-collapse collapse ${openIdx === idx ? "show" : ""}`}
+            aria-labelledby={`heading${idx}`}
+            data-bs-parent="#qaAccordion"
           >
-            <div className="card-body">{item.content}</div>
+            <div className="accordion-body" style={{
+              background: "#f9fcff",
+              borderRadius: "0 0 14px 14px",
+              borderTop: "1px solid #eee"
+            }}>
+              {item.content}
+            </div>
           </div>
         </div>
       ))}
