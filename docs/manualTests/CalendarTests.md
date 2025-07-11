@@ -7,6 +7,10 @@
 - [ ] AtAGlance component is visible and shows summary information
 - [ ] Footer is visible and displays expected information
 
+### Observations
+- Calendar shows up in a different pop up: ![calendar](objectiveEvidence/GoogleCalendarShowedUpInAdifferentPopup.png)
+- Calendar does not show for non google users: ![calendarNoShow](objectiveEvidence/CalendarAfterLoginNoAccess.jpg)
+
 ## Navigation
 
 - [ ] Clicking navigation links in Navbar routes to correct pages

@@ -5,29 +5,34 @@
 - [x] Page loads and displays "Create an Account" if user is not signed in
 - [ ] Page loads and displays "Complete Your Profile" if user is signed in
 - [x] User can enter a valid email and password to create an account
-- [ ] Error message appears if email is already in use
+- [x] Error message appears if email is already in use
 - [x] Error message appears for invalid email format
-- [ ] Error message appears for weak password
+- [x] Error message appears for weak password
 - [x] Pop up Modal appears when user has succesfully created profile
 - [x] User is redirected to home page upon acknowledgement of the modal
 - [x] Homepage has Signout button as a logout option
 
 ### Observations
-- email textbox should dynamically authenticate for email addr pattern. Not only on `submit` action
-- when tried to set `password` to `1111` got this error![Error On Weak Password](objectiveEvidence/erroronweakpwd.png)
+- ~~email textbox should dynamically authenticate for email addr pattern. Not only on `submit` action~~
+- ~~when tried to set `password` to `1111` got this error~~
 - Password verification should be added
 - Viewing password `eyeball` should be added
-- Rules for strong password should be specified
-- Got a login page trying to navigate to calendar with non google email even when user was supposed to have been logged in ![Login page when logged in](objectiveEvidence/loginPagewhenLoggedIn.jpg)
+- ~~Rules for strong password should be specified~~
+- ~~Got a login page trying to navigate to calendar with non google email even when user was supposed to have been logged in~~
+- After logging in with a non google email and navigating to Calendar page, saw this: ![Login page when logged in](objectiveEvidence/CalendarAfterLoginNoAccess.jpg)
 - Login page password should also have an `eyeball` to check password
+- User should be logged out automatically after a period of inactivity
 
 ## Profile Information
 
-- [ ] User can enter first name and last name (required)
-- [ ] User can select a role (Player, Coach, Parent)
-- [ ] If role is "Player", grade dropdown is visible and required
-- [ ] If role is "Coach" or "Parent", grade dropdown is hidden
-- [ ] Error message appears if required fields are missing
+- [x] User can enter first name and last name (required)
+- [ ] User can select a role (Player, Parent)
+- [x] If role is "Player", grade dropdown is visible and required
+- [x] If role is "Coach" or "Parent", grade dropdown is hidden
+- [x] Error message appears if required fields are missing
+
+### Observations
+- Cannot make changes to Profile once `Edit Profile` button is clicked
 
 ## Existing User Handling
 
@@ -37,9 +42,9 @@
 
 ## Submission
 
-- [ ] Clicking "Sign Up" or "Save Profile" submits the form
-- [ ] Success message or alert appears after successful signup/profile completion
-- [ ] User is redirected to home page after successful signup/profile completion
+- [x] Clicking "Sign Up" or "Save Profile" submits the form
+- [x] Success message or alert appears after successful signup/profile completion
+- [x] User is redirected to home page after successful signup/profile completion
 
 ## Edge Cases
 

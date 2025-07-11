@@ -19,18 +19,21 @@
 
 ## Authentication
 
-- [ ] User can log in with valid credentials
-- [ ] User cannot log in with invalid credentials
+- [x] User can log in with valid credentials
+- [x] User cannot log in with invalid credentials
 - [ ] After login, user is redirected to a protected route
-- [ ] User can log out and is redirected to login or home page
-- [ ] Unauthorized user cannot access protected routes
+- [x] User can log out and is redirected to login or home page
+- [x] Unauthorized user cannot access protected routes
+
+### Observations
+ - Error message on invalid credentials needs to be more user friendly: ![Invalid password](objectiveEvidence/InvalidPassword.png)
 
 ## Protected Routes (Any Logged-in User)
 
 - [ ] Calendar page loads at `/calendar` for logged-in users
-- [ ] Profile page loads at `/profile` for logged-in users
-- [ ] Tournament detail page loads at `/tournament/:id` for logged-in users
-- [ ] Accessing protected routes without login redirects to `/unauthorized`
+- [x] Profile page loads at `/profile` for logged-in users
+- [x] Tournament detail page loads at `/tournament/:id` for logged-in users
+- [ ] Accessing protected routes without login redirects to `/login`
 
 ## Coach-Only Routes
 
