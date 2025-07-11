@@ -11,28 +11,29 @@
 - [x] Pop up Modal appears when user has succesfully created profile
 - [x] User is redirected to home page upon acknowledgement of the modal
 - [x] Homepage has Signout button as a logout option
+- [ ] User should be logged out automatically after a period of inactivity
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
+- [ ] Password verification should be added
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
 ### Observations
 - ~~email textbox should dynamically authenticate for email addr pattern. Not only on `submit` action~~
 - ~~when tried to set `password` to `1111` got this error~~
-- Password verification should be added
-- Viewing password `eyeball` should be added
 - ~~Rules for strong password should be specified~~
 - ~~Got a login page trying to navigate to calendar with non google email even when user was supposed to have been logged in~~
-- After logging in with a non google email and navigating to Calendar page, saw this: ![Login page when logged in](objectiveEvidence/CalendarAfterLoginNoAccess.jpg)
-- Login page password should also have an `eyeball` to check password
-- User should be logged out automatically after a period of inactivity
+- ~~After logging in with a non google email and navigating to Calendar page, saw this:~~ 
 
 ## Profile Information
 
 - [x] User can enter first name and last name (required)
 - [ ] User can select a role (Player, Parent)
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be updated
 - [x] If role is "Player", grade dropdown is visible and required
 - [x] If role is "Coach" or "Parent", grade dropdown is hidden
 - [x] Error message appears if required fields are missing
+- [ ] User should be able to edit their profile information
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
-### Observations
-- Cannot make changes to Profile once `Edit Profile` button is clicked
 
 ## Existing User Handling
 

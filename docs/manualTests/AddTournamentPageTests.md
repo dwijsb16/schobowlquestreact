@@ -33,6 +33,8 @@
 - [ ] Page renders without errors if form data is missing or malformed
 - [ ] Form handles unexpected input gracefully (e.g., special characters, long text)
 - [ ] Submitting duplicate tournament data is handled appropriately
+- [ ] REST Errors are reported in a user friendly and actionable way
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
 
 ## Accessibility
 
