@@ -8,12 +8,15 @@
 
 ## Form Functionality
 
-- [ ] User can enter tournament details in all required fields
+- [x] User can enter tournament details in all required fields
 - [ ] Form validation prevents submission with missing or invalid data
 - [ ] Error messages are displayed for invalid or incomplete input
 - [ ] User can successfully submit the form with valid data
 - [ ] Success message or confirmation is shown after successful submission
 - [ ] Form resets or clears after submission (if applicable)
+
+### Observations
+- The status was stuck creating a tournament for more than 3 minutes: ![creating tournament](objectiveEvidence/StuckCreatingTournament.png)
 
 ## Navigation
 
