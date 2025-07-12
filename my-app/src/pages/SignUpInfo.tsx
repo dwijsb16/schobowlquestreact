@@ -39,6 +39,8 @@ const SignupPage: React.FC = () => {
   const [grade, setGrade] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwMatch, setPwMatch] = useState(true);
 
   const navigate = useNavigate();
 
@@ -54,6 +56,9 @@ const SignupPage: React.FC = () => {
   }, []);
 
   const pwStrength = checkPasswordStrength(password);
+  useEffect(() => {
+    setPwMatch(confirmPassword === "" || password === confirmPassword);
+  }, [password, confirmPassword]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +92,10 @@ const SignupPage: React.FC = () => {
         uid = currentUser.uid;
         signupEmail = currentUser.email;
       } else {
+        if (!pwMatch) {
+          setError("Passwords do not match.");
+          return;
+        }
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         uid = userCredential.user.uid;
         signupEmail = userCredential.user.email!;
@@ -170,47 +179,87 @@ const SignupPage: React.FC = () => {
                     )}
                   </div>
                   <div className="form-group mb-3" style={{ position: "relative" }}>
-                    <label>Password</label>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      className={`form-control ${error && password ? "is-invalid" : ""}`}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                      autoComplete="new-password"
-                      style={{ paddingRight: 40 }}
-                    />
-                    {/* Eye icon absolutely positioned */}
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(s => !s)}
-                      style={{
-                        position: "absolute",
-                        right: 10,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        border: "none",
-                        background: "none",
-                        padding: 0,
-                        margin: 0,
-                        cursor: "pointer",
-                        zIndex: 2
-                      }}
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-                    </button>
-                    <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
-                      {passwordRules.map((rule) => (
-                        <li key={rule.key} style={{
-                          color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
-                        }}>
-                          {rule.text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+  <label>Password</label>
+  <input
+    type={showPassword ? "text" : "password"}
+    className={`form-control ${error && password ? "is-invalid" : ""}`}
+    value={password}
+    onChange={e => setPassword(e.target.value)}
+    required
+    autoComplete="new-password"
+    style={{ paddingRight: 40 }}
+  />
+  {/* Eye icon for Password */}
+  <button
+    type="button"
+    onClick={() => setShowPassword(s => !s)}
+    style={{
+      position: "absolute",
+      right: 10,
+      top: "25%",
+      transform: "translateY(-50%)",
+      border: "none",
+      background: "none",
+      padding: 0,
+      margin: 0,
+      cursor: "pointer",
+      zIndex: 2
+    }}
+    tabIndex={-1}
+    aria-label={showPassword ? "Hide password" : "Show password"}
+  >
+    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+  </button>
+  <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
+    {passwordRules.map((rule) => (
+      <li key={rule.key} style={{
+        color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
+      }}>
+        {rule.text}
+      </li>
+    ))}
+  </ul>
+</div>
+
+<div className="form-group mb-3" style={{ position: "relative" }}>
+  <label>Confirm Password</label>
+  <input
+    type={showPassword ? "text" : "password"}
+    className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
+    value={confirmPassword}
+    onChange={e => setConfirmPassword(e.target.value)}
+    required
+    autoComplete="new-password"
+    style={{ paddingRight: 40 }}
+  />
+  {/* Eye icon for Confirm Password */}
+  <button
+    type="button"
+    onClick={() => setShowPassword(s => !s)}
+    style={{
+      position: "absolute",
+      right: 10,
+      top: "65%",
+      transform: "translateY(-50%)",
+      border: "none",
+      background: "none",
+      padding: 0,
+      margin: 0,
+      cursor: "pointer",
+      zIndex: 2
+    }}
+    tabIndex={-1}
+    aria-label={showPassword ? "Hide password" : "Show password"}
+  >
+    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+  </button>
+  {!pwMatch && confirmPassword && (
+    <div className="invalid-feedback" style={{ display: "block" }}>
+      Passwords do not match.
+    </div>
+  )}
+</div>
+
                 </>
               )}
 

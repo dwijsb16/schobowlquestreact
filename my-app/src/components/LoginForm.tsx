@@ -5,11 +5,13 @@ import { auth, signInWithGooglePopup, db } from "../.firebase/utils/firebase";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { getDoc, doc, collection, query, where, getDocs } from "firebase/firestore";
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Handle Google Sign-In
@@ -88,17 +90,24 @@ const LoginForm: React.FC = () => {
       case "auth/email-already-in-use": return "This email is already in use.";
       case "auth/invalid-email": return "Please enter a valid email address.";
       case "auth/weak-password": return "Password should be at least 6 characters.";
-      case "auth/wrong-password": return "Incorrect password.";
+      case "auth/wrong-password": return "Incorrect password. Please try again.";
       case "auth/user-not-found": return "No account found with this email.";
-      default: return "An unexpected error occurred.";
+      case "auth/too-many-requests": return "Too many failed attempts. Try again later.";
+      default: return "An unexpected error occurred. Please try again.";
     }
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center min-vh-100" style={{ background: "linear-gradient(90deg,#e3f2fd 0,#e8f9fd 100%)" }}>
-      <div className="card p-4 shadow-lg" style={{
-        minWidth: 340, maxWidth: 400, borderRadius: 18, border: "none", background: "#fff"
-      }}>
+    <div className="d-flex justify-content-center align-items-center min-vh-100"
+      style={{
+        background: "linear-gradient(90deg,#4F8CFD 0,#183A66 100%)",
+        minHeight: "100vh"
+      }}
+    >
+      <div className="card p-4 shadow-lg"
+        style={{
+          minWidth: 340, maxWidth: 400, borderRadius: 18, border: "none", background: "#fff"
+        }}>
         <div className="mb-4 text-center">
           <h2 style={{
             color: "#2155CD", fontWeight: 700, letterSpacing: 0.5
@@ -121,19 +130,60 @@ const LoginForm: React.FC = () => {
               }}
             />
           </div>
-          <div className="form-group mb-2">
+          {/* Password field with show/hide eye */}
+          <div className="form-group mb-2" style={{ position: "relative" }}>
             <label htmlFor="password" style={{ fontWeight: 500 }}>Password</label>
-            <input type="password" className="form-control" id="password"
-              placeholder="Password" value={password}
-              onChange={(e) => setPassword(e.target.value)} required
+            <input
+              type={showPassword ? "text" : "password"}
+              className="form-control"
+              id="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
               style={{
                 borderRadius: 12,
                 border: "1px solid #e7eaf6",
                 padding: "12px",
-                fontSize: 15
+                fontSize: 15,
+                paddingRight: 40, // Make room for the eye icon
               }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              tabIndex={-1}
+              style={{
+                position: "absolute",
+                right: 14,
+                top: "65%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                cursor: "pointer",
+                zIndex: 2,
+                color: "#333"
+              }}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+            </button>
           </div>
+          {/* Error message */}
+          {errorMessage && (
+            <div className="alert alert-danger text-center mt-2 mb-0"
+              style={{
+                borderRadius: 12, fontWeight: 500, fontSize: 15,
+                color: "#D7263D", background: "#fff3f6", border: "1px solid #ffe2ea"
+              }}>
+              <span>{errorMessage}</span>
+              <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
+                Forgot password? <a href="/reset" style={{ color: "#2155CD", textDecoration: "underline", fontWeight: 600 }}>Reset here</a>
+              </div>
+            </div>
+          )}
           <div className="text-center mt-4 mb-2">
             <button type="submit"
               className="btn"
@@ -147,14 +197,7 @@ const LoginForm: React.FC = () => {
             </button>
           </div>
         </form>
-
-        {/* Error message */}
-        {errorMessage && <div className="alert alert-danger text-center mt-2 mb-0" style={{
-          borderRadius: 12, fontWeight: 500
-        }}>{errorMessage}</div>}
-
         <hr style={{ background: "#d7e6fc", margin: "30px 0 18px 0" }} />
-
         <div className="text-center">
           <button
             onClick={logGoogleUser}
@@ -183,7 +226,6 @@ const LoginForm: React.FC = () => {
             Sign in with Google
           </button>
         </div>
-
         <div className="text-center mt-4" style={{ fontSize: 15 }}>
           <span style={{ color: "#888" }}>First time? </span>
           <a href="/signup" style={{
@@ -192,7 +234,6 @@ const LoginForm: React.FC = () => {
             fontWeight: 600
           }}>Create an account</a>
         </div>
-
       </div>
       <ToastContainer />
     </div>
