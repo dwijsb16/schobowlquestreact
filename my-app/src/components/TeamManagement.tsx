@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { collection, doc, getDoc, getDocs, orderBy, query, addDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  addDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 
 type Tournament = {
@@ -9,8 +18,8 @@ type Tournament = {
 };
 
 type Signup = {
-  id: string;            // signup doc id!
-  playerId: string;      // player doc id
+  id: string;
+  playerId: string;
   firstName: string;
   lastName: string;
   availability: string;
@@ -19,9 +28,10 @@ type Signup = {
 };
 
 type Team = {
+  id?: string;
   name: string;
   players: {
-    player: Signup;
+    signupId: string;
     isCaptain: boolean;
   }[];
 };
@@ -35,8 +45,9 @@ const TeamManagement: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeAddTeamIdx, setActiveAddTeamIdx] = useState<number | null>(null);
 
-  // Load tournaments from Firestore
+  // Load tournaments
   useEffect(() => {
     const fetchTournaments = async () => {
       const qTourn = query(collection(db, "tournaments"), orderBy("date"));
@@ -50,19 +61,28 @@ const TeamManagement: React.FC = () => {
     fetchTournaments();
   }, []);
 
-  // Fetch eligible players for selected tournament
+  // Load eligible players and autofill teams
   useEffect(() => {
-    const fetchEligiblePlayers = async () => {
-      if (!selectedTournament) return setEligiblePlayers([]);
+    const fetchEligiblePlayersAndTeams = async () => {
+      if (!selectedTournament) {
+        setEligiblePlayers([]);
+        setTeams([]);
+        return;
+      }
       setLoading(true);
-      const entriesRef = collection(db, "signups", selectedTournament, "entries");
+
+      // Eligible players
+      const entriesRef = collection(
+        db,
+        "signups",
+        selectedTournament,
+        "entries"
+      );
       const entriesSnap = await getDocs(entriesRef);
       const signups: Signup[] = [];
       for (const docSnap of entriesSnap.docs) {
         const data = docSnap.data();
-        // Only allow attending (not "no")
         if (data.availability !== "no" && data.playerId) {
-          // Fetch player info
           const playerDoc = await getDoc(doc(db, "players", data.playerId));
           if (playerDoc.exists()) {
             const playerData = playerDoc.data();
@@ -78,16 +98,31 @@ const TeamManagement: React.FC = () => {
           }
         }
       }
-      // Sort alphabetically by name
       signups.sort((a, b) => a.lastName.localeCompare(b.lastName));
       setEligiblePlayers(signups);
-      setTeams([]); // Reset teams when switching tournaments
-      setLoading(false);
 
-      // Debug: log eligible
-      console.log("Eligible Players for", selectedTournament, signups);
+      // Fetch teams from subcollection
+      const teamsCol = collection(
+        db,
+        "tournaments",
+        selectedTournament,
+        "teams"
+      );
+      const teamsSnap = await getDocs(teamsCol);
+      if (!teamsSnap.empty) {
+        setTeams(
+          teamsSnap.docs.map((docu) => ({
+            id: docu.id,
+            ...docu.data(),
+          })) as Team[]
+        );
+      } else {
+        setTeams([]);
+      }
+
+      setLoading(false);
     };
-    fetchEligiblePlayers();
+    fetchEligiblePlayersAndTeams();
   }, [selectedTournament]);
 
   // Add new team (A, B, ...)
@@ -95,65 +130,84 @@ const TeamManagement: React.FC = () => {
     if (teams.length >= alphabet.length) return;
     setTeams((prev) => [
       ...prev,
-      { name: `Team ${alphabet[prev.length]}`, players: [] }
+      { name: `Team ${alphabet[prev.length]}`, players: [] },
     ]);
   };
 
-  // Remove last team
+  // Remove last team (not from Firestore until save)
   const handleDeleteTeam = () => {
     setTeams((prev) => prev.slice(0, -1));
   };
 
   // Add player to a team
   const handleAddPlayer = (teamIdx: number, player: Signup) => {
-    // Prevent player in multiple teams
-    if (teams.some((team) => team.players.some(p => p.player.playerId === player.playerId)))
+    if (
+      teams.some((team) => team.players.some((p) => p.signupId === player.id))
+    )
       return;
     setTeams((prev) =>
       prev.map((team, idx) =>
         idx === teamIdx
-          ? { ...team, players: [...team.players, { player, isCaptain: false }] }
+          ? {
+              ...team,
+              players: [
+                ...team.players,
+                { signupId: player.id, isCaptain: false },
+              ],
+            }
           : team
       )
     );
+    setActiveAddTeamIdx(null);
   };
 
   // Remove player from a team
-  const handleRemovePlayer = (teamIdx: number, playerId: string) => {
+  const handleRemovePlayer = (teamIdx: number, signupId: string) => {
     setTeams((prev) => {
       const updated = [...prev];
-      updated[teamIdx].players = updated[teamIdx].players.filter(p => p.player.playerId !== playerId);
+      updated[teamIdx].players = updated[teamIdx].players.filter(
+        (p) => p.signupId !== signupId
+      );
       return updated;
     });
   };
 
-  // Toggle captain
-  const handleToggleCaptain = (teamIdx: number, playerId: string) => {
+  // Set the only captain (radio style)
+  const handleSetCaptain = (teamIdx: number, signupId: string) => {
     setTeams((prev) => {
       const updated = [...prev];
-      updated[teamIdx].players = updated[teamIdx].players.map(p =>
-        p.player.playerId === playerId ? { ...p, isCaptain: !p.isCaptain } : p
-      );
+      updated[teamIdx].players = updated[teamIdx].players.map((p) => ({
+        ...p,
+        isCaptain: p.signupId === signupId,
+      }));
       return updated;
     });
   };
 
   // List of players not yet assigned to any team
   const unassignedPlayers = eligiblePlayers.filter(
-    ep => !teams.some(team => team.players.some(tp => tp.player.playerId === ep.playerId))
+    (ep) =>
+      !teams.some((team) => team.players.some((tp) => tp.signupId === ep.id))
   );
 
-  // Save teams to Firestore
+  // Save teams (WIPES existing and re-creates all for this tournament)
   const handleSaveTeams = async () => {
     if (!selectedTournament || teams.length === 0) return;
     setSaving(true);
     try {
+      const teamsColRef = collection(
+        db,
+        "tournaments",
+        selectedTournament,
+        "teams"
+      );
+      const existing = await getDocs(teamsColRef);
+      for (const docu of existing.docs) await deleteDoc(docu.ref);
       for (const team of teams) {
-        await addDoc(collection(db, "teams"), {
-          tournamentId: selectedTournament,
+        await addDoc(teamsColRef, {
           name: team.name,
-          players: team.players.map(p => ({
-            signupId: p.player.id,      // The signup doc id
+          players: team.players.map((p) => ({
+            signupId: p.signupId,
             isCaptain: p.isCaptain,
           })),
         });
@@ -165,136 +219,274 @@ const TeamManagement: React.FC = () => {
     setSaving(false);
   };
 
+  // For display: join team player signupId with eligiblePlayers to get names
+  const expandedTeams = teams.map((team) => ({
+    id: team.id || "",
+    name: team.name,
+    players: team.players.map((member) => {
+      const found = eligiblePlayers.find((ep) => ep.id === member.signupId);
+      return {
+        signupId: member.signupId,
+        isCaptain: member.isCaptain,
+        firstName: found?.firstName || "Unknown",
+        lastName: found?.lastName || "",
+        playerId: found?.playerId || "",
+        availability: found?.availability,
+        startTime: found?.startTime,
+        endTime: found?.endTime,
+      };
+    }),
+  }));
+
   return (
-    <div className="container py-4">
-      <h1 className="text-center mb-4">Make Teams</h1>
+    <div className="container py-4" style={{ minHeight: 600 }}>
+      <h1 className="text-center mb-4" style={{ color: "#2155CD", fontWeight: 800 }}>
+        Make Teams
+      </h1>
       {/* Tournament Selection */}
-      <div className="mb-4">
+      <div className="mb-4 d-flex align-items-center gap-2">
         <select
           className="form-select"
+          style={{ maxWidth: 400 }}
           value={selectedTournament}
-          onChange={e => setSelectedTournament(e.target.value)}
+          onChange={(e) => setSelectedTournament(e.target.value)}
         >
           <option value="">Select Tournament...</option>
-          {tournaments.map(t => (
+          {tournaments.map((t) => (
             <option value={t.id} key={t.id}>
               {t.eventName} {t.date ? `(${t.date})` : ""}
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="mb-4 d-flex gap-2">
         <button
           className="btn btn-success"
           onClick={handleAddTeam}
           disabled={!selectedTournament || loading}
         >
-          Add Team
+          <i className="bi bi-plus-lg"></i> Add Team
         </button>
         <button
           className="btn btn-danger"
           onClick={handleDeleteTeam}
           disabled={teams.length === 0}
         >
-          Delete Team
+          <i className="bi bi-trash"></i> Delete Team
         </button>
         <button
           className="btn btn-primary ms-auto"
           onClick={handleSaveTeams}
           disabled={!selectedTournament || teams.length === 0 || saving}
         >
-          {saving ? "Saving..." : "Save Teams"}
+          {saving ? "Saving..." : <><i className="bi bi-save2"></i> Save Teams</>}
         </button>
       </div>
 
-      {loading && <div>Loading eligible players...</div>}
+      {loading && <div>Loading eligible players & teams...</div>}
 
-      {!loading && selectedTournament && (
-        <div className="row g-4">
-          {teams.map((team, tIdx) => (
+      {/* --- TEAM CARDS --- */}
+      <div className="row g-4">
+        {!loading &&
+          selectedTournament &&
+          expandedTeams.map((team, tIdx) => (
             <div className="col-md-6 col-lg-4" key={team.name}>
-              <div className="card shadow-sm">
-                <div className="card-header d-flex justify-content-between align-items-center">
-                  <span>{team.name}</span>
-                  <div className="dropdown">
-                    <button
-                      className="btn btn-sm btn-outline-primary dropdown-toggle"
-                      type="button"
-                      id={`dropdown${tIdx}`}
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
-                      disabled={unassignedPlayers.length === 0}
-                    >
-                      Add Player
-                    </button>
-                    <ul className="dropdown-menu" aria-labelledby={`dropdown${tIdx}`}>
-                      {unassignedPlayers.map((user) => (
-                        <li key={user.playerId}>
-                          <button
-                            className="dropdown-item"
-                            onClick={() => handleAddPlayer(tIdx, user)}
-                          >
-                            {user.firstName} {user.lastName}
-                            {" "}
-                            <span className="badge bg-info ms-2">
-                              {user.availability === "yes" && "Attending"}
-                              {user.availability === "early" && `Leaving Early${user.endTime ? `: ${user.endTime}` : ""}`}
-                              {user.availability === "late" && `Arriving Late${user.startTime ? `: ${user.startTime}` : ""}`}
-                              {user.availability === "late_early" && `Late & Early (${user.startTime || "?"} - ${user.endTime || "?"})`}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              <div
+                className="card shadow"
+                style={{
+                  borderRadius: 16,
+                  border: "none",
+                  background: "linear-gradient(90deg, #e0ecff 0%, #e8ffe6 100%)",
+                }}
+              >
+                <div className="card-header d-flex justify-content-between align-items-center bg-white" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                  <span style={{ fontWeight: 600, fontSize: 18, color: "#2155CD" }}>
+                    <i className="bi bi-people-fill me-2"></i>{team.name}
+                  </span>
+                  <button
+                    className="btn btn-outline-success btn-sm px-2"
+                    style={{ borderRadius: 14 }}
+                    onClick={() => setActiveAddTeamIdx(tIdx)}
+                    disabled={unassignedPlayers.length === 0}
+                  >
+                    <i className="bi bi-person-plus-fill"></i> Add
+                  </button>
                 </div>
                 <ul className="list-group list-group-flush">
-                  {team.players.map(({ player, isCaptain }) => (
-                    <li key={player.playerId} className="list-group-item d-flex justify-content-between align-items-center">
-                      <div>
-                        <strong>
-                          {player.firstName} {player.lastName}
-                        </strong>
-                        <span style={{ fontSize: 12, marginLeft: 8 }}>
-                          {player.availability === "early" && ` (Leaving Early${player.endTime ? `: ${player.endTime}` : ""})`}
-                          {player.availability === "late" && ` (Arriving Late${player.startTime ? `: ${player.startTime}` : ""})`}
-                          {player.availability === "late_early" && ` (Late & Early: ${player.startTime || "?"} - ${player.endTime || "?"})`}
-                        </span>
-                      </div>
-                      <div className="d-flex align-items-center gap-2">
-                        <label className="me-2 mb-0">
-                          <input
-                            type="checkbox"
-                            checked={isCaptain}
-                            onChange={() => handleToggleCaptain(tIdx, player.playerId)}
-                            style={{ marginRight: 4 }}
-                          />
-                          Captain?
-                        </label>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleRemovePlayer(tIdx, player.playerId)}
-                        >
-                          Remove
-                        </button>
-                      </div>
+                  {team.players.length === 0 && (
+                    <li className="list-group-item text-center text-secondary py-4">
+                      <em>No players yet!</em>
                     </li>
-                  ))}
+                  )}
+                  {team.players.map(
+                    ({ signupId, isCaptain }, idx) => {
+                      const full = eligiblePlayers.find(
+                        (ep) => ep.id === signupId
+                      );
+                      return (
+                        <li
+                          key={signupId}
+                          className="list-group-item d-flex justify-content-between align-items-center"
+                          style={{ background: isCaptain ? "#f5f9ff" : "" }}
+                        >
+                          <div className="d-flex align-items-center">
+                            {/* Radial toggle for Captain */}
+                            <input
+                              type="radio"
+                              name={`captain-team-${tIdx}`}
+                              checked={isCaptain}
+                              onChange={() => handleSetCaptain(tIdx, signupId)}
+                              style={{
+                                accentColor: "#2155CD",
+                                marginRight: 8,
+                                width: 18,
+                                height: 18,
+                                cursor: "pointer",
+                              }}
+                            />
+                            <span
+                              className="fw-bold"
+                              style={{
+                                color: "#2e3a59",
+                                fontWeight: 700,
+                                fontSize: 16,
+                              }}
+                            >
+                              {full
+                                ? `${full.firstName} ${full.lastName}`
+                                : "Unknown"}
+                            </span>
+                            {isCaptain && (
+                              <span
+                                className="badge bg-primary ms-2"
+                                style={{
+                                  borderRadius: "12px",
+                                  fontSize: "0.85em",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                Captain
+                              </span>
+                            )}
+                            <span
+                              style={{
+                                fontSize: 13,
+                                marginLeft: 10,
+                                color: "#458",
+                              }}
+                            >
+                              {full?.availability === "early" &&
+                                ` (Leaving Early${full.endTime ? `: ${full.endTime}` : ""})`}
+                              {full?.availability === "late" &&
+                                ` (Arriving Late${full.startTime ? `: ${full.startTime}` : ""})`}
+                              {full?.availability === "late_early" &&
+                                ` (Late & Early: ${full.startTime || "?"} - ${full.endTime || "?"})`}
+                            </span>
+                          </div>
+                          {/* X for Remove */}
+                          <button
+                            className="btn btn-link text-danger"
+                            onClick={() => handleRemovePlayer(tIdx, signupId)}
+                            style={{
+                              fontSize: 21,
+                              fontWeight: 900,
+                              padding: 0,
+                              marginLeft: 10,
+                              lineHeight: "1",
+                              border: "none",
+                              background: "none",
+                              outline: "none",
+                              boxShadow: "none",
+                              textDecoration: "none",
+                            }}
+                            title="Remove player"
+                          >
+                            <i className="bi bi-x-lg"></i>
+                          </button>
+                        </li>
+                      );
+                    }
+                  )}
                 </ul>
               </div>
             </div>
           ))}
+      </div>
+
+      {/* --- ADD PLAYER MODAL --- */}
+      {activeAddTeamIdx !== null && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "#0005" }}
+          tabIndex={-1}
+          role="dialog"
+          onClick={() => setActiveAddTeamIdx(null)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            role="document"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  Add Player to {expandedTeams[activeAddTeamIdx].name}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setActiveAddTeamIdx(null)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                {unassignedPlayers.length === 0 ? (
+                  <div className="text-secondary">No unassigned players.</div>
+                ) : (
+                  <ul className="list-group">
+                    {unassignedPlayers.map((user) => (
+                      <li
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                        key={user.playerId}
+                      >
+                        <span>
+                          <i className="bi bi-person me-2"></i>
+                          {user.firstName} {user.lastName}{" "}
+                          <span className="badge bg-info ms-2">
+                            {user.availability === "yes" && "Attending"}
+                            {user.availability === "early" &&
+                              `Leaving Early${user.endTime ? `: ${user.endTime}` : ""}`}
+                            {user.availability === "late" &&
+                              `Arriving Late${user.startTime ? `: ${user.startTime}` : ""}`}
+                            {user.availability === "late_early" &&
+                              `Late & Early (${user.startTime || "?"} - ${user.endTime || "?"})`}
+                          </span>
+                        </span>
+                        <button
+                          className="btn btn-success btn-sm"
+                          style={{ borderRadius: 16 }}
+                          onClick={() => handleAddPlayer(activeAddTeamIdx, user)}
+                        >
+                          <i className="bi bi-plus"></i> Add
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Optionally: Show unassigned players */}
+      {/* Unassigned players */}
       {!loading && selectedTournament && teams.length > 0 && unassignedPlayers.length > 0 && (
         <div className="mt-4">
-          <h5>Unassigned Players</h5>
+          <h5 style={{ color: "#2155CD" }}>Unassigned Players</h5>
           <ul>
-            {unassignedPlayers.map(p => (
-              <li key={p.playerId}>{p.firstName} {p.lastName}</li>
+            {unassignedPlayers.map((p) => (
+              <li key={p.playerId}>
+                <i className="bi bi-person me-2"></i>
+                {p.firstName} {p.lastName}
+              </li>
             ))}
           </ul>
         </div>

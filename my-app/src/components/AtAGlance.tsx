@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, where, startAfter, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { Link } from "react-router-dom";
 
@@ -13,51 +13,37 @@ const statusColor = (status: string) => {
   }
 };
 
-const PAGE_SIZE = 8; // or whatever you want
-
 const AtAGlanceCalendar: React.FC = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  interface Tournament {
+    id: string;
+    date: string; // or Date if you prefer
+    eventName: string;
+    location?: string;
+    status?: string;
+  }
+  
+  const [events, setEvents] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
-
-  // Fetch events (paginated)
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const today = new Date();
-      let q = query(
-        collection(db, "tournaments"),
-        where("date", ">=", today.toISOString().slice(0, 10)),
-        orderBy("date"),
-        limit(PAGE_SIZE)
-      );
-      if (lastVisible) q = query(
-        collection(db, "tournaments"),
-        where("date", ">=", today.toISOString().slice(0, 10)),
-        orderBy("date"),
-        startAfter(lastVisible.date),
-        limit(PAGE_SIZE)
-      );
-      const snap = await getDocs(q);
-      const newEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEvents(prev => [...prev, ...newEvents]);
-      setLastVisible(newEvents.length > 0 ? newEvents[newEvents.length - 1] : lastVisible);
-      setHasMore(newEvents.length === PAGE_SIZE);
-    } catch (e) {
-      setHasMore(false);
-    }
-    setLoading(false);
-  };
 
   useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const today = new Date();
+        const tournQuery = query(collection(db, "tournaments"), orderBy("date"));
+        const tournSnap = await getDocs(tournQuery);
+        // Only include tournaments with a date in the future
+        const tourns = tournSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Tournament))
+          .filter(t => t.date && new Date(t.date) >= today);
+        setEvents(tourns);
+      } catch (e) {
+        setEvents([]);
+      }
+      setLoading(false);
+    };
     fetchEvents();
-    // eslint-disable-next-line
   }, []);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) fetchEvents();
-  };
 
   // Format date nicely
   const formatDate = (dateStr: string) => {
@@ -98,7 +84,7 @@ const AtAGlanceCalendar: React.FC = () => {
               <span
                 className="badge badge-pill"
                 style={{
-                  background: statusColor(ev.status),
+                  background: statusColor(ev.status || "unknown"),
                   color: "#fff",
                   fontSize: 15,
                   padding: "7px 18px"
@@ -109,13 +95,6 @@ const AtAGlanceCalendar: React.FC = () => {
           ))}
           {loading && (
             <div className="text-center text-secondary py-3">Loading...</div>
-          )}
-          {hasMore && !loading && (
-            <div className="text-center mt-2 mb-2">
-              <button className="btn btn-outline-primary btn-sm rounded-pill" onClick={handleLoadMore}>
-                Load More
-              </button>
-            </div>
           )}
         </div>
       </div>

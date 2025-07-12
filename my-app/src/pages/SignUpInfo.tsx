@@ -6,9 +6,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { Eye, EyeOff } from "lucide-react";
 
-const GRADE_OPTIONS = [
-  "5th", "6th", "7th", "8th"
-];
+const GRADE_OPTIONS = ["5th", "6th", "7th", "8th"];
 
 const passwordRules = [
   { key: "length", text: "At least 6 characters" },
@@ -70,7 +68,6 @@ const SignupPage: React.FC = () => {
       return;
     }
     if (!currentUser) {
-      // Only validate password if not already logged in
       if (
         !pwStrength.length ||
         !pwStrength.upper ||
@@ -84,6 +81,14 @@ const SignupPage: React.FC = () => {
         return;
       }
     }
+    if (!pwMatch) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (role === "player" && !grade) {
+      setError("Please select a grade.");
+      return;
+    }
 
     try {
       let uid: string, signupEmail: string;
@@ -92,10 +97,6 @@ const SignupPage: React.FC = () => {
         uid = currentUser.uid;
         signupEmail = currentUser.email;
       } else {
-        if (!pwMatch) {
-          setError("Passwords do not match.");
-          return;
-        }
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         uid = userCredential.user.uid;
         signupEmail = userCredential.user.email!;
@@ -119,11 +120,25 @@ const SignupPage: React.FC = () => {
         lastName,
         role,
         ...(role === "player" && { grade }),
+        linkedPlayers: [], // optional for future linking
       };
 
+      // Add to users collection
       await setDoc(userDocRef, newUser);
 
-      // Force reload to update AuthContext!
+      // If player, also add to players collection!
+      if (role === "player") {
+        const playerDocRef = doc(db, "players", uid);
+        await setDoc(playerDocRef, {
+          uid,
+          email: signupEmail,
+          firstName,
+          lastName,
+          grade,
+          linkedUsers: [],
+        });
+      }
+
       window.location.href = "/profile";
     } catch (err: any) {
       console.error("Signup failed:", err);
@@ -179,87 +194,85 @@ const SignupPage: React.FC = () => {
                     )}
                   </div>
                   <div className="form-group mb-3" style={{ position: "relative" }}>
-  <label>Password</label>
-  <input
-    type={showPassword ? "text" : "password"}
-    className={`form-control ${error && password ? "is-invalid" : ""}`}
-    value={password}
-    onChange={e => setPassword(e.target.value)}
-    required
-    autoComplete="new-password"
-    style={{ paddingRight: 40 }}
-  />
-  {/* Eye icon for Password */}
-  <button
-    type="button"
-    onClick={() => setShowPassword(s => !s)}
-    style={{
-      position: "absolute",
-      right: 10,
-      top: "25%",
-      transform: "translateY(-50%)",
-      border: "none",
-      background: "none",
-      padding: 0,
-      margin: 0,
-      cursor: "pointer",
-      zIndex: 2
-    }}
-    tabIndex={-1}
-    aria-label={showPassword ? "Hide password" : "Show password"}
-  >
-    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-  </button>
-  <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
-    {passwordRules.map((rule) => (
-      <li key={rule.key} style={{
-        color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
-      }}>
-        {rule.text}
-      </li>
-    ))}
-  </ul>
-</div>
-
-<div className="form-group mb-3" style={{ position: "relative" }}>
-  <label>Confirm Password</label>
-  <input
-    type={showPassword ? "text" : "password"}
-    className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
-    value={confirmPassword}
-    onChange={e => setConfirmPassword(e.target.value)}
-    required
-    autoComplete="new-password"
-    style={{ paddingRight: 40 }}
-  />
-  {/* Eye icon for Confirm Password */}
-  <button
-    type="button"
-    onClick={() => setShowPassword(s => !s)}
-    style={{
-      position: "absolute",
-      right: 10,
-      top: "65%",
-      transform: "translateY(-50%)",
-      border: "none",
-      background: "none",
-      padding: 0,
-      margin: 0,
-      cursor: "pointer",
-      zIndex: 2
-    }}
-    tabIndex={-1}
-    aria-label={showPassword ? "Hide password" : "Show password"}
-  >
-    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-  </button>
-  {!pwMatch && confirmPassword && (
-    <div className="invalid-feedback" style={{ display: "block" }}>
-      Passwords do not match.
-    </div>
-  )}
-</div>
-
+                    <label>Password</label>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className={`form-control ${error && password ? "is-invalid" : ""}`}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      style={{ paddingRight: 40 }}
+                    />
+                    {/* Eye icon for Password */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(s => !s)}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: "25%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "none",
+                        padding: 0,
+                        margin: 0,
+                        cursor: "pointer",
+                        zIndex: 2
+                      }}
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                    </button>
+                    <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
+                      {passwordRules.map((rule) => (
+                        <li key={rule.key} style={{
+                          color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
+                        }}>
+                          {rule.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="form-group mb-3" style={{ position: "relative" }}>
+                    <label>Confirm Password</label>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      style={{ paddingRight: 40 }}
+                    />
+                    {/* Eye icon for Confirm Password */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(s => !s)}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: "65%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "none",
+                        padding: 0,
+                        margin: 0,
+                        cursor: "pointer",
+                        zIndex: 2
+                      }}
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                    </button>
+                    {!pwMatch && confirmPassword && (
+                      <div className="invalid-feedback" style={{ display: "block" }}>
+                        Passwords do not match.
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
