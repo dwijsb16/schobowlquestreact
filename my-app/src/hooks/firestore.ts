@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, getDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, updateDoc, arrayUnion, doc, query, where } from "firebase/firestore";
 import { db} from "../.firebase/utils/firebase";
 import { arrayRemove, deleteDoc} from "firebase/firestore";
 import { useState, useEffect } from "react";
@@ -109,5 +109,45 @@ export async function deleteDocument(collectionName: string, docId: string) {
     console.log("Document deleted");
   } catch (e) {
     console.error("Error deleting document:", e);
+  }
+}
+// Get users by role (players, coaches, parents)
+export async function getUsersByRole(role: string): Promise<any[]> {
+  try {
+    const querySnapshot = await getDocs(
+      query(collection(db, "users"), where("role", "==", role))
+    );
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+  } catch (e) {
+    console.error("Error fetching users by role:", e);
+    return [];
+  }
+}
+
+// Get users for a team (by team ID)
+export async function getUsersByTeam(teamId: string): Promise<any[]> {
+  try {
+    const teamDoc = await getDoc(doc(db, "teams", teamId));
+    if (!teamDoc.exists()) return [];
+    const data = teamDoc.data();
+    // Example: data.players = array of emails or user ids
+    return data.players || [];
+  } catch (e) {
+    console.error("Error fetching team:", e);
+    return [];
+  }
+}
+
+// Get users for a tournament (by tournament ID, expects attendees: email[] or user IDs)
+export async function getUsersByTournament(tournId: string): Promise<any[]> {
+  try {
+    const tournDoc = await getDoc(doc(db, "tournaments", tournId));
+    if (!tournDoc.exists()) return [];
+    const data = tournDoc.data();
+    // Example: data.attendees = array of emails or user ids
+    return data.attendees || [];
+  } catch (e) {
+    console.error("Error fetching tournament:", e);
+    return [];
   }
 }
