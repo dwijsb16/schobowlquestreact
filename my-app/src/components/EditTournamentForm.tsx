@@ -220,28 +220,53 @@ const EditTournamentForm: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="container d-flex flex-column align-items-center py-5" style={{ minHeight: "90vh" }}>
+    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", background: "linear-gradient(110deg, #e8f1fa 60%, #fffbe7 100%)" }}>
       <div className="card shadow" style={{
-        maxWidth: 700, width: "100%", borderRadius: 24, border: "none", margin: "30px 0"
+        maxWidth: 700,
+        width: "100%",
+        borderRadius: 24,
+        border: "none",
+        boxShadow: "0 4px 36px #b4d3fb60",
+        margin: "40px 0"
       }}>
         <div style={{
-          background: "linear-gradient(90deg,#43b0f1 0,#ffe17b 120%)",
-          padding: 20,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          marginBottom: 10,
+          background: "linear-gradient(90deg, #43b0f1 0, #ffe17b 120%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: "30px 28px 20px 28px"
         }}>
-          <h2 className="fw-bold mb-2">Edit or Delete Tournament</h2>
-          <div className="d-flex flex-wrap align-items-end gap-2">
+          <h2 className="mb-2 text-center" style={{
+            color: "#253c60",
+            fontWeight: 800,
+            letterSpacing: "1.2px"
+          }}>
+            Edit or Delete Event
+          </h2>
+          <p className="mb-0 text-center" style={{
+            color: "#2e3a59", fontSize: 15, opacity: 0.83
+          }}>
+            Update an event in the club calendar and database.
+          </p>
+        </div>
+
+        <div className="p-4">
+          {alert && (
+            <div className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-1 mb-3`} role="alert">
+              {alert.message}
+              <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)}></button>
+            </div>
+          )}
+
+          {/* Tournament Selection */}
+          <div className="d-flex flex-wrap align-items-end gap-2 mb-4">
             <div style={{ flex: 1, minWidth: 200 }}>
-              <label className="fw-semibold">Select Tournament:</label>
+              <label className="fw-semibold" style={{ fontWeight: 600, color: "#1e417d" }}>Select Event:</label>
               <select
                 className="form-select"
                 value={selectedTournId}
                 onChange={e => setSelectedTournId(e.target.value)}
                 disabled={loading}
               >
-                <option value="">-- Choose a tournament --</option>
+                <option value="">-- Choose an event --</option>
                 {tournaments.map((t: any) => (
                   <option key={t.id} value={t.id}>
                     {t.eventName} ({t.date})
@@ -258,19 +283,13 @@ const EditTournamentForm: React.FC = () => {
               Go
             </button>
           </div>
-        </div>
 
-        <div className="p-4">
-          {alert && (
-            <div className={`alert alert-${alert.type} mb-3`} role="alert">
-              {alert.message}
-            </div>
-          )}
+          {/* Only show form if tournament loaded */}
           {formData && (
             <form onSubmit={handleEditSubmit} className="row g-3">
               {/* Event Name */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1">Event Name:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Event Name:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -284,7 +303,7 @@ const EditTournamentForm: React.FC = () => {
               {/* Event Type & Status */}
               <div className="row mb-2">
                 <div className="form-group col-md-6">
-                  <label htmlFor="event_type" className="fw-semibold mb-1">Event Type:</label>
+                  <label htmlFor="event_type" className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Event Type:</label>
                   <select
                     id="event_type"
                     className="form-control"
@@ -300,7 +319,7 @@ const EditTournamentForm: React.FC = () => {
                   </select>
                 </div>
                 <div className="form-group col-md-6">
-                  <label htmlFor="status" className="fw-semibold mb-1">Status:</label>
+                  <label htmlFor="status" className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Status:</label>
                   <select
                     id="status"
                     className="form-control"
@@ -320,7 +339,7 @@ const EditTournamentForm: React.FC = () => {
               {/* Date, Start, End */}
               <div className="row mb-2">
                 <div className="form-group col-md-5">
-                  <label className="fw-semibold mb-1">Date:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Date:</label>
                   <input
                     type="date"
                     className="form-control rounded-3"
@@ -331,7 +350,7 @@ const EditTournamentForm: React.FC = () => {
                   />
                 </div>
                 <div className="form-group col-md-3 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1">Start Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Start Time:</label>
                   <TimePicker
                     onChange={(value: string | null) => handleChange("startTime", value || "")}
                     value={formData.startTime || ""}
@@ -346,7 +365,7 @@ const EditTournamentForm: React.FC = () => {
                   />
                 </div>
                 <div className="form-group col-md-4 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1">End Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>End Time:</label>
                   <TimePicker
                     onChange={(value: string | null) => handleChange("endTime", value || "")}
                     value={formData.endTime || ""}
@@ -364,7 +383,7 @@ const EditTournamentForm: React.FC = () => {
               {/* RSVP */}
               <div className="row mb-2">
                 <div className="form-group col-md-7">
-                  <label className="fw-semibold mb-1">RSVP Date:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>RSVP Date:</label>
                   <input
                     type="date"
                     className="form-control rounded-3"
@@ -374,7 +393,7 @@ const EditTournamentForm: React.FC = () => {
                   />
                 </div>
                 <div className="form-group col-md-5">
-                  <label className="fw-semibold mb-1">RSVP Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>RSVP Time:</label>
                   <input
                     type="time"
                     className="form-control rounded-3"
@@ -387,7 +406,7 @@ const EditTournamentForm: React.FC = () => {
 
               {/* Rules */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1">Rules:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Rules:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -398,7 +417,7 @@ const EditTournamentForm: React.FC = () => {
               </div>
               {/* Location */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1">Location:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Location:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -410,7 +429,7 @@ const EditTournamentForm: React.FC = () => {
               </div>
               {/* Shirt Color */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1">Shirt Color:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Shirt Color:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -422,7 +441,7 @@ const EditTournamentForm: React.FC = () => {
               </div>
               {/* Additional Info */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1">Additional Info:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Additional Info:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -433,31 +452,54 @@ const EditTournamentForm: React.FC = () => {
                 />
               </div>
 
-              <div className="col-12 d-flex flex-wrap justify-content-between align-items-center mt-2">
+              <div className="col-12 d-flex flex-wrap justify-content-between align-items-center mt-4 mb-2 gap-3">
                 <button
                   type="submit"
-                  className="btn btn-success"
+                  className="btn"
                   disabled={loading}
-                  style={{ fontWeight: 700, minWidth: 120, borderRadius: 12 }}
+                  style={{
+                    background: "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
+                    color: "#fff",
+                    fontWeight: 700,
+                    minWidth: 140,
+                    fontSize: 17,
+                    borderRadius: 14,
+                    border: "none",
+                    boxShadow: "0 2px 8px #b4c4ec2d"
+                  }}
                 >
-                  Save Changes
+                  {loading ? "Saving..." : "Save Changes"}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-danger"
+                  className="btn"
                   disabled={loading}
-                  style={{ fontWeight: 700, minWidth: 120, borderRadius: 12 }}
+                  style={{
+                    background: "linear-gradient(90deg,#ef5350 0,#fcae67 100%)",
+                    color: "#fff",
+                    fontWeight: 700,
+                    minWidth: 140,
+                    fontSize: 17,
+                    borderRadius: 14,
+                    border: "none",
+                    boxShadow: "0 2px 8px #c7b6b14d"
+                  }}
                   onClick={handleDelete}
                 >
-                  Delete Tournament
+                  Delete Event
                 </button>
               </div>
             </form>
           )}
         </div>
-        <div className="text-center pb-3 px-4" style={{ fontSize: 14, color: "#546a85" }}>
+        <div className="text-center pb-3 px-4" style={{
+          fontSize: 14,
+          color: "#546a85"
+        }}>
           <b style={{ color: "#ef5350" }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
-          <span style={{ opacity: 0.7 }}>(A Google login popup will appear only if needed!)</span>
+          <span style={{ opacity: 0.7 }}>
+            (A Google login popup will appear only if needed!)
+          </span>
         </div>
       </div>
     </div>

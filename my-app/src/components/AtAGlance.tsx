@@ -47,9 +47,12 @@ const AtAGlanceCalendar: React.FC = () => {
 
   // Format date nicely
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if (!dateStr) return "";
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const [year, month, day] = dateStr.split("-");
+    return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)}`;
   };
+  
 
   return (
     <div className="col-md-4">
