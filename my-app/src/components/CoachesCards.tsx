@@ -10,9 +10,9 @@ interface CardData {
 const CoachesCards: React.FC = () => {
   const cards: CardData[] = [
     {
-      title: "Add a Tournament",
-      description: "Add a new tournament and specify important event details for your club.",
-      link: "/coaches/add-tournament",
+      title: "Manage Events",
+      description: "Add a new event, edit existing events, or delete events!",
+      link: "/manage-events",
     },
     {
       title: "Make Teams",
@@ -20,9 +20,9 @@ const CoachesCards: React.FC = () => {
       link: "/coaches/make-teams",
     },
     {
-      title: "Manage Tournaments",
-      description: "Edit and update info for tournaments already in your system.",
-      link: "/coaches/manage-tournaments",
+      title: "Send Messages",
+      description: "E-mail certain players or send announcements to all players",
+      link: "/coaches/send-messages",
     },
     {
       title: "Coaches Schedule",

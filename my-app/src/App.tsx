@@ -10,7 +10,7 @@ import LoginPage from "./pages/login";
 import CoachesOnlyPage from "./pages/CoachesOnly";
 import AddTournamentPage from "./pages/AddTournament";
 import MakeTeamsPage from "./pages/MakeTeams";
-import ManageTournamentsPage from "./pages/ManageTournamentsPage";
+import SendMessages from "./pages/SendMessages";
 import CoachesCalendarPage from "./pages/CoachCalender";
 import Contact from "./pages/Contact";
 import Resources from "./pages/Resources";
@@ -20,6 +20,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SignUpInfo from "./pages/SignUpInfo";
 import Profile from "./pages/Profile";
 import EditTournament from "./pages/EditTournament";
+import ManageEvents from "./pages/ManageTournaments";
 import AssignCoaches from "./pages/AssignCoaches";
 import PlayerList from "./pages/PlayerList";
 import { AuthProvider } from "./hooks/AuthContext";
@@ -96,6 +97,14 @@ const App = () => {
               }
             />
             <Route
+              path="/manage-events"
+              element={
+                <ProtectedRoute  requiresCoach>
+                  <ManageEvents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/assign-coaches"
               element={
                 <ProtectedRoute  requiresCoach>
@@ -120,10 +129,10 @@ const App = () => {
               }
             />
             <Route
-              path="/coaches/manage-tournaments"
+              path="/coaches/send-messages"
               element={
                 <ProtectedRoute requiresCoach>
-                  <ManageTournamentsPage />
+                  <SendMessages />
                 </ProtectedRoute>
               }
             />

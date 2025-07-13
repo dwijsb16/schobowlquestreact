@@ -22,32 +22,35 @@ const LoginForm: React.FC = () => {
       const firebaseUser = response.user;
       const uid = firebaseUser.uid;
       const email = firebaseUser.email;
-
-      // 1. Try direct UID doc first
+  
+      // Check Firestore
       const userRef = doc(db, "users", uid);
       const userSnap = await getDoc(userRef);
-
+  
       if (userSnap.exists()) {
-        navigate("/");
+        navigate("/"); // All good
         return;
       }
-
-      // 2. Not found by UID, try to find by email
+  
+      // Not found by UID, check by email (redundant but safe)
       const q = query(collection(db, "users"), where("email", "==", email));
       const querySnap = await getDocs(q);
-
+  
       if (!querySnap.empty) {
         navigate("/");
         return;
       }
-
-      // 3. No doc by uid or email: must create profile
-      navigate("/signup");
-
+  
+      // Not found: Need registration!
+      // You can use localStorage, sessionStorage, or React Context to pass this info
+      localStorage.setItem("pendingGoogleEmail", email || "");
+      localStorage.setItem("pendingGoogleName", firebaseUser.displayName || "");
+      navigate("/signup?google=1"); // add a query param if you want
     } catch (error) {
       toast.error("Google sign-in failed. Try again!");
     }
   };
+  
 
   // Handle Email/Password Login
   const handleLogin = async (e: React.FormEvent) => {

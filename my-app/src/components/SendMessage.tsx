@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import emailjs from "emailjs-com";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { db } from "../.firebase/utils/firebase";
 
 // --- Firestore imports ---
 import { getUsersByRole, getCollection, getUsersByTournament, getUsersByTeam } from "../hooks/firestore";
@@ -15,6 +17,9 @@ const GROUP_OPTIONS = [
   { label: "Parents", type: "role", value: "parent" },
 ];
 
+
+
+
 const ManageTournaments: React.FC = () => {
   const navigate = useNavigate();
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -25,6 +30,12 @@ const ManageTournaments: React.FC = () => {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ status: "success" | "error"; message: string } | null>(null);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [announcementType, setAnnouncementType] = useState("");
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
+  const [announcementStatus, setAnnouncementStatus] = useState<null | { status: "success" | "error", msg: string }>(null);
+
 
   // For dynamic team/tournament selection
   const [teams, setTeams] = useState<any[]>([]);
@@ -105,29 +116,52 @@ const ManageTournaments: React.FC = () => {
       setSending(false);
     }
   }
+  async function sendAnnouncement() {
+    setAnnouncementStatus(null);
+    if (!announcementType || !announcementTitle.trim() || !announcementBody.trim()) {
+      setAnnouncementStatus({ status: "error", msg: "Please fill out all fields." });
+      return;
+    }
+    try {
+      await addDoc(collection(db, "announcements"), {
+        type: announcementType,
+        title: announcementTitle,
+        body: announcementBody,
+        timestamp: Timestamp.now()
+        // Optionally add: author: (auth.currentUser?.email || "anonymous")
+      });
+      setAnnouncementStatus({ status: "success", msg: "Announcement posted!" });
+      setAnnouncementType(""); setAnnouncementTitle(""); setAnnouncementBody("");
+      setTimeout(() => setShowAnnouncementModal(false), 1000);
+    } catch (err) {
+      setAnnouncementStatus({ status: "error", msg: "Failed to post announcement." });
+    }
+  }
 
   return (
     <div className="container py-5">
       <div className="row g-4 justify-content-center">
         {/* --- Edit/Delete Tournaments Card --- */}
-        <div className="col-12 col-lg-6">
-          <div className="card shadow-lg rounded-4 border-0 p-4 h-100"
-            style={{ transition: "box-shadow .2s", minHeight: 420 }}>
-            <img className="card-img-top mb-3 rounded-3"
-              src="/images/card-img.png" alt="Tournament card"
-              style={{ objectFit: "cover", height: 180 }} />
-            <div className="card-body p-0">
-              <h5 className="card-title fw-bold mb-2 text-primary">Edit or Delete Tournaments</h5>
-              <p className="card-text text-muted mb-4">Change, cancel, or reschedule tournaments with just a click.</p>
-              <div className="d-flex justify-content-center">
-                <button className="btn btn-primary btn-lg rounded-pill px-5 shadow-sm"
-                  style={{ fontWeight: 700, letterSpacing: ".06em", fontSize: "1.3rem", boxShadow: "0 2px 16px rgba(46,85,136,0.07)" }}
-                  onClick={() => navigate("/edit-tournament")}
-                >Go</button>
-              </div>
-            </div>
-          </div>
+        {/* --- Create Announcement Card --- */}
+  <div className="col-12 col-lg-6">
+    <div className="card shadow-lg rounded-4 border-0 p-4 h-100"
+      style={{ transition: "box-shadow .2s", minHeight: 420 }}>
+      <img className="card-img-top mb-3 rounded-3"
+        src="/images/announcement-card.png"
+        alt="Announcement card"
+        style={{ objectFit: "cover", height: 180 }} />
+      <div className="card-body p-0">
+        <h5 className="card-title fw-bold mb-2 text-primary">Create Announcement</h5>
+        <p className="card-text text-muted mb-4">Send official news or event updates to everyone in one place.</p>
+        <div className="d-flex justify-content-center">
+          <button className="btn btn-success btn-lg rounded-pill px-5 shadow-sm"
+            style={{ fontWeight: 700, letterSpacing: ".06em", fontSize: "1.3rem", boxShadow: "0 2px 16px rgba(46,85,136,0.07)" }}
+            onClick={() => setShowAnnouncementModal(true)}
+          >Create</button>
         </div>
+      </div>
+    </div>
+  </div>
         {/* --- Send Message Card --- */}
         <div className="col-12 col-lg-6">
           <div className="card shadow-lg rounded-4 border-0 p-4 h-100"
@@ -149,6 +183,43 @@ const ManageTournaments: React.FC = () => {
           </div>
         </div>
       </div>
+      {showAnnouncementModal && (
+  <div className="modal show d-block" tabIndex={-1}
+    style={{ background: "rgba(44, 62, 80, 0.18)", backdropFilter: "blur(1.5px)" }}>
+    <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content rounded-4 border-0 shadow-lg">
+        <div className="modal-header border-0 pb-1">
+          <h5 className="modal-title fw-bold text-primary">Create Announcement</h5>
+          <button type="button" className="btn-close" aria-label="Close"
+            onClick={() => { setShowAnnouncementModal(false); setAnnouncementStatus(null); }} />
+        </div>
+        <div className="modal-body pt-0">
+          <label className="fw-semibold mb-2">Announcement Type:</label>
+          <select className="form-select mb-3" value={announcementType} onChange={e => setAnnouncementType(e.target.value)}>
+            <option value="">Select Type</option>
+            <option value="tournament-day">Announcements for Tournament Day</option>
+            <option value="news">News</option>
+            <option value="tournament-teams">Announcements for Tournament Teams</option>
+          </select>
+          <input className="form-control mb-3" placeholder="Title"
+            value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)} />
+          <textarea className="form-control mb-2" placeholder="Body..."
+            rows={5}
+            value={announcementBody} onChange={e => setAnnouncementBody(e.target.value)} />
+          {announcementStatus &&
+            <div className={`alert alert-${announcementStatus.status}`}>{announcementStatus.msg}</div>}
+        </div>
+        <div className="modal-footer border-0 pt-0">
+          <button className="btn btn-outline-secondary rounded-pill"
+            onClick={() => setShowAnnouncementModal(false)}>Cancel</button>
+          <button className="btn btn-success rounded-pill px-4"
+            onClick={sendAnnouncement}>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
       {/* --- Message Modal --- */}
       {showMessageModal && (
         <div className="modal show d-block" tabIndex={-1}

@@ -1,16 +1,16 @@
 import React from "react";
 import Navbar from "../components/Navbar";
-import ManageTournaments from "../components/ManageTournaments";
+import SendMessage from "../components/SendMessage";
 import Footer from "../components/footer";
 
-const ManageTournamentsPage: React.FC = () => {
+const SendMessagePage: React.FC = () => {
   return (
     <div style={{ paddingTop: "90px" }}>
       <Navbar />
-      <ManageTournaments />
+      <SendMessage />
       <Footer />
     </div>
   );
 };
 
-export default ManageTournamentsPage;
+export default SendMessagePage;

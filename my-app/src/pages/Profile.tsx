@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { setDoc, collection, doc, getDocs, getDoc, query, orderBy } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
+import { updatePassword } from "firebase/auth";
+
 import {
   getCollection,
   getDocumentById,
@@ -10,6 +12,7 @@ import {
   updateDocumentFields,
 } from "../hooks/firestore";
 import { Link } from "react-router-dom";
+import { Password } from "@mui/icons-material";
 
 interface TournamentCard {
   id: string;
@@ -17,6 +20,24 @@ interface TournamentCard {
   date: string;
   location?: string;
 }
+export const passwordRules = [
+  { key: "length", text: "At least 6 characters" },
+  { key: "upper", text: "At least one uppercase letter" },
+  { key: "lower", text: "At least one lowercase letter" },
+  { key: "digit", text: "At least one digit" },
+  { key: "hasSpecial", text: "At least one special character (e.g. !@#$%^&*)" }
+];
+
+export function checkPasswordStrength(password: string) {
+  return {
+    length: password.length >= 6,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    digit: /\d/.test(password),
+    hasSpecial: /[!@#$%^&*()[\]{};:'",.<>/?\\|`~_\-+=]/.test(password),
+  };
+}
+
 type Role = "coach" | "parent" | "player" | "default";
 
 const colorMap: Record<Role, string> = {
@@ -60,7 +81,7 @@ const ProfileScreen: React.FC = () => {
   const [role, setRole] = useState("player");
   const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
   const [editProfile, setEditProfile] = useState(false);
-  const [editValues, setEditValues] = useState({ firstName: "", lastName: "", role: "player" });
+  const [editValues, setEditValues] = useState({ firstName: "", lastName: "", role: "player", password: "", confirmPassword: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [showEditLinked, setShowEditLinked] = useState(false);
@@ -69,6 +90,16 @@ const ProfileScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [pwMatch, setPwMatch] = useState(true);
+
+const pwStrength = checkPasswordStrength(editValues.password);
+useEffect(() => {
+  setPwMatch(
+    editValues.confirmPassword === "" ||
+    editValues.password === editValues.confirmPassword
+  );
+}, [editValues.password, editValues.confirmPassword]);
   // For "My Signups"
   const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
   const [mySignups, setMySignups] = useState<{
@@ -175,7 +206,10 @@ const ProfileScreen: React.FC = () => {
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
         role: profile.role || "player",
+        password: "",
+        confirmPassword: ""
       });
+      
       setEditError(null);
     }
   }, [editProfile, profile]);
@@ -253,120 +287,220 @@ const ProfileScreen: React.FC = () => {
       <div className="row justify-content-center">
         <div className="col-md-8 col-lg-6">
           {/* HEADER CARD */}
-          <div
-            className="card shadow-sm mb-4"
-            style={{
-              background: "linear-gradient(90deg, #e0ecff 0%, #fdf7e4 100%)",
-              border: "none",
-              borderRadius: 18,
-              boxShadow: "0 2px 12px 0 #c2d6f5"
-            }}>
-            <div className="p-4 d-flex align-items-center justify-content-between">
-              <div>
-                <h2 className="mb-1" style={{ fontWeight: 600 }}>
-                  Welcome,{" "}
-                  {editProfile
-                    ? <>
-                        <input
-                          className="form-control d-inline-block"
-                          style={{ width: 120, display: "inline", fontWeight: 600, marginRight: 4 }}
-                          placeholder="First Name"
-                          value={editValues.firstName}
-                          onChange={e => setEditValues(v => ({ ...v, firstName: e.target.value }))}
-                        />
-                        <input
-                          className="form-control d-inline-block"
-                          style={{ width: 120, display: "inline", fontWeight: 600, marginLeft: 4 }}
-                          placeholder="Last Name"
-                          value={editValues.lastName}
-                          onChange={e => setEditValues(v => ({ ...v, lastName: e.target.value }))}
-                        />
-                      </>
-                    : `${profile?.firstName || ""} ${profile?.lastName || ""}`}
-                  <span
-                    className="ml-2 badge"
-                    style={{
-                      background: colorMap[(profile?.role as Role) || "default"],
-                      color: "#fff",
-                      fontSize: 15,
-                      marginLeft: 12,
-                      padding: "8px 14px",
-                      borderRadius: 16,
-                      letterSpacing: 1,
-                      fontWeight: 500
-                    }}>
-                    {editProfile
-                      ? (
-                        <select
-                          className="form-select d-inline-block"
-                          style={{ width: 120, display: "inline", fontWeight: 500, fontSize: 15, color: "#222" }}
-                          value={editValues.role}
-                          onChange={e => setEditValues(v => ({ ...v, role: e.target.value }))}
-                        >
-                          <option value="player">Player</option>
-                          <option value="coach">Coach</option>
-                          <option value="parent">Parent</option>
-                        </select>
-                      ) : (
-                        profile?.role
-                          ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
-                          : ""
-                      )
-                    }
-                  </span>
-                </h2>
-                <div className="mb-1" style={{ fontSize: 14, color: "#666" }}>{firebaseUser?.email}</div>
-              </div>
-              <div>
-                {editProfile ? (
-                  <>
-                    <button
-                      className="btn btn-success btn-sm me-2"
-                      disabled={savingEdit}
-                      onClick={async () => {
-                        setEditError(null);
-                        if (!editValues.firstName.trim() || !editValues.lastName.trim()) {
-                          setEditError("Please enter your first and last name.");
-                          return;
-                        }
-                        setSavingEdit(true);
-                        try {
-                          await updateDocumentFields("users", firebaseUser.uid, {
-                            firstName: editValues.firstName,
-                            lastName: editValues.lastName,
-                            role: editValues.role
-                          });
-                          setProfile({ ...profile, ...editValues });
-                          setEditProfile(false);
-                        } catch (err: any) {
-                          setEditError("Error saving changes. Try again.");
-                        }
-                        setSavingEdit(false);
-                      }}
-                    >
-                      {savingEdit ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      className="btn btn-outline-secondary btn-sm"
-                      disabled={savingEdit}
-                      onClick={() => setEditProfile(false)}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(true)}>
-                    Edit Profile
-                  </button>
-                )}
-              </div>
-            </div>
-            {editError && (
-              <div className="px-4 pb-2">
-                <div className="alert alert-danger py-2 mb-0">{editError}</div>
-              </div>
-            )}
-          </div>
+          {/* HEADER CARD */}
+<div
+  className="card shadow-sm mb-4"
+  style={{
+    background: "linear-gradient(90deg, #e0ecff 0%, #fdf7e4 100%)",
+    border: "none",
+    borderRadius: 18,
+    boxShadow: "0 2px 12px 0 #c2d6f5"
+  }}>
+  <div className="p-4 d-flex align-items-center justify-content-between">
+    <div>
+      <h2 className="mb-1" style={{ fontWeight: 600 }}>
+        Welcome,{" "}
+        {editProfile
+          ? <>
+              <input
+                className="form-control d-inline-block"
+                style={{ width: 120, display: "inline", fontWeight: 600, marginRight: 4 }}
+                placeholder="First Name"
+                value={editValues.firstName}
+                onChange={e => setEditValues(v => ({ ...v, firstName: e.target.value }))}
+              />
+              <input
+                className="form-control d-inline-block"
+                style={{ width: 120, display: "inline", fontWeight: 600, marginLeft: 4 }}
+                placeholder="Last Name"
+                value={editValues.lastName}
+                onChange={e => setEditValues(v => ({ ...v, lastName: e.target.value }))}
+              />
+            </>
+          : `${profile?.firstName || ""} ${profile?.lastName || ""}`}
+        <span
+          className="ml-2 badge"
+          style={{
+            background: colorMap[(profile?.role as Role) || "default"],
+            color: "#fff",
+            fontSize: 15,
+            marginLeft: 12,
+            padding: "8px 14px",
+            borderRadius: 16,
+            letterSpacing: 1,
+            fontWeight: 500
+          }}>
+          {editProfile
+            ? (
+              <select
+                className="form-select d-inline-block"
+                style={{ width: 120, display: "inline", fontWeight: 500, fontSize: 15, color: "#222" }}
+                value={editValues.role}
+                onChange={e => setEditValues(v => ({ ...v, role: e.target.value }))}
+              >
+                <option value="player">Player</option>
+                <option value="parent">Parent</option>
+              </select>
+            ) : (
+              profile?.role
+                ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
+                : ""
+            )
+          }
+        </span>
+      </h2>
+      <div className="mb-1" style={{ fontSize: 14, color: "#666" }}>{firebaseUser?.email}</div>
+    </div>
+    <div>
+      {editProfile ? (
+        <>
+          <button
+            className="btn btn-success btn-sm me-2"
+            disabled={savingEdit}
+            onClick={async () => {
+              setEditError(null);
+              if (!editValues.firstName.trim() || !editValues.lastName.trim()) {
+                setEditError("Please enter your first and last name.");
+                return;
+              }
+              // Password section
+              if (editValues.password || editValues.confirmPassword) {
+                if (
+                  !pwStrength.length ||
+                  !pwStrength.upper ||
+                  !pwStrength.lower ||
+                  !pwStrength.digit ||
+                  !pwStrength.hasSpecial
+                ) {
+                  setEditError("Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character.");
+                  return;
+                }
+                if (editValues.password !== editValues.confirmPassword) {
+                  setEditError("Passwords do not match.");
+                  return;
+                }
+                if (!auth.currentUser) {
+                  setEditError("You must be logged in to change your password.");
+                  return;
+                }
+                setSavingEdit(true);
+                try {
+                  await updatePassword(auth.currentUser, editValues.password);
+                } catch (err: any) {
+                  setEditError("Error changing password.");
+                  setSavingEdit(false);
+                  return;
+                }
+              }
+            
+              setSavingEdit(true);
+              try {
+                await updateDocumentFields("users", firebaseUser.uid, {
+                  firstName: editValues.firstName,
+                  lastName: editValues.lastName,
+                  role: editValues.role
+                });
+                setProfile({ ...profile, ...editValues, password: undefined, confirmPassword: undefined });
+                setEditProfile(false);
+              } catch (err: any) {
+                setEditError("Error saving changes. Try again.");
+              }
+              setSavingEdit(false);
+            }}
+          >
+            {savingEdit ? "Saving..." : "Save"}
+          </button>
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            disabled={savingEdit}
+            onClick={() => setEditProfile(false)}
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(true)}>
+          Edit Profile
+        </button>
+      )}
+    </div>
+  </div>
+  {editError && (
+    <div className="px-4 pb-2">
+      <div className="alert alert-danger py-2 mb-0">{editError}</div>
+    </div>
+  )}
+  {/* Show password section only during edit */}
+  {editProfile && (
+  <div className="px-4 pb-3">
+    <div className="form-group mt-2" style={{ position: "relative" }}>
+      <label>New Password</label>
+      <input
+        type={showPassword ? "text" : "password"}
+        className={`form-control ${editValues.password && (
+          !pwStrength.length ||
+          !pwStrength.upper ||
+          !pwStrength.lower ||
+          !pwStrength.digit ||
+          !pwStrength.hasSpecial
+        ) ? "is-invalid" : ""}`}
+        value={editValues.password}
+        onChange={e => setEditValues(v => ({ ...v, password: e.target.value }))}
+        autoComplete="new-password"
+        style={{ paddingRight: 40 }}
+        placeholder="Leave blank to keep current password"
+      />
+      <button
+        type="button"
+        onClick={() => setShowPassword(s => !s)}
+        style={{
+          position: "absolute",
+          right: 10,
+          top: "55%",
+          transform: "translateY(-50%)",
+          border: "none",
+          background: "none",
+          padding: 0,
+          margin: 0,
+          cursor: "pointer",
+          zIndex: 2
+        }}
+        tabIndex={-1}
+        aria-label={showPassword ? "Hide password" : "Show password"}
+      >
+        {showPassword ? "🙈" : "👁️"}
+      </button>
+      <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
+        {passwordRules.map((rule) => (
+          <li key={rule.key} style={{
+            color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
+          }}>
+            {rule.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div className="form-group mt-2" style={{ position: "relative" }}>
+      <label>Confirm Password</label>
+      <input
+        type={showPassword ? "text" : "password"}
+        className={`form-control ${!pwMatch && editValues.confirmPassword ? "is-invalid" : ""}`}
+        value={editValues.confirmPassword}
+        onChange={e => setEditValues(v => ({ ...v, confirmPassword: e.target.value }))}
+        autoComplete="new-password"
+        style={{ paddingRight: 40 }}
+        placeholder="Confirm new password"
+      />
+      {!pwMatch && editValues.confirmPassword && (
+        <div className="invalid-feedback" style={{ display: "block" }}>
+          Passwords do not match.
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
 
           {/* LINKED PLAYERS */}
           {profile && profile.role !== "player" && (
@@ -498,7 +632,9 @@ const ProfileScreen: React.FC = () => {
         </div>
       </div>
     </div>
+    </div>
   );
 };
+
 
 export default ProfileScreen;
