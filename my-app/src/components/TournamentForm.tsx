@@ -379,19 +379,19 @@ const TournamentPage: React.FC = () => {
   // --- MAP TEAMS & PLAYERS OUTSIDE JSX ---
   const mappedTeams = teams.map((team) => {
     const teamPlayers = team.players
-      .map((tp) => {
-        const signup = signups.find((s) => s.id === tp.signupId);
-        if (!signup) return null;
-        const player = playerMap[signup.playerId];
-        return {
-          ...tp,
-          ...signup,
-          fullName: player
-            ? `${player.firstName} ${player.lastName}`
-            : "Unknown",
-        };
-      })
-      .filter((tp): tp is NonNullable<typeof tp> => tp !== null);
+    .map((tp) => {
+      const signup = signups.find((s) => s.id === tp.signupId);
+      if (!signup) return null;
+      const player = playerMap[signup.playerId];
+      return {
+        ...tp,
+        ...signup,
+        fullName: player
+          ? `${player.firstName} ${player.lastName}`
+          : "Unknown",
+      };
+    })
+    .filter((tp): tp is NonNullable<typeof tp> => tp !== null);
 
     const captain = teamPlayers.find((tp) => tp.isCaptain);
 
@@ -756,15 +756,25 @@ const TournamentPage: React.FC = () => {
                           : <span className="text-muted">None</span>}
                       </div>
                       <div className="mt-2">
-                        <b>Players:</b>
-                        <ul style={{ marginBottom: 0 }}>
-                          {teamPlayers.length === 0 && (
-                            <li>
-                              <em className="text-muted">No players assigned</em>
-                            </li>
-                          )}
-                        </ul>
-                      </div>
+  <b>Players:</b>
+  <ul style={{ marginBottom: 0 }}>
+    {teamPlayers.length === 0 && (
+      <li>
+        <em className="text-muted">No players assigned</em>
+      </li>
+    )}
+    {teamPlayers.map((tp) => (
+      <li key={tp.signupId}>
+        {tp.fullName}
+        {tp.isCaptain && (
+          <span className="badge bg-primary ms-2">
+            Captain
+          </span>
+        )}
+      </li>
+    ))}
+  </ul>
+</div>
                     </div>
                   </div>
                 </div>

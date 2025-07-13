@@ -764,9 +764,9 @@ const TournamentPage: React.FC = () => {
                               </li>
                             )}
                             {teamPlayers.map((tp, idx) => (
-                              <li key={tp.signupId}>
-                                {tp.fullName}
-                                {tp.isCaptain && (
+                              <li key={tp?.signupId}>
+                                {tp?.fullName}
+                                {tp?.isCaptain && (
                                   <span className="badge bg-primary ms-2">
                                     Captain
                                   </span>
