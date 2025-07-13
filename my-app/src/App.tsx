@@ -24,6 +24,9 @@ import ManageEvents from "./pages/ManageTournaments";
 import AssignCoaches from "./pages/AssignCoaches";
 import PlayerList from "./pages/PlayerList";
 import { AuthProvider } from "./hooks/AuthContext";
+import ResetPassword from "./pages/forgotpassword";
+
+
 
 const App = () => {
   return (
@@ -34,6 +37,7 @@ const App = () => {
           <Routes>
             {/* PUBLIC ROUTES */}
             <Route path="/" element={<Home />} />
+            <Route path="/reset" element={<ResetPassword />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="/about" element={<About />} />
