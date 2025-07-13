@@ -29,6 +29,16 @@ const CoachesCards: React.FC = () => {
       description: "Master calendar: view all scheduled tournaments and quick stats.",
       link: "/coaches/calendar",
     },
+    {
+      title: "Assign Coaches",
+      description: "Assign users to the Coach Role",
+      link: "/assign-coaches",
+    },
+    {
+      title: "View Players",
+      description: "View all players with website accounts right now and users linked to them.",
+      link: "/playerlist",
+    }
   ];
 
   return (

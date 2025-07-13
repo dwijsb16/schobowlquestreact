@@ -1,30 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-// @ts-ignore
-import { gapi } from "gapi-script";
+import emailjs from "emailjs-com";
 
-// --- Firestore imports (use your own path) ---
+// --- Firestore imports ---
 import { getUsersByRole, getCollection, getUsersByTournament, getUsersByTeam } from "../hooks/firestore";
 
-// Google API Stuff
-const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
-const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
-const SCOPES = "https://www.googleapis.com/auth/gmail.send";
+const EMAIL_SERVICE_ID = "service_cfows1h";
+const EMAIL_TEMPLATE_ID = "template_mk7qghu";
+const EMAIL_USER_ID = "GRAfhbyKXL9qsCDKk"; // Use your public key
 
-// Possible recipient groups (extend as you wish)
 const GROUP_OPTIONS = [
   { label: "Players", type: "role", value: "player" },
   { label: "Coaches", type: "role", value: "coach" },
   { label: "Parents", type: "role", value: "parent" },
-  // Teams and tournaments are dynamically loaded
 ];
 
 const ManageTournaments: React.FC = () => {
   const navigate = useNavigate();
   const [showMessageModal, setShowMessageModal] = useState(false);
-
-  // Massmail State
-  const [recipientGroups, setRecipientGroups] = useState<any[]>([]); // { label, type, value }
+  const [recipientGroups, setRecipientGroups] = useState<any[]>([]);
   const [allEmails, setAllEmails] = useState<string[]>([]);
   const [showRecipientsList, setShowRecipientsList] = useState(false);
   const [subject, setSubject] = useState("");
@@ -32,35 +26,11 @@ const ManageTournaments: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ status: "success" | "error"; message: string } | null>(null);
 
-  // Google Auth State
-  const tokenClient = useRef<any>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-
   // For dynamic team/tournament selection
   const [teams, setTeams] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [teamSelector, setTeamSelector] = useState<string>("");
   const [tournSelector, setTournSelector] = useState<string>("");
-
-  // --- GAPI Setup
-  useEffect(() => {
-    gapi.load("client", async () => {
-      await gapi.client.init({
-        apiKey: API_KEY,
-        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"]
-      });
-    });
-    if (!tokenClient.current && (window as any).google?.accounts?.oauth2) {
-      tokenClient.current = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (response: any) => {
-          setAccessToken(response.access_token);
-          gapi.client.setToken({ access_token: response.access_token });
-        }
-      });
-    }
-  }, []);
 
   // Load teams & tournaments from Firestore
   useEffect(() => {
@@ -70,7 +40,7 @@ const ManageTournaments: React.FC = () => {
     }
   }, [showMessageModal]);
 
-  // --- Recipient Group Selection Logic ---
+  // Update allEmails based on selected groups
   useEffect(() => {
     async function getAllEmails() {
       const allSets: Set<string> = new Set();
@@ -81,10 +51,10 @@ const ManageTournaments: React.FC = () => {
           emails = users.map((u: any) => u.email);
         } else if (group.type === "team") {
           const players = await getUsersByTeam(group.value);
-          emails = players.map((u: any) => u.email || u); // fallback if just email
+          emails = players.map((u: any) => u.email || u);
         } else if (group.type === "tournament") {
           const attendees = await getUsersByTournament(group.value);
-          emails = attendees.map((u: any) => u.email || u); // fallback if just email
+          emails = attendees.map((u: any) => u.email || u);
         }
         emails.forEach(e => e && allSets.add(e));
       }
@@ -120,47 +90,22 @@ const ManageTournaments: React.FC = () => {
       setSending(false);
       return;
     }
-
-    const email = [
-      `To: ${allEmails.join(",")}`,
-      `Subject: ${subject}`,
-      "Content-Type: text/plain; charset=utf-8",
-      "",
-      body,
-    ].join("\n");
-
-    const base64EncodedEmail = btoa(unescape(encodeURIComponent(email)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-    function sendGmail() {
-      return gapi.client.gmail.users.messages.send({
-        userId: "me",
-        resource: { raw: base64EncodedEmail },
-      });
-    }
-
+    const templateParams = {
+      subject,
+      message: body,
+      to_email: "questsbclub@gmail.com",
+      bcc_list: allEmails.join(","),
+    };
     try {
-      if (!accessToken) {
-        tokenClient.current.requestAccessToken();
-        tokenClient.current.callback = async (response: any) => {
-          setAccessToken(response.access_token);
-          gapi.client.setToken({ access_token: response.access_token });
-          await sendGmail();
-          setSendResult({ status: "success", message: "Email sent successfully!" });
-          setSending(false);
-        };
-      } else {
-        await sendGmail();
-        setSendResult({ status: "success", message: "Email sent successfully!" });
-        setSending(false);
-      }
-    } catch (err: any) {
-      setSendResult({ status: "error", message: "Failed to send email." });
+      await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams, EMAIL_USER_ID);
+      setSendResult({ status: "success", message: "Email sent via EmailJS!" });
+      setSending(false);
+    } catch (err) {
+      setSendResult({ status: "error", message: "Failed to send email via EmailJS." });
       setSending(false);
     }
   }
 
-  // --- UI ---
   return (
     <div className="container py-5">
       <div className="row g-4 justify-content-center">
@@ -251,9 +196,17 @@ const ManageTournaments: React.FC = () => {
                       }
                     }} className="form-select form-select-sm" style={{ width: 160 }}>
                       <option value="">+ Team</option>
-                      {teams.map(t => (
-                        <option value={t.id} key={t.id}>{t.name}</option>
-                      ))}
+                      {teams.map(t => {
+  // Find tournament for this team
+  const tourn = tournaments.find(trn => trn.id === t.tournamentId);
+  const tournName = tourn ? tourn.eventName : "Unknown Event";
+  return (
+    <option value={t.id} key={t.id}>
+      {t.name} ({tournName})
+    </option>
+  );
+})}
+
                     </select>
                     {/* Tournament Selector */}
                     <select value={tournSelector} onChange={e => {

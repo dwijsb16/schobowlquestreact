@@ -20,6 +20,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SignUpInfo from "./pages/SignUpInfo";
 import Profile from "./pages/Profile";
 import EditTournament from "./pages/EditTournament";
+import AssignCoaches from "./pages/AssignCoaches";
+import PlayerList from "./pages/PlayerList";
 import { AuthProvider } from "./hooks/AuthContext";
 
 const App = () => {
@@ -78,10 +80,26 @@ const App = () => {
               }
             />
             <Route
+              path="/playerlist"
+              element={
+                <ProtectedRoute  requiresCoach>
+                  <PlayerList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/edit-tournament"
               element={
                 <ProtectedRoute  requiresCoach>
                   <EditTournament />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assign-coaches"
+              element={
+                <ProtectedRoute  requiresCoach>
+                  <AssignCoaches />
                 </ProtectedRoute>
               }
             />
