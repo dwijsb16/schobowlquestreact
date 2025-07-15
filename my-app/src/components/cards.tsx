@@ -3,6 +3,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 
 interface TournamentCard {
+  rsvpDate: string;
   id: string;
   eventName: string;
   date: string; // YYYY-MM-DD
@@ -21,6 +22,12 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   match_play: "info",
   extra_practice: "secondary",
 };
+function formatRsvpString(rsvpDate?: string): string {
+  if (!rsvpDate) return "";
+  const d = new Date(rsvpDate + "T00:00:00");
+  return `${d.toLocaleString("en-US", { month: "short" })} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
 
 function formatDateString(date: string) {
   const d = new Date(date + "T00:00:00");
@@ -125,6 +132,11 @@ const Cards: React.FC = () => {
                     </span>
                   )}
                 </div>
+                {tourn.rsvpDate && (
+  <div className="mb-2 text-warning" style={{ fontWeight: 500, fontSize: 15 }}>
+    RSVP by: {formatRsvpString(tourn.rsvpDate)}
+  </div>
+)}
                 <div>
                   <a href={`/tournament/${tourn.id}`} className="btn btn-outline-primary btn-sm mt-2">
                     Sign Up
