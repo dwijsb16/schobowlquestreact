@@ -105,6 +105,7 @@ const ManageTournaments: React.FC = () => {
       subject,
       message: body,
       to_email: "questsbclub@gmail.com",
+      from_email: "questsbclub@gmail.com", // You need to collect this in your form/UI
       bcc_list: allEmails.join(","),
     };
     try {

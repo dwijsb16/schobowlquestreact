@@ -4,12 +4,12 @@ import Footer from "../components/footer";
 import { getDocs, collection, query, where } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { toast, ToastContainer } from "react-toastify";
-// @ts-ignore
-import { gapi } from "gapi-script";
+import emailjs from "emailjs-com";
 
-const GMAIL_CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com"; // Put your real client ID here!
-const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
-const GMAIL_API_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+const EMAIL_SERVICE_ID = "service_cfows1h"; // or yours
+const EMAIL_TEMPLATE_ID = "template_mk7qghu"; // or yours
+const EMAIL_USER_ID = "GRAfhbyKXL9qsCDKk"; // Your public key
+
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -19,76 +19,52 @@ const Contact: React.FC = () => {
     message: ''
   });
   const [loading, setLoading] = useState(false);
-
-  // ======= FIX: Real handleChange function ======
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
-
-  // Gmail OAuth/Send logic...
-  async function authenticateWithGoogle() {
-    return new Promise((resolve, reject) => {
-      gapi.load("client:auth2", async () => {
-        await gapi.client.init({
-          clientId: GMAIL_CLIENT_ID,
-          scope: GMAIL_API_SCOPE,
-          apiKey: API_KEY,
-          discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
-        });
-        gapi.auth2.getAuthInstance()
-          .signIn()
-          .then(resolve)
-          .catch(reject);
-      });
-    });
-  }
-
-  async function sendEmailViaGmail(to: string, bcc: string[], subject: string, body: string) {
-    const message = [
-      `To: ${to}`,
-      bcc.length > 0 ? `Bcc: ${bcc.join(", ")}` : "",
-      `Subject: ${subject}`,
-      "Content-Type: text/plain; charset=utf-8",
-      "",
-      body,
-    ].join("\n");
-    const encodedMessage = btoa(unescape(encodeURIComponent(message)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    return gapi.client.gmail.users.messages.send({
-      userId: "me",
-      resource: { raw: encodedMessage }
-    });
-  }
-
   async function fetchCoachEmails(): Promise<string[]> {
     const coachQuery = query(collection(db, "users"), where("role", "==", "coach"));
     const snapshot = await getDocs(coachQuery);
     return snapshot.docs.map(doc => doc.data().email).filter(Boolean);
   }
+  
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    try {
-      const coachEmails = await fetchCoachEmails();
-      await authenticateWithGoogle();
-      const subject = `${formData.subject} (From ${formData.name})`;
-      const to = "questsbclub@gmail.com";
-      const body = formData.message + `\n\nFrom: ${formData.name} (${formData.email})`;
-      await sendEmailViaGmail(to, coachEmails, subject, body);
 
+    // Use the same to_email and bcc_list as messages page, or hardcode as needed:
+    // Fetch BCC coach emails
+  let bccEmails: string[] = [];
+  try {
+    bccEmails = await fetchCoachEmails();
+  } catch (err) {
+    // If this fails, still try to send without BCC
+    bccEmails = [];
+  }
+  const templateParams = {
+    subject: formData.subject,
+    message: formData.message + `\n\nFrom: ${formData.name} (${formData.email})`,
+    to_email: "questsbclub@gmail.com",
+    bcc_list: bccEmails.join(","), // BCC all coaches here!
+    from_email: formData.email, // for reply-to
+  };
+
+    try {
+      await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams, EMAIL_USER_ID);
       toast.success("Message sent!");
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (err) {
       toast.error("Failed to send message. Please try again.");
     }
     setLoading(false);
-  };
+  }
 
   return (
     <Container fluid className="py-5">
-      <ToastContainer />  {/* <--- Add this for toasts */}
+      <ToastContainer />
       <Container>
         <h1 className="text-center mb-5">Contact Us</h1>
         <Row className="justify-content-center">
