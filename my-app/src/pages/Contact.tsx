@@ -8,6 +8,7 @@ import { toast, ToastContainer } from "react-toastify";
 import { gapi } from "gapi-script";
 
 const GMAIL_CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com"; // Put your real client ID here!
+const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
 const GMAIL_API_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 
 const Contact: React.FC = () => {
@@ -32,6 +33,7 @@ const Contact: React.FC = () => {
         await gapi.client.init({
           clientId: GMAIL_CLIENT_ID,
           scope: GMAIL_API_SCOPE,
+          apiKey: API_KEY,
           discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
         });
         gapi.auth2.getAuthInstance()
