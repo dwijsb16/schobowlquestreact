@@ -382,113 +382,126 @@ const TournamentPage: React.FC = () => {
   if (loadingPlayers) return <div className="text-center mt-5">Loading players...</div>;
 
   return (
-    <div
-      style={{
-        background: "linear-gradient(90deg, #f2f7fd 0%, #e5fcec 100%)",
-        minHeight: "100vh",
-        paddingTop: 60,
-      }}
-    >
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-lg-8">
-            {/* Tournament Card */}
-            <div
-              className="card shadow mb-5"
-              style={{
-                background: "linear-gradient(90deg, #e0ecff 0%, #e8ffe6 100%)",
-                border: "none",
-                borderRadius: 18,
-              }}
-            >
-              <div className="card-body text-center px-5 py-4">
-                <h1
-                  className="display-5 mb-2"
-                  style={{ color: blue, fontWeight: 800 }}
-                >
-                  {tournament.eventName}
-                </h1>
-                <div className="mb-2" style={{ fontSize: 19, color: "#758bad" }}>
-                  <span role="img" aria-label="calendar" style={{ fontSize: 24 }}>
-                    📅
-                  </span>{" "}
-                  {tournament.date}
-                </div>
-                <div className="mb-2" style={{ fontSize: 16, color: "#55877e" }}>
-                  {tournament.location}
-                </div>
-                {tournament.eventType && (
-                  <span
-                    className="badge badge-info mx-2"
-                    style={{ fontSize: 14, color: "#222" }}
+      <div
+        style={{
+          background: "linear-gradient(90deg, #fff6f6 0%, #ffeaea 100%)",
+          minHeight: "100vh",
+          paddingTop: 60,
+        }}
+      >
+        <div className="container py-5">
+          <div className="row justify-content-center">
+            <div className="col-lg-8">
+              {/* Tournament Card */}
+              <div
+                className="card shadow mb-5"
+                style={{
+                  background: "#fff",
+                  border: "2px solid #DF2E38",
+                  borderRadius: 20,
+                }}
+              >
+                <div className="card-body text-center px-5 py-4">
+                  <h1
+                    className="display-5 mb-2"
+                    style={{ color: "#DF2E38", fontWeight: 900 }}
                   >
-                    {tournament.eventType}
-                  </span>
-                )}
-                {tournament.status && (
-                  <span
-                    className="badge mx-2"
-                    style={{
-                      background:
-                        tournament.status === "confirmed"
-                          ? green
-                          : tournament.status === "cancelled"
-                          ? "#f96d6d"
-                          : "#ffd600",
-                      color:
-                        tournament.status === "tentative" ? "#5c5a00" : "#fff",
-                      fontSize: 14,
-                    }}
-                  >
-                    {tournament.status.charAt(0).toUpperCase() +
-                      tournament.status.slice(1)}
-                  </span>
-                )}
-                <div className="mt-3" style={{ fontSize: 15 }}>
-                  {tournament.startTime && (
-                    <span>
-                      <b>Start:</b> {tournament.startTime} &nbsp;|&nbsp;{" "}
+                    {tournament.eventName}
+                  </h1>
+                  <div className="mb-2" style={{ fontSize: 19, color: "#B71C1C" }}>
+                    <span role="img" aria-label="calendar" style={{ fontSize: 24 }}>
+                      📅
+                    </span>{" "}
+                    {tournament.date}
+                  </div>
+                  <div className="mb-2" style={{ fontSize: 16, color: "#a22" }}>
+                    {tournament.location}
+                  </div>
+                  {tournament.eventType && (
+                    <span
+                      className="badge mx-2"
+                      style={{
+                        fontSize: 14,
+                        background: "#fff0f0",
+                        color: "#B71C1C",
+                        border: "1px solid #DF2E38",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {tournament.eventType}
                     </span>
                   )}
-                  {tournament.endTime && (
-                    <span>
-                      <b>End:</b> {tournament.endTime} &nbsp;|&nbsp;{" "}
+                  {tournament.status && (
+                    <span
+                      className="badge mx-2"
+                      style={{
+                        background:
+                          tournament.status === "confirmed"
+                            ? "#DF2E38"
+                            : tournament.status === "cancelled"
+                            ? "#f96d6d"
+                            : "#ffe17b",
+                        color:
+                          tournament.status === "tentative"
+                            ? "#a06b00"
+                            : "#fff",
+                        fontSize: 14,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {tournament.status.charAt(0).toUpperCase() +
+                        tournament.status.slice(1)}
                     </span>
                   )}
-                  {tournament.rsvpDate && (
-                    <span>
-                      <b>RSVP By:</b> {tournament.rsvpDate}{" "}
-                      {tournament.rsvpTime || ""} &nbsp;|&nbsp;{" "}
-                    </span>
-                  )}
-                  {tournament.rules && (
-                    <span>
-                      <b>Rules:</b> {tournament.rules} &nbsp;|&nbsp;{" "}
-                    </span>
-                  )}
-                  {tournament.shirtColor && (
-                    <span>
-                      <b>Shirt:</b> {tournament.shirtColor} &nbsp;|&nbsp;{" "}
-                    </span>
-                  )}
-                  {tournament.additionalInfo && (
-                    <span>
-                      <b>Notes:</b> {tournament.additionalInfo}
-                    </span>
-                  )}
+                  <div className="mt-3" style={{ fontSize: 15, color: "#B71C1C" }}>
+                    {tournament.startTime && (
+                      <span>
+                        <b>Start:</b> {tournament.startTime} &nbsp;|&nbsp;{" "}
+                      </span>
+                    )}
+                    {tournament.endTime && (
+                      <span>
+                        <b>End:</b> {tournament.endTime} &nbsp;|&nbsp;{" "}
+                      </span>
+                    )}
+                    {tournament.rsvpDate && (
+                      <span>
+                        <b>RSVP By:</b> {tournament.rsvpDate}{" "}
+                        {tournament.rsvpTime || ""} &nbsp;|&nbsp;{" "}
+                      </span>
+                    )}
+                    {tournament.rules && (
+                      <span>
+                        <b>Rules:</b> {tournament.rules} &nbsp;|&nbsp;{" "}
+                      </span>
+                    )}
+                    {tournament.shirtColor && (
+                      <span>
+                        <b>Shirt:</b> {tournament.shirtColor} &nbsp;|&nbsp;{" "}
+                      </span>
+                    )}
+                    {tournament.additionalInfo && (
+                      <span>
+                        <b>Notes:</b> {tournament.additionalInfo}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
             {/* Registration Form */}
             <div
-              className="card shadow-lg"
-              style={{ borderRadius: 18, border: "none" }}
-            >
-              <div className="card-body px-5 py-4">
-                <h4 className="mb-4" style={{ fontWeight: 600, color: "#2155CD" }}>
-                  Event Registration
-                </h4>
+            className="card shadow-lg"
+            style={{
+              borderRadius: 20,
+              border: "1.5px solid #DF2E38",
+              background: "#fff",
+            }}
+          >
+            <div className="card-body px-5 py-4">
+              <h4 className="mb-4" style={{ fontWeight: 700, color: "#DF2E38" }}>
+                Event Registration
+              </h4>
                 <div className="form-group mb-3">
                   <label htmlFor="playerSelect" style={{ fontWeight: 500 }}>
                     Select Player:
@@ -678,28 +691,28 @@ const TournamentPage: React.FC = () => {
                       />
                     </div>
                     <div className="text-center mt-4">
-                      <button
-                        className="btn"
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        style={{
-                          background:
-                            "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
-                          color: "#fff",
-                          fontWeight: 600,
-                          borderRadius: 12,
-                          padding: "12px 0",
-                          width: "70%",
-                          fontSize: 16,
-                          boxShadow: "0 2px 8px #b4c4ec2d",
-                        }}
-                      >
-                        {submitting
-                          ? "Submitting..."
-                          : existingSignupDocId
-                          ? "Edit Signup"
-                          : "Submit Registration"}
-                      </button>
+                <button
+                  className="btn"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={{
+                    background: "linear-gradient(90deg,#DF2E38 0,#B71C1C 100%)",
+                    color: "#fff",
+                    fontWeight: 700,
+                    borderRadius: 15,
+                    padding: "13px 0",
+                    width: "70%",
+                    fontSize: 17,
+                    boxShadow: "0 2px 10px #ffccd5",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {submitting
+                    ? "Submitting..."
+                    : existingSignupDocId
+                    ? "Edit Signup"
+                    : "Submit Registration"}
+                </button>
                     </div>
                   </>
                 )}
@@ -708,119 +721,141 @@ const TournamentPage: React.FC = () => {
           </div>
         </div>
         {/* --- TEAMS & DRIVERS --- */}
-        <div className="row mt-5">
-          <div className="col-12 mb-5">
-            <h3 className="mb-3" style={{ color: "#2155CD", fontWeight: 800 }}>
-              Teams
-            </h3>
-            <div className="row">
-              {teams.length === 0 && (
-                <div className="col-12 text-center text-muted">
-                  <em>No teams have been added for this tournament yet.</em>
-                </div>
-              )}
-              {teams.map((team) => {
-                // Map players
-                const teamPlayers = team.players
-                  .map((tp) => {
-                    // Find the referenced signup
-                    const signup = signups.find((s) => s.id === tp.signupId);
-                    if (!signup) return null;
-                    const player = playerMap[signup.playerId];
-                    return {
-                      ...tp,
-                      ...signup,
-                      fullName: player
-                        ? `${player.firstName} ${player.lastName}`
-                        : "Unknown",
-                    };
-                  })
-                  .filter(Boolean);
+      <div className="row mt-5">
+        <div className="col-12 mb-5">
+          <h3 className="mb-3" style={{ color: "#DF2E38", fontWeight: 800 }}>
+            Teams
+          </h3>
+          <div className="row">
+            {teams.length === 0 && (
+              <div className="col-12 text-center text-muted">
+                <em>No teams have been added for this tournament yet.</em>
+              </div>
+            )}
+            {teams.map((team) => {
+              // Map players
+              const teamPlayers = team.players
+                .map((tp) => {
+                  const signup = signups.find((s) => s.id === tp.signupId);
+                  if (!signup) return null;
+                  const player = playerMap[signup.playerId];
+                  return {
+                    ...tp,
+                    ...signup,
+                    fullName: player
+                      ? `${player.firstName} ${player.lastName}`
+                      : "Unknown",
+                  };
+                })
+                .filter(Boolean);
 
-                const captain = teamPlayers.find((tp) => tp?.isCaptain);
+              const captain = teamPlayers.find((tp) => tp?.isCaptain);
 
-                return (
-                  <div className="col-md-4 mb-3" key={team.id}>
-                    <div
-                      className="card shadow-sm h-100"
-                      style={{ borderRadius: 15 }}
-                    >
-                      <div className="card-body">
-                        <h5 className="card-title" style={{ color: "#2155CD" }}>
-                          {team.name}
-                        </h5>
-                        <div>
-                          <b>Captain:</b>{" "}
-                          {captain
-                            ? captain.fullName
-                            : <span className="text-muted">None</span>}
-                        </div>
-                        <div className="mt-2">
-                          <b>Players:</b>
-                          <ul style={{ marginBottom: 0 }}>
-                            {teamPlayers.length === 0 && (
-                              <li>
-                                <em className="text-muted">No players assigned</em>
-                              </li>
-                            )}
-                            {teamPlayers.map((tp, idx) => (
-                              <li key={tp?.signupId}>
-                                {tp?.fullName}
-                                {tp?.isCaptain && (
-                                  <span className="badge bg-primary ms-2">
-                                    Captain
-                                  </span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+              return (
+                <div className="col-md-4 mb-3" key={team.id}>
+                  <div
+                    className="card shadow-sm h-100"
+                    style={{
+                      borderRadius: 16,
+                      border: "1.5px solid #DF2E38",
+                      background: "#FFF7F7",
+                    }}
+                  >
+                    <div className="card-body">
+                      <h5 className="card-title" style={{ color: "#DF2E38", fontWeight: 700 }}>
+                        {team.name}
+                      </h5>
+                      <div style={{ fontSize: 16 }}>
+                        <b>Captain:</b>{" "}
+                        {captain ? (
+                          <span style={{ color: "#B71C1C" }}>{captain.fullName}</span>
+                        ) : (
+                          <span className="text-muted">None</span>
+                        )}
+                      </div>
+                      <div className="mt-2">
+                        <b>Players:</b>
+                        <ul style={{ marginBottom: 0 }}>
+                          {teamPlayers.length === 0 && (
+                            <li>
+                              <em className="text-muted">No players assigned</em>
+                            </li>
+                          )}
+                          {teamPlayers.map((tp, idx) => {
+  if (!tp) return null; // guard against null/undefined
+  return (
+    <li key={tp.signupId}>
+      <span style={{ color: "#B71C1C", fontWeight: tp.isCaptain ? 700 : 500 }}>
+        {tp.fullName}
+      </span>
+      {tp.isCaptain && (
+        <span
+          className="badge ms-2"
+          style={{
+            background: "#DF2E38",
+            color: "#fff",
+            borderRadius: "10px",
+            fontSize: "0.9em",
+            fontWeight: 700,
+          }}
+        >
+          Captain
+        </span>
+      )}
+    </li>
+  );
+})}
+
+                        </ul>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
           {/* Drivers & Seats Card */}
           <div className="col-12">
-            <div className="card shadow mb-5" style={{ borderRadius: 15 }}>
-              <div className="card-body">
-                <h4 style={{ color: "#2155CD", fontWeight: 700 }}>
-                  Drivers & Seats
-                </h4>
-                <ul style={{ fontSize: 17 }}>
-                  {signups.filter((s) => s.carpool?.includes("can-drive")).length === 0 ? (
-                    <li className="text-muted">No drivers yet!</li>
-                  ) : (
-                    signups
-                      .filter((s) => s.carpool?.includes("can-drive"))
-                      .map((s, idx) => {
-                        const player = playerMap[s.playerId];
-                        return (
-                          <li key={s.playerId + idx}>
-                            {player
-                              ? `${player.firstName} ${player.lastName}`
-                              : s.playerId}{" "}
-                            —{" "}
-                            <b>
-                              {s.driveCapacity !== undefined
-                                ? s.driveCapacity
-                                : 0}
-                            </b>{" "}
-                            seat(s)
-                          </li>
-                        );
-                      })
-                  )}
-                </ul>
-              </div>
+          <div
+            className="card shadow mb-5"
+            style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
+          >
+            <div className="card-body">
+              <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>
+                Drivers & Seats
+              </h4>
+              <ul style={{ fontSize: 17 }}>
+                {signups.filter((s) => s.carpool?.includes("can-drive")).length === 0 ? (
+                  <li className="text-muted">No drivers yet!</li>
+                ) : (
+                  signups
+                    .filter((s) => s.carpool?.includes("can-drive"))
+                    .map((s, idx) => {
+                      const player = playerMap[s.playerId];
+                      return (
+                        <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
+                          {player
+                            ? `${player.firstName} ${player.lastName}`
+                            : s.playerId}{" "}
+                          —{" "}
+                          <b>
+                            {s.driveCapacity !== undefined
+                              ? s.driveCapacity
+                              : 0}
+                          </b>{" "}
+                          seat(s)
+                        </li>
+                      );
+                    })
+                )}
+              </ul>
             </div>
           </div>
         </div>
-        {/* END teams & drivers */}
       </div>
     </div>
+  </div>
   );
 };
 

@@ -133,12 +133,14 @@ const Navigation = () => {
                   to="/coaches"
                   active={location.pathname === "/coaches"}
                   style={{
-                    fontWeight: 700,
-                    color: WHITE,
-                    background: RED,
+                    fontWeight: 600,
+                    color: location.pathname === "/calendar" ? WHITE : BLACK,
+                    background: location.pathname === "/calendar" ? RED : WHITE,
                     borderRadius: 9,
                     padding: "9px 22px",
-                    border: `2.5px solid ${RED}`,
+                    border: location.pathname === "/calendar"
+                      ? `2.5px solid ${RED}`
+                      : `2.5px solid transparent`,
                   }}
                 >
                   Coaches
@@ -167,13 +169,14 @@ const Navigation = () => {
                   <Nav.Link
                     onClick={handleLogout}
                     style={{
-                      fontWeight: 700,
-                      color: WHITE,
-                      background: RED,
+                      fontWeight: 600,
+                      color: location.pathname === "/calendar" ? WHITE : BLACK,
+                      background: location.pathname === "/calendar" ? RED : WHITE,
                       borderRadius: 9,
                       padding: "9px 22px",
-                      border: `2.5px solid ${RED}`,
-                      marginLeft: 4
+                      border: location.pathname === "/calendar"
+                        ? `2.5px solid ${RED}`
+                        : `2.5px solid transparent`,
                     }}
                   >
                     Sign Out
