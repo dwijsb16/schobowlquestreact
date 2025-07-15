@@ -49,6 +49,7 @@ const Contact: React.FC = () => {
     message: formData.message + `\n\nFrom: ${formData.name} (${formData.email})`,
     to_email: "questsbclub@gmail.com",
     bcc_list: bccEmails.join(","), // BCC all coaches here!
+    message_type: "CONTACT COACHES MESSAGE",
     from_email: formData.email, // for reply-to
   };
 
