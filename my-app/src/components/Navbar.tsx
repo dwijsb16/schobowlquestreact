@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../.firebase/utils/firebase';
 import { ToastContainer, toast } from "react-toastify";
 import { getDoc, doc as firestoreDoc } from "firebase/firestore";
-import { useLocation } from "react-router-dom";
 import { db } from "../.firebase/utils/firebase";
 import 'react-toastify/dist/ReactToastify.css';
 
+// Color palette
+const RED = "#DF2E38";
+const DARK_RED = "#B71C1C";
+const WHITE = "#fff";
+const BLACK = "#212121";
+const LIGHT_GREY = "#f7f7f7";
+const GREY = "#858585";
 
 const Navigation = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -16,12 +22,10 @@ const Navigation = () => {
   const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Monitor authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoggedIn(!!user);
       if (user) {
-        // Fetch the user's role from Firestore
         const userDoc = await getDoc(firestoreDoc(db, "users", user.uid));
         setUserRole(userDoc.exists() ? userDoc.data().role : null);
       } else {
@@ -31,7 +35,6 @@ const Navigation = () => {
     return () => unsubscribe();
   }, []);
 
-  // Handle logout
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -47,126 +50,170 @@ const Navigation = () => {
 
   return (
     <>
-  <Navbar
-    fixed="top"
-    expand="lg"
-    style={{
-      background: "linear-gradient(90deg,#2a5298 0,#1e3c72 100%)",
-      boxShadow: "0 2px 14px rgba(46,85,136,0.15)",
-      borderRadius: "0 0 18px 18px",
-      zIndex: 1020
-    }}
-    variant="dark"
-    className="py-2"
-  >
-    <Container>
-      <Navbar.Brand as={Link} to="/" style={{paddingRight:16}}>
-        <img
-          src="/images/quest-academy-logo.png"
-          alt="Quest Academy Logo"
-          width="175"
-          height="54"
-          className="img-fluid"
-          style={{ filter: "drop-shadow(0 2px 8px #21325b77)" }}
-        />
-      </Navbar.Brand>
-      <Navbar.Toggle aria-controls="navbarSupportedContent1" />
-      <Navbar.Collapse id="navbarSupportedContent1">
-        <Nav className="ms-auto align-items-center" style={{ gap: "12px" }}>
-          {[
-            { to: "/about", label: "About" },
-            { to: "/calendar", label: "Calendar" },
-            { to: "/resources", label: "Resources" },
-            { to: "/contact", label: "Contact" },
-          ].map(link => (
-            <Nav.Link
-              key={link.to}
-              as={Link}
-              to={link.to}
-              active={location.pathname === link.to}
+      <Navbar
+        fixed="top"
+        expand="lg"
+        style={{
+          background: WHITE,
+          boxShadow: "0 2px 18px #ebebeb",
+          borderRadius: "0 0 18px 18px",
+          zIndex: 1020,
+          borderBottom: `3px solid ${RED}`,
+        }}
+        variant="light"
+        className="py-2"
+      >
+        <Container>
+          <Navbar.Brand as={Link} to="/" style={{ paddingRight: 16 }}>
+            <img
+              src="/images/quest-academy-logo.png"
+              alt="Quest Academy Logo"
+              width="170"
+              height="48"
+              className="img-fluid"
               style={{
-                fontWeight: 500,
-                color: location.pathname === link.to ? "#FFD93D" : "#fff",
-                borderRadius: 8,
-                background: location.pathname === link.to ? "#21325b" : "transparent",
-                padding: "7px 20px",
-                transition: "all .2s"
+                filter: `drop-shadow(0 2px 8px #DF2E3822)`
               }}
-            >
-              {link.label}
-            </Nav.Link>
-          ))}
+            />
+          </Navbar.Brand>
+          <Navbar.Toggle aria-controls="navbarSupportedContent1" />
+          <Navbar.Collapse id="navbarSupportedContent1">
+            <Nav className="ms-auto align-items-center" style={{ gap: "12px" }}>
+              {[
+                { to: "/about", label: "About" },
+                { to: "/resources", label: "Resources" },
+                { to: "/contact", label: "Contact" },
+              ].map(link => (
+                <Nav.Link
+                  key={link.to}
+                  as={Link}
+                  to={link.to}
+                  active={location.pathname === link.to}
+                  style={{
+                    fontWeight: 600,
+                    color: location.pathname === link.to ? WHITE : BLACK,
+                    background: location.pathname === link.to ? RED : WHITE,
+                    borderRadius: 9,
+                    padding: "9px 22px",
+                    border: location.pathname === link.to
+                      ? `2.5px solid ${RED}`
+                      : `2.5px solid transparent`,
+                  }}
+                  className="nav-link-hover"
+                >
+                  {link.label}
+                </Nav.Link>
+              ))}
 
-          {/* Only show "Coaches" if userRole is 'coach' */}
-          {(userRole === "coach") && (
-            <Nav.Link
-              as={Link}
-              to="/coaches"
-              active={location.pathname === "/coaches"}
-              style={{
-                fontWeight: 600,
-                color: location.pathname === "/coaches" ? "#FFD93D" : "#fff",
-                background: location.pathname === "/coaches" ? "#215D52" : "#278a7c80",
-                borderRadius: 8,
-                padding: "7px 20px"
-              }}
-            >
-              Coaches
-            </Nav.Link>
-          )}
+              {isLoggedIn && (
+                <Nav.Link
+                  key="/calendar"
+                  as={Link}
+                  to="/calendar"
+                  active={location.pathname === "/calendar"}
+                  style={{
+                    fontWeight: 600,
+                    color: location.pathname === "/calendar" ? WHITE : BLACK,
+                    background: location.pathname === "/calendar" ? RED : WHITE,
+                    borderRadius: 9,
+                    padding: "9px 22px",
+                    border: location.pathname === "/calendar"
+                      ? `2.5px solid ${RED}`
+                      : `2.5px solid transparent`,
+                  }}
+                  className="nav-link-hover"
+                >
+                  Calendar
+                </Nav.Link>
+              )}
 
-          {isLoggedIn ? (
-            <>
-              <Nav.Link
-                as={Link}
-                to="/profile"
-                active={location.pathname === "/profile"}
-                style={{
-                  fontWeight: 500,
-                  color: location.pathname === "/profile" ? "#FFD93D" : "#fff",
-                  borderRadius: 8,
-                  background: location.pathname === "/profile" ? "#21325b" : "transparent",
-                  padding: "7px 20px"
-                }}
-              >
-                Profile
-              </Nav.Link>
-              <Nav.Link
-                onClick={handleLogout}
-                style={{
-                  fontWeight: 500,
-                  color: "#FF6B6B",
-                  borderRadius: 8,
-                  background: "#fff2f2",
-                  padding: "7px 20px"
-                }}
-              >
-                Sign Out
-              </Nav.Link>
-            </>
-          ) : (
-            <Nav.Link
-              as={Link}
-              to="/login"
-              active={location.pathname === "/login"}
-              style={{
-                fontWeight: 500,
-                color: location.pathname === "/login" ? "#FFD93D" : "#fff",
-                borderRadius: 8,
-                background: location.pathname === "/login" ? "#21325b" : "transparent",
-                padding: "7px 20px"
-              }}
-            >
-              Login
-            </Nav.Link>
-          )}
-        </Nav>
-      </Navbar.Collapse>
-    </Container>
-  </Navbar>
-  <ToastContainer />
-</>
+              {(userRole === "coach") && (
+                <Nav.Link
+                  as={Link}
+                  to="/coaches"
+                  active={location.pathname === "/coaches"}
+                  style={{
+                    fontWeight: 700,
+                    color: WHITE,
+                    background: RED,
+                    borderRadius: 9,
+                    padding: "9px 22px",
+                    border: `2.5px solid ${RED}`,
+                  }}
+                >
+                  Coaches
+                </Nav.Link>
+              )}
 
+              {isLoggedIn ? (
+                <>
+                  <Nav.Link
+                    as={Link}
+                    to="/profile"
+                    active={location.pathname === "/profile"}
+                    style={{
+                      fontWeight: 600,
+                      color: location.pathname === "/profile" ? WHITE : BLACK,
+                      background: location.pathname === "/profile" ? RED : WHITE,
+                      borderRadius: 9,
+                      padding: "9px 22px",
+                      border: location.pathname === "/profile"
+                        ? `2.5px solid ${RED}`
+                        : `2.5px solid transparent`,
+                    }}
+                  >
+                    Profile
+                  </Nav.Link>
+                  <Nav.Link
+                    onClick={handleLogout}
+                    style={{
+                      fontWeight: 700,
+                      color: WHITE,
+                      background: RED,
+                      borderRadius: 9,
+                      padding: "9px 22px",
+                      border: `2.5px solid ${RED}`,
+                      marginLeft: 4
+                    }}
+                  >
+                    Sign Out
+                  </Nav.Link>
+                </>
+              ) : (
+                <Nav.Link
+                  as={Link}
+                  to="/login"
+                  active={location.pathname === "/login"}
+                  style={{
+                    fontWeight: 700,
+                    color: location.pathname === "/login" ? WHITE : BLACK,
+                    background: location.pathname === "/login" ? RED : WHITE,
+                    borderRadius: 9,
+                    padding: "9px 22px",
+                    border: location.pathname === "/login"
+                      ? `2.5px solid ${RED}`
+                      : `2.5px solid transparent`,
+                  }}
+                >
+                  Login
+                </Nav.Link>
+              )}
+            </Nav>
+          </Navbar.Collapse>
+        </Container>
+      </Navbar>
+      <ToastContainer />
+      <style>
+        {`
+          .nav-link-hover:hover {
+            background: #DF2E38 !important;
+            color: #fff !important;
+            border: 2.5px solid #DF2E38 !important;
+            transition: all 0.13s;
+          }
+        `}
+      </style>
+    </>
   );
 };
 

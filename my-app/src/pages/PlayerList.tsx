@@ -83,9 +83,10 @@ const AdminUserList: React.FC = () => {
   }
 
   return (
-    <div className="container py-5" style={{ maxWidth: 1050 }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <NavBar></NavBar>
-      <h2 className="fw-bold mb-4 text-primary text-center" style={{ letterSpacing: ".02em" }}>
+        <div className="container py-5">
+      <h2 className="fw-bold mb-4 text-danger text-center" style={{ letterSpacing: ".02em" }}>
         User & Player Management
       </h2>
 
@@ -93,7 +94,7 @@ const AdminUserList: React.FC = () => {
       {success && <div className="alert alert-success mb-3">{success}</div>}
       {loading ? (
         <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status" />
+          <div className="spinner-border text-danger" role="status" />
         </div>
       ) : (
         <div className="card shadow-sm rounded-4">
@@ -173,6 +174,7 @@ const AdminUserList: React.FC = () => {
       <div className="text-center text-muted mt-5" style={{ fontSize: 15 }}>
         <b>Note:</b> Deleting a user also deletes their player records (if any) from Firestore.<br />
         Auth accounts are not removed.
+      </div>
       </div>
       <Footer></Footer>
     </div>

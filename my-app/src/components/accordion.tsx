@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase"; // Adjust import path if needed
 
-// Category labels to match types in Firestore
+const RED = "#DF2E38";
+const DARK_RED = "#A71D2A";
+const GREY = "#3B3B3B";
+const LIGHT_GREY = "#F4F4F4";
+
 const CATEGORY_LABELS = {
   "tournament-day": "Announcements for Tournament Day",
   "tournament-teams": "Announcements for Tournament Teams",
@@ -14,7 +18,7 @@ type Announcement = {
   type: string;
   title: string;
   body: string;
-  timestamp?: any; // Firestore Timestamp, if present
+  timestamp?: any;
 };
 
 const Accordion: React.FC = () => {
@@ -23,7 +27,6 @@ const Accordion: React.FC = () => {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   useEffect(() => {
-    // Fetch announcements from Firestore
     async function fetchAnnouncements() {
       setLoading(true);
       try {
@@ -33,8 +36,6 @@ const Accordion: React.FC = () => {
         snapshot.forEach(doc => {
           announcements.push({ id: doc.id, ...(doc.data() as Omit<Announcement, "id">) });
         });
-
-        // Group by type
         const groupedByType: { [cat: string]: Announcement[] } = {};
         for (const type of Object.keys(CATEGORY_LABELS)) groupedByType[type] = [];
         for (const a of announcements) {
@@ -50,7 +51,6 @@ const Accordion: React.FC = () => {
     fetchAnnouncements();
   }, []);
 
-  // Render accordion with grouped announcements
   return (
     <div className="accordion my-5 shadow-sm rounded" id="qaAccordion">
       {loading ? (
@@ -66,13 +66,15 @@ const Accordion: React.FC = () => {
                 aria-controls={`collapse${idx}`}
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
                 style={{
-                  fontWeight: 600,
-                  fontSize: "1.1rem",
-                  background: openIdx === idx ? "#f4f8fc" : "#fff",
-                  color: openIdx === idx ? "#0a7de1" : "#333",
-                  border: "none",
+                  fontWeight: 700,
+                  fontSize: "1.13rem",
+                  background: openIdx === idx ? LIGHT_GREY : "#fff",
+                  color: openIdx === idx ? RED : GREY,
+                  border: `2px solid ${openIdx === idx ? RED : "#ececec"}`,
+                  borderBottom: openIdx === idx ? `1px solid #ececec` : undefined,
                   borderRadius: openIdx === idx ? "14px 14px 0 0" : "14px",
-                  transition: "background 0.2s",
+                  transition: "background 0.2s, border 0.2s, color 0.13s",
+                  boxShadow: openIdx === idx ? `0 2px 12px #df2e3840` : "none"
                 }}
               >
                 {label}
@@ -84,16 +86,18 @@ const Accordion: React.FC = () => {
               aria-labelledby={`heading${idx}`}
               data-bs-parent="#qaAccordion"
             >
-              <div className="accordion-body" style={{
-                background: "#f9fcff",
-                borderRadius: "0 0 14px 14px",
-                borderTop: "1px solid #eee"
-              }}>
+              <div className="accordion-body"
+                style={{
+                  background: "#fff8f8",
+                  borderRadius: "0 0 14px 14px",
+                  borderTop: `2px solid ${RED}10`, // subtle red tint
+                  boxShadow: "none"
+                }}>
                 {grouped[type] && grouped[type].length > 0 ? (
                   grouped[type].map(ann => (
-                    <div key={ann.id} className="mb-3 pb-2" style={{ borderBottom: "1px solid #eef" }}>
-                      <div style={{ fontWeight: 700 }}>{ann.title}</div>
-                      <div>{ann.body}</div>
+                    <div key={ann.id} className="mb-3 pb-2" style={{ borderBottom: `1px solid ${RED}1a` }}>
+                      <div style={{ fontWeight: 700, color: RED }}>{ann.title}</div>
+                      <div style={{ color: GREY }}>{ann.body}</div>
                       {ann.timestamp?.toDate &&
                         <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
                           {ann.timestamp.toDate().toLocaleString()}

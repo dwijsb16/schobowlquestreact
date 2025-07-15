@@ -5,7 +5,7 @@ import Footer from "../components/footer";
 
 const CoachesOnlyPage: React.FC = () => {
   return (
-    <div style={{ paddingTop: "90px" }}>
+    <div style={{ paddingTop: "50px" }}>
       <Navbar />
       <div className="container">
         <h1 className="text-center text-capitalize">Coaches Only Page!</h1>

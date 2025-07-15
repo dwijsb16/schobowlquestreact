@@ -44,6 +44,18 @@ const App = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/signup" element={<SignUpInfo />} />
+            <Route
+            path="/resources/general-study-guide.pdf"
+          element={
+            <a
+              href="/documents/general-study-guide.pdf"
+            download
+                style={{ display: "block", margin: "2em", fontSize: 24 }}
+           >
+      Download General Study Guide
+    </a>
+  }
+/>
 
             {/* 404 route */}
             <Route path="*" element={<UnauthorizedPage />} />

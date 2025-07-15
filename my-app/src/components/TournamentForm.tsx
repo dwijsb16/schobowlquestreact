@@ -12,6 +12,13 @@ const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
 const CALENDAR_ID = "questsbclub@gmail.com";
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
+
+const RED = "#DF2E38";
+const DARK_RED = "#B71C1C";
+const LIGHT_GREY = "#F7F7F7";
+const BLACK = "#232323";
+const WHITE = "#fff";
+
 const TournamentForm: React.FC = () => {
   // Tournament form state
   const [eventName, setEventName] = useState("");
@@ -196,54 +203,83 @@ const TournamentForm: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", background: "linear-gradient(110deg, #e8f1fa 60%, #fffbe7 100%)" }}>
-      <div className="card shadow" style={{
-        maxWidth: 700,
-        width: "100%",
-        borderRadius: 24,
-        border: "none",
-        boxShadow: "0 4px 36px #b4d3fb60",
-        margin: "40px 0"
+    <div className="container d-flex justify-content-center align-items-center"
+      style={{
+        minHeight: "100vh",
+        background: `linear-gradient(120deg, #fff 50%, ${LIGHT_GREY} 100%)`
       }}>
-        <div style={{
-          background: "linear-gradient(90deg, #43b0f1 0, #ffe17b 120%)",
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          padding: "30px 28px 20px 28px"
+      <div className="card shadow"
+        style={{
+          maxWidth: 700,
+          width: "100%",
+          borderRadius: 24,
+          border: "none",
+          boxShadow: "0 4px 36px #df2e3810",
+          margin: "40px 0",
+          background: WHITE
         }}>
-          <h2 className="mb-2 text-center" style={{
-            color: "#253c60",
-            fontWeight: 800,
-            letterSpacing: "1.2px"
+        <div
+          style={{
+            background: `linear-gradient(90deg, ${RED} 0, ${DARK_RED} 100%)`,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: "32px 28px 20px 28px",
+            textAlign: "center"
           }}>
+          <h2 className="mb-2"
+            style={{
+              color: WHITE,
+              fontWeight: 900,
+              letterSpacing: "1.3px",
+              fontSize: 32,
+              textShadow: "0 1px 12px #B71C1C20"
+            }}>
             Add an Event
           </h2>
-          <p className="mb-0 text-center" style={{
-            color: "#2e3a59", fontSize: 15, opacity: 0.83
-          }}>
+          <p style={{ color: "#fff", fontSize: 15, opacity: 0.9 }}>
             This form will add an event to both the club calendar and your database.
           </p>
         </div>
         {/* ALERTS */}
         {alert && (
-          <div className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-4 mt-3 mb-0`} role="alert">
+          <div
+            className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-4 mt-3 mb-0`}
+            role="alert"
+            style={{
+              borderRadius: 12,
+              background: alert.type === "error" ? "#FFD6E1" : "#e5fbe9",
+              color: alert.type === "error" ? RED : "#219a61",
+              border: "none",
+              fontWeight: 600
+            }}>
             {alert.message}
-            <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)}></button>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)} />
           </div>
         )}
         <form onSubmit={handleSubmit} className="p-4">
           {/* Event Name */}
           <div className="form-group mb-3">
-            <label htmlFor="tourn_name" style={{ fontWeight: 600 }}>Event Name<span style={{ color: "#ef5350" }}> *</span></label>
+            <label htmlFor="tourn_name" style={{ fontWeight: 600, color: BLACK }}>
+              Event Name<span style={{ color: RED }}> *</span>
+            </label>
             <input type="text" id="tourn_name" className="form-control"
-              style={{ borderRadius: 14, padding: "10px 16px" }}
+              style={{
+                borderRadius: 14,
+                padding: "10px 16px",
+                background: LIGHT_GREY,
+                border: `1.5px solid #f3dadf`,
+                color: BLACK
+              }}
               value={eventName} onChange={e => setEventName(e.target.value)} required disabled={loading}/>
           </div>
           {/* Event Type & Status */}
           <div className="row mb-3">
             <div className="form-group col-md-6">
-              <label htmlFor="event_type" style={{ fontWeight: 600 }}>Event Type<span style={{ color: "#ef5350" }}> *</span></label>
+              <label htmlFor="event_type" style={{ fontWeight: 600, color: BLACK }}>
+                Event Type<span style={{ color: RED }}> *</span>
+              </label>
               <select id="event_type" className="form-control"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={eventType} onChange={e => setEventType(e.target.value)} required disabled={loading}>
                 <option value="">Select an event type</option>
                 <option value="extra_practice">Extra Practice</option>
@@ -252,9 +288,11 @@ const TournamentForm: React.FC = () => {
               </select>
             </div>
             <div className="form-group col-md-6">
-              <label htmlFor="status" style={{ fontWeight: 600 }}>Status<span style={{ color: "#ef5350" }}> *</span></label>
+              <label htmlFor="status" style={{ fontWeight: 600, color: BLACK }}>
+                Status<span style={{ color: RED }}> *</span>
+              </label>
               <select id="status" className="form-control"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={status} onChange={e => setStatus(e.target.value)} required disabled={loading}>
                 <option value="">Select status</option>
                 <option value="tentative">Tentative</option>
@@ -266,13 +304,15 @@ const TournamentForm: React.FC = () => {
           {/* Date, Start, End */}
           <div className="row mb-3">
             <div className="form-group col-md-5">
-              <label htmlFor="date" style={{ fontWeight: 600 }}>Date<span style={{ color: "#ef5350" }}> *</span></label>
+              <label htmlFor="date" style={{ fontWeight: 600, color: BLACK }}>
+                Date<span style={{ color: RED }}> *</span>
+              </label>
               <input type="date" id="date" className="form-control"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
             </div>
             <div className="form-group col-md-3 d-flex flex-column align-items-start">
-              <label style={{ fontWeight: 600 }}>Start Time<span style={{ color: "#ef5350" }}> *</span></label>
+              <label style={{ fontWeight: 600, color: BLACK }}>Start Time<span style={{ color: RED }}> *</span></label>
               <TimePicker
                 onChange={(value: string | null) => setStartTime(value || "")}
                 value={startTime}
@@ -283,11 +323,11 @@ const TournamentForm: React.FC = () => {
                 required
                 disabled={loading}
                 className="w-100 custom-timepicker"
-                clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+                clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: RED }}>🕒</span>}
               />
             </div>
             <div className="form-group col-md-4 d-flex flex-column align-items-start">
-              <label style={{ fontWeight: 600 }}>End Time</label>
+              <label style={{ fontWeight: 600, color: BLACK }}>End Time</label>
               <TimePicker
                 onChange={(value: string | null) => setEndTime(value || "")}
                 value={endTime}
@@ -297,52 +337,52 @@ const TournamentForm: React.FC = () => {
                 amPmAriaLabel="Select AM/PM"
                 disabled={loading}
                 className="w-100 custom-timepicker"
-                clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+                clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: RED }}>🕒</span>}
               />
             </div>
           </div>
           {/* RSVP */}
           <div className="row mb-3">
             <div className="form-group col-md-7">
-              <label htmlFor="rsvp_date" style={{ fontWeight: 600 }}>RSVP Date</label>
+              <label htmlFor="rsvp_date" style={{ fontWeight: 600, color: BLACK }}>RSVP Date</label>
               <input type="date" id="rsvp_date" className="form-control"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
             </div>
             <div className="form-group col-md-5">
-              <label htmlFor="rsvp_time" style={{ fontWeight: 600 }}>RSVP Time</label>
+              <label htmlFor="rsvp_time" style={{ fontWeight: 600, color: BLACK }}>RSVP Time</label>
               <input type="time" id="rsvp_time" className="form-control"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
             </div>
           </div>
           {/* Rules */}
           <div className="form-group mb-3">
-            <label htmlFor="rules_tourn" style={{ fontWeight: 600 }}>Rules</label>
+            <label htmlFor="rules_tourn" style={{ fontWeight: 600, color: BLACK }}>Rules</label>
             <textarea id="rules_tourn" className="form-control"
               rows={2}
-              style={{ borderRadius: 14 }}
+              style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={rules} onChange={e => setRules(e.target.value)} placeholder="Enter rules..." disabled={loading}/>
           </div>
           {/* Location */}
           <div className="form-group mb-3">
-            <label htmlFor="location" style={{ fontWeight: 600 }}>Location</label>
+            <label htmlFor="location" style={{ fontWeight: 600, color: BLACK }}>Location</label>
             <input type="text" id="location" className="form-control"
-              style={{ borderRadius: 14 }}
+              style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={location} onChange={e => setLocation(e.target.value)} placeholder="Enter address" disabled={loading}/>
           </div>
           {/* Shirt Color */}
           <div className="form-group mb-3">
-            <label htmlFor="shirt_color" style={{ fontWeight: 600 }}>Shirt Color</label>
+            <label htmlFor="shirt_color" style={{ fontWeight: 600, color: BLACK }}>Shirt Color</label>
             <input type="text" id="shirt_color" className="form-control"
-              style={{ borderRadius: 14 }}
+              style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={shirtColor} onChange={e => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" disabled={loading}/>
           </div>
           {/* Additional Info */}
           <div className="form-group mb-3">
-            <label htmlFor="additional_info" style={{ fontWeight: 600 }}>Additional Information</label>
+            <label htmlFor="additional_info" style={{ fontWeight: 600, color: BLACK }}>Additional Information</label>
             <input type="text" id="additional_info" className="form-control"
-              style={{ borderRadius: 14 }}
+              style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={additionalInfo} onChange={e => setAdditionalInfo(e.target.value)} placeholder="Any notes..." disabled={loading}/>
           </div>
           {/* Button */}
@@ -350,15 +390,16 @@ const TournamentForm: React.FC = () => {
             <button type="submit"
               className="btn"
               style={{
-                background: "linear-gradient(90deg,#43b0f1,#ffe17b 120%)",
-                color: "#232e4a",
-                fontWeight: 700,
-                padding: "10px 38px",
-                fontSize: 18,
+                background: `linear-gradient(90deg, ${RED}, ${DARK_RED} 100%)`,
+                color: WHITE,
+                fontWeight: 800,
+                padding: "11px 38px",
+                fontSize: 19,
                 borderRadius: 24,
                 border: "none",
                 letterSpacing: 1,
-                boxShadow: "0 2px 10px #dae3f9a8"
+                boxShadow: "0 2px 10px #DF2E3830",
+                textShadow: "0 1px 4px #B71C1C11"
               }}
               disabled={loading}
             >
@@ -366,12 +407,13 @@ const TournamentForm: React.FC = () => {
             </button>
           </div>
         </form>
-        <div className="text-center pb-3 px-4" style={{
-          fontSize: 14,
-          color: "#546a85"
-        }}>
-          <b style={{ color: "#ef5350" }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
-          <span style={{ opacity: 0.7 }}>
+        <div className="text-center pb-3 px-4"
+          style={{
+            fontSize: 14,
+            color: "#888"
+          }}>
+          <b style={{ color: RED }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
+          <span style={{ opacity: 0.8 }}>
             (A Google login popup will appear only if needed!)
           </span>
         </div>

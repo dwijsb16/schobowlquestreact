@@ -3,6 +3,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { setDoc, collection, doc, getDocs, getDoc, query, orderBy } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
 import { updatePassword } from "firebase/auth";
+import Footer from "../components/footer";
 
 import {
   getCollection,
@@ -13,6 +14,16 @@ import {
 } from "../hooks/firestore";
 import { Link } from "react-router-dom";
 import { Password } from "@mui/icons-material";
+
+const RED = "#DF2E38";
+const DARK_RED = "#B71C1C";
+const BLACK = "#232323";
+const GREY = "#858585";
+const LIGHT_GREY = "#F7F7F7";
+const WHITE = "#fff";
+const GREEN = "#51c775";
+const YELLOW = "#FFD93D";
+const BADGE_GREY = "#EAECF0";
 
 interface TournamentCard {
   id: string;
@@ -49,15 +60,15 @@ const colorMap: Record<Role, string> = {
 const statusColor = (status: string) => {
   switch (status) {
     case "Attending":
-      return "#6BCB77"; // green
+      return GREEN;
     case "Not Attending":
-      return "#FF6B6B"; // red
+      return RED;
     case "Leaving Early":
     case "Arriving Late":
     case "Late Arrival & Early Departure":
-      return "#FFD93D"; // yellow
+      return YELLOW;
     default:
-      return "#BDBDBD"; // gray
+      return GREY;
   }
 };
 
@@ -283,246 +294,383 @@ useEffect(() => {
 
   // MAIN PROFILE PAGE
   return (
-    <div className="container mt-5 mb-5">
-      <div className="row justify-content-center">
-        <div className="col-md-8 col-lg-6">
-          {/* HEADER CARD */}
-          {/* HEADER CARD */}
-<div
-  className="card shadow-sm mb-4"
+  <div
   style={{
-    background: "linear-gradient(90deg, #e0ecff 0%, #fdf7e4 100%)",
-    border: "none",
-    borderRadius: 18,
-    boxShadow: "0 2px 12px 0 #c2d6f5"
-  }}>
-  <div className="p-4 d-flex align-items-center justify-content-between">
-    <div>
-      <h2 className="mb-1" style={{ fontWeight: 600 }}>
-        Welcome,{" "}
-        {editProfile
-          ? <>
-              <input
-                className="form-control d-inline-block"
-                style={{ width: 120, display: "inline", fontWeight: 600, marginRight: 4 }}
-                placeholder="First Name"
-                value={editValues.firstName}
-                onChange={e => setEditValues(v => ({ ...v, firstName: e.target.value }))}
-              />
-              <input
-                className="form-control d-inline-block"
-                style={{ width: 120, display: "inline", fontWeight: 600, marginLeft: 4 }}
-                placeholder="Last Name"
-                value={editValues.lastName}
-                onChange={e => setEditValues(v => ({ ...v, lastName: e.target.value }))}
-              />
-            </>
-          : `${profile?.firstName || ""} ${profile?.lastName || ""}`}
-        <span
-          className="ml-2 badge"
+    background: "linear-gradient(180deg, #fff 0%, #f7f7f7 60%, #fff6f7 100%)",
+    width: "100vw",
+    overflowX: "hidden",
+  }}
+>
+<div
+  className="mb-4"
+  style={{
+    width: "100%",
+    maxWidth: 820,
+    margin: "0 auto 36px auto",
+    borderRadius: 26,
+    padding: "34px 0 28px 0",
+    boxShadow: "0 4px 24px #e9bfc33a, 0 1.5px 8px #ffd6e150",
+    textAlign: "center",
+    background: "#fff",
+    position: "relative",
+    border: "2.5px solid #ffe5ea",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 10,
+  }}
+>
+  <div
+    style={{
+      fontWeight: 700,
+      fontSize: 38,
+      color: "#DF2E38",
+      letterSpacing: 0.5,
+      lineHeight: 1.14,
+      marginBottom: 5,
+    }}
+  >
+    Welcome, {profile?.firstName}
+  </div>
+  <div
+    style={{
+      fontSize: 18,
+      color: "#8a8a8a",
+      fontWeight: 500,
+      letterSpacing: 0.2,
+    }}
+  >
+    Glad to see you back in your profile.
+  </div>
+</div>
+
+
+
+  <div className="container-fluid px-0" style={{ maxWidth: 1600, margin: "0 auto" }}>
+    <div className="row gx-5 gy-5 px-1 px-lg-4 py-4">
+      {/* Profile Left Section */}
+      <div className="col-12 col-lg-5">
+        {/* Profile Card */}
+        <div
+          className="shadow"
           style={{
-            background: colorMap[(profile?.role as Role) || "default"],
-            color: "#fff",
-            fontSize: 15,
-            marginLeft: 12,
-            padding: "8px 14px",
-            borderRadius: 16,
-            letterSpacing: 1,
-            fontWeight: 500
-          }}>
-          {editProfile
-            ? (
-              <select
-                className="form-select d-inline-block"
-                style={{ width: 120, display: "inline", fontWeight: 500, fontSize: 15, color: "#222" }}
-                value={editValues.role}
-                onChange={e => setEditValues(v => ({ ...v, role: e.target.value }))}
+            borderRadius: 28,
+            background: "linear-gradient(120deg,#fff 70%,#ffebee 100%)",
+            border: "2.5px solid #DF2E3811",
+            boxShadow: "0 6px 24px #ffd6e133",
+            minHeight: 260,
+            marginBottom: 36,
+            padding: 0,
+          }}
+        >
+          <div className="p-4 d-flex align-items-center">
+            <div
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg,#DF2E3840 0,#DF2E3815 100%)",
+                color: "#DF2E38",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 34,
+                marginRight: 26,
+                border: "3px solid #DF2E3822",
+                letterSpacing: 1,
+              }}
+            >
+              {(profile?.firstName?.[0] || "") + (profile?.lastName?.[0] || "")}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 27, color: "#232323" }}>
+                {profile?.firstName} {profile?.lastName}
+              </div>
+              <span
+                className="badge"
+                style={{
+                  background: "#DF2E38",
+                  color: "#fff",
+                  borderRadius: 14,
+                  fontWeight: 600,
+                  fontSize: 15,
+                  letterSpacing: 1,
+                  padding: "7px 18px",
+                  marginTop: 7,
+                }}
               >
-                <option value="player">Player</option>
-                <option value="parent">Parent</option>
-              </select>
-            ) : (
-              profile?.role
-                ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
-                : ""
-            )
-          }
-        </span>
-      </h2>
-      <div className="mb-1" style={{ fontSize: 14, color: "#666" }}>{firebaseUser?.email}</div>
-    </div>
-    <div>
-      {editProfile ? (
-        <>
-          <button
-            className="btn btn-success btn-sm me-2"
-            disabled={savingEdit}
-            onClick={async () => {
-              setEditError(null);
-              if (!editValues.firstName.trim() || !editValues.lastName.trim()) {
-                setEditError("Please enter your first and last name.");
-                return;
-              }
-              // Password section
-              if (editValues.password || editValues.confirmPassword) {
-                if (
-                  !pwStrength.length ||
-                  !pwStrength.upper ||
-                  !pwStrength.lower ||
-                  !pwStrength.digit ||
-                  !pwStrength.hasSpecial
-                ) {
-                  setEditError("Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character.");
-                  return;
-                }
-                if (editValues.password !== editValues.confirmPassword) {
-                  setEditError("Passwords do not match.");
-                  return;
-                }
-                if (!auth.currentUser) {
-                  setEditError("You must be logged in to change your password.");
-                  return;
-                }
-                setSavingEdit(true);
-                try {
-                  await updatePassword(auth.currentUser, editValues.password);
-                } catch (err: any) {
-                  setEditError("Error changing password.");
+                {profile?.role
+                  ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
+                  : ""}
+              </span>
+              <div style={{ color: "#555", fontSize: 15, marginTop: 8 }}>
+                <span>{profile?.email}</span>
+              </div>
+              <div className="mt-3">
+                <button
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={() => setEditProfile(true)}
+                >
+                  Edit Profile
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* Edit Profile Inline Panel */}
+          {editProfile && (
+            <div className="px-4 pt-0 pb-3">
+              {/* Edit fields, same as your previous code, with new styles */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setEditError(null);
+                  if (!editValues.firstName.trim() || !editValues.lastName.trim()) {
+                    setEditError("Please enter your first and last name.");
+                    return;
+                  }
+                  // Password section
+                  if (editValues.password || editValues.confirmPassword) {
+                    if (
+                      !pwStrength.length ||
+                      !pwStrength.upper ||
+                      !pwStrength.lower ||
+                      !pwStrength.digit ||
+                      !pwStrength.hasSpecial
+                    ) {
+                      setEditError("Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character.");
+                      return;
+                    }
+                    if (editValues.password !== editValues.confirmPassword) {
+                      setEditError("Passwords do not match.");
+                      return;
+                    }
+                    if (!auth.currentUser) {
+                      setEditError("You must be logged in to change your password.");
+                      return;
+                    }
+                    setSavingEdit(true);
+                    try {
+                      await updatePassword(auth.currentUser, editValues.password);
+                    } catch (err: any) {
+                      setEditError("Error changing password.");
+                      setSavingEdit(false);
+                      return;
+                    }
+                  }
+                
+                  setSavingEdit(true);
+                  try {
+                    await updateDocumentFields("users", firebaseUser.uid, {
+                      firstName: editValues.firstName,
+                      lastName: editValues.lastName,
+                      role: editValues.role
+                    });
+                    setProfile({ ...profile, ...editValues, password: undefined, confirmPassword: undefined });
+                    setEditProfile(false);
+                  } catch (err: any) {
+                    setEditError("Error saving changes. Try again.");
+                  }
                   setSavingEdit(false);
-                  return;
-                }
-              }
-            
-              setSavingEdit(true);
-              try {
-                await updateDocumentFields("users", firebaseUser.uid, {
-                  firstName: editValues.firstName,
-                  lastName: editValues.lastName,
-                  role: editValues.role
-                });
-                setProfile({ ...profile, ...editValues, password: undefined, confirmPassword: undefined });
-                setEditProfile(false);
-              } catch (err: any) {
-                setEditError("Error saving changes. Try again.");
-              }
-              setSavingEdit(false);
+                }}
+                
+              >
+                <div className="row mb-2">
+                  <div className="col">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="First Name"
+                      value={editValues.firstName}
+                      onChange={(e) =>
+                        setEditValues((v) => ({
+                          ...v,
+                          firstName: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="col">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Last Name"
+                      value={editValues.lastName}
+                      onChange={(e) =>
+                        setEditValues((v) => ({
+                          ...v,
+                          lastName: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <select
+                    className="form-select"
+                    value={editValues.role}
+                    onChange={(e) =>
+                      setEditValues((v) => ({
+                        ...v,
+                        role: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="player">Player</option>
+                    <option value="parent">Parent</option>
+                  </select>
+                </div>
+                <div className="mb-2" style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control"
+                    placeholder="New Password"
+                    value={editValues.password}
+                    onChange={(e) =>
+                      setEditValues((v) => ({
+                        ...v,
+                        password: e.target.value,
+                      }))
+                    }
+                    autoComplete="new-password"
+                    style={{ paddingRight: 42 }}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((s) => !s)}
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: 7,
+                      border: "none",
+                      background: "none",
+                      color: "#B71C1C",
+                      fontWeight: 700,
+                      fontSize: 22,
+                      cursor: "pointer",
+                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+                <div className="mb-2">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control"
+                    placeholder="Confirm Password"
+                    value={editValues.confirmPassword}
+                    onChange={(e) =>
+                      setEditValues((v) => ({
+                        ...v,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    autoComplete="new-password"
+                  />
+                </div>
+                {/* Password rule checks */}
+                <ul
+                  className="mt-2 mb-1 ps-4"
+                  style={{
+                    fontSize: 13,
+                    color: "#888",
+                    listStyle: "disc inside",
+                  }}
+                >
+                  {passwordRules.map((rule) => (
+                    <li
+                      key={rule.key}
+                      style={{
+                        color: checkPasswordStrength(editValues.password)[
+                          rule.key as keyof typeof checkPasswordStrength
+                        ]
+                          ? "#51c775"
+                          : "#aaa",
+                      }}
+                    >
+                      {rule.text}
+                    </li>
+                  ))}
+                </ul>
+                {editError && (
+                  <div className="alert alert-danger mt-1 py-1">
+                    {editError}
+                  </div>
+                )}
+                <div className="d-flex gap-2 mt-2">
+                  <button
+                    type="submit"
+                    className="btn btn-danger btn-sm"
+                    disabled={savingEdit}
+                  >
+                    {savingEdit ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => setEditProfile(false)}
+                    disabled={savingEdit}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+        {/* Linked Players */}
+        {profile && profile.role !== "player" && (
+          <div
+            className="mb-4"
+            style={{
+              background: "#fff",
+              borderRadius: 20,
+              padding: "22px 26px 14px 26px",
+              border: "2px solid #f5d7dc",
+              marginTop: 4,
+              boxShadow: "0 1.5px 8px #ffd6e144",
             }}
           >
-            {savingEdit ? "Saving..." : "Save"}
-          </button>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={savingEdit}
-            onClick={() => setEditProfile(false)}
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <button className="btn btn-outline-primary btn-sm" onClick={() => setEditProfile(true)}>
-          Edit Profile
-        </button>
-      )}
-    </div>
-  </div>
-  {editError && (
-    <div className="px-4 pb-2">
-      <div className="alert alert-danger py-2 mb-0">{editError}</div>
-    </div>
-  )}
-  {/* Show password section only during edit */}
-  {editProfile && (
-  <div className="px-4 pb-3">
-    <div className="form-group mt-2" style={{ position: "relative" }}>
-      <label>New Password</label>
-      <input
-        type={showPassword ? "text" : "password"}
-        className={`form-control ${editValues.password && (
-          !pwStrength.length ||
-          !pwStrength.upper ||
-          !pwStrength.lower ||
-          !pwStrength.digit ||
-          !pwStrength.hasSpecial
-        ) ? "is-invalid" : ""}`}
-        value={editValues.password}
-        onChange={e => setEditValues(v => ({ ...v, password: e.target.value }))}
-        autoComplete="new-password"
-        style={{ paddingRight: 40 }}
-        placeholder="Leave blank to keep current password"
-      />
-      <button
-        type="button"
-        onClick={() => setShowPassword(s => !s)}
-        style={{
-          position: "absolute",
-          right: 10,
-          top: "55%",
-          transform: "translateY(-50%)",
-          border: "none",
-          background: "none",
-          padding: 0,
-          margin: 0,
-          cursor: "pointer",
-          zIndex: 2
-        }}
-        tabIndex={-1}
-        aria-label={showPassword ? "Hide password" : "Show password"}
-      >
-        {showPassword ? "🙈" : "👁️"}
-      </button>
-      <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
-        {passwordRules.map((rule) => (
-          <li key={rule.key} style={{
-            color: pwStrength[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
-          }}>
-            {rule.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-    <div className="form-group mt-2" style={{ position: "relative" }}>
-      <label>Confirm Password</label>
-      <input
-        type={showPassword ? "text" : "password"}
-        className={`form-control ${!pwMatch && editValues.confirmPassword ? "is-invalid" : ""}`}
-        value={editValues.confirmPassword}
-        onChange={e => setEditValues(v => ({ ...v, confirmPassword: e.target.value }))}
-        autoComplete="new-password"
-        style={{ paddingRight: 40 }}
-        placeholder="Confirm new password"
-      />
-      {!pwMatch && editValues.confirmPassword && (
-        <div className="invalid-feedback" style={{ display: "block" }}>
-          Passwords do not match.
-        </div>
-      )}
-    </div>
-  </div>
-)}
-
-
-
-          {/* LINKED PLAYERS */}
-          {profile && profile.role !== "player" && (
             <div
-              className="card card-body mb-4"
               style={{
-                background: "#fffbe6",
-                borderLeft: "5px solid #ffd766",
-                borderRadius: 14
-              }}>
-              <h5 style={{ color: "#ffb800" }}>Linked Players</h5>
-              {linkedPlayerNames.length ? (
-                <div className="mb-2 d-flex flex-wrap">
-                  {linkedPlayerNames.map((n, i) => (
-                    <span key={i} className="badge badge-pill mr-2 mb-2" style={{
-                      background: "#6ecbe6", color: "#215",
-                      fontSize: 14, padding: "8px 12px"
-                    }}>
+                fontWeight: 700,
+                color: "#DF2E38",
+                letterSpacing: 1,
+                fontSize: 17,
+                marginBottom: 7,
+              }}
+            >
+              Linked Players
+            </div>
+            <div className="d-flex flex-wrap gap-2 mb-2">
+              {linkedPlayerNames.length
+                ? linkedPlayerNames.map((n, i) => (
+                    <span
+                      key={i}
+                      className="badge"
+                      style={{
+                        background: "#ffebee",
+                        color: "#B71C1C",
+                        border: "1.2px solid #DF2E3830",
+                        borderRadius: 16,
+                        padding: "7px 16px",
+                        fontWeight: 600,
+                      }}
+                    >
                       {n}
                       <button
-                        className="btn btn-sm btn-danger ml-2"
-                        style={{ padding: "2px 8px", fontSize: 12 }}
+                        className="btn btn-link btn-sm"
+                        style={{
+                          color: "#DF2E38",
+                          marginLeft: 8,
+                          fontWeight: 900,
+                          fontSize: 16,
+                          padding: 0,
+                        }}
                         onClick={async () => {
                           const playerUid = linkedPlayers[i];
                           await updateDocumentFields("users", firebaseUser.uid, {
@@ -530,111 +678,177 @@ useEffect(() => {
                           });
                           setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
                           await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
-                        }}>
+                        }}
+                      >
                         ×
                       </button>
                     </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted">No linked players yet.</p>
-              )}
-              <button className="btn btn-outline-primary mt-2" onClick={() => setShowEditLinked(v => !v)}>
-                {showEditLinked ? "Cancel" : "Edit Linked Players"}
-              </button>
-            </div>
-          )}
-
-          {/* ADD LINKED PLAYERS */}
-          {showEditLinked && profile && profile.role !== "player" && (
-            <div className="card card-body mb-3" style={{ background: "#f1f7ff", borderRadius: 12 }}>
-              <div className="form-group">
-                <label>Select a player to link:</label>
-                <select
-                  className="form-control"
-                  value={selectedPlayerUid}
-                  onChange={e => setSelectedPlayerUid(e.target.value)}
-                >
-                  <option value="">-- Select a player --</option>
-                  {allPlayers
-                    .filter(p => !linkedPlayers.includes(p.id))
-                    .map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName} ({p.id})
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <button
-                className="btn btn-success mt-2"
-                disabled={!selectedPlayerUid}
-                onClick={async () => {
-                  if (!selectedPlayerUid) return;
-                  await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
-                  setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
-                  setSelectedPlayerUid("");
-                  await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
-                }}
-              >
-                Add Linked Player
-              </button>
-            </div>
-          )}
-
-          {/* ======= MY SIGNUPS ======= */}
-          <div className="card p-4 shadow-sm mb-4" style={{
-            background: "linear-gradient(90deg,#f6ffed 0,#e3f6fc 100%)",
-            border: "none", borderRadius: 14
-          }}>
-            <h4 className="mb-3" style={{ color: "#0a8754" }}>My Tournament Signups</h4>
-            {loadingSignups ? (
-              <div>Loading tournaments...</div>
-            ) : (
-              <div style={{ maxHeight: 300, overflowY: "auto" }}>
-                {tournaments.length === 0 && (
-                  <div>No upcoming tournaments found.</div>
+                  ))
+                : (
+                  <span className="text-muted" style={{ fontSize: 15 }}>
+                    No linked players yet.
+                  </span>
                 )}
-                {tournaments.map((t) => {
-                  const signupStatus = mySignups[t.id];
-                  const label = signupStatus?.signedUp
-                    ? availabilityLabel(signupStatus?.availability)
-                    : "Not Signed Up";
-                  return (
-                    <div key={t.id}
-                      className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2"
-                      style={{ borderColor: "#dde8ef" }}
-                    >
-                      <div>
-                        <Link to={`/tournament/${t.id}`}
-                          style={{ textDecoration: "none", fontWeight: 500, color: "#2e3a59" }}>
-                          <span role="img" aria-label="calendar" style={{ fontSize: 18, marginRight: 6 }}>📅</span>
-                          {t.eventName}
-                        </Link>
-                        <div style={{ fontSize: 13, color: "#7fa2b2" }}>{t.date}</div>
-                      </div>
-                      <span
-                        className="badge badge-pill"
+            </div>
+            <button
+              className="btn btn-outline-danger btn-sm"
+              onClick={() => setShowEditLinked((v) => !v)}
+            >
+              {showEditLinked ? "Cancel" : "Edit Linked Players"}
+            </button>
+            {/* Edit Linked Players Section */}
+            {showEditLinked && profile && profile.role !== "player" && (
+  <div className="card card-body mb-3"
+  style={{ background: "#f1f7ff", borderRadius: 16, boxShadow: "0 3px 12px #c8dfff22", border: "1.5px solid #e3e6ff" }}>
+<div className="d-flex align-items-end gap-2">
+ <div style={{ flex: 1 }}>
+   <label style={{ fontWeight: 500, color: "#2949B8", marginBottom: 5 }}>Select a player to link:</label>
+   <select
+     className="form-select"
+     value={selectedPlayerUid}
+     style={{
+       border: "1.5px solid #d0e4ff",
+       borderRadius: 10,
+       padding: "8px 12px",
+       fontSize: 15,
+       background: "#fff",
+       marginBottom: 0,
+     }}
+     onChange={e => setSelectedPlayerUid(e.target.value)}
+   >
+     <option value="">-- Select a player --</option>
+     {allPlayers
+       .filter(p => !linkedPlayers.includes(p.id))
+       .map(p => (
+         <option key={p.id} value={p.id}>
+           {p.firstName} {p.lastName} ({p.id})
+         </option>
+       ))}
+   </select>
+ </div>
+ <button
+   className="btn btn-danger"
+   style={{
+     minWidth: 130,
+     borderRadius: 10,
+     marginLeft: 16,
+     fontWeight: 600,
+     padding: "9px 0"
+   }}
+   disabled={!selectedPlayerUid}
+   onClick={async () => {
+     if (!selectedPlayerUid) return;
+     await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
+     setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
+     setSelectedPlayerUid("");
+     await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
+   }}
+ >
+   <span style={{ fontSize: 16 }}>➕</span> Add Player
+ </button>
+</div>
+</div>
+)}
+          </div>
+        )}
+      </div>
+
+      {/* Main Right Section: Tournament Signups */}
+      <div className="col-12 col-lg-7">
+        <div
+          className="shadow"
+          style={{
+            borderRadius: 28,
+            background: "linear-gradient(120deg,#fff 70%,#fff6f7 100%)",
+            border: "2.5px solid #DF2E3811",
+            boxShadow: "0 6px 24px #ffd6e133",
+            minHeight: 320,
+            padding: 0,
+          }}
+        >
+          <div className="p-4">
+            <h4 style={{ color: "#DF2E38", fontWeight: 700, marginBottom: 18 }}>
+              My Tournament Signups
+            </h4>
+            {loadingSignups ? (
+              <div style={{ color: "#aaa", fontSize: 17 }}>Loading tournaments...</div>
+            ) : (
+              <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                {tournaments.length === 0 ? (
+                  <div style={{ color: "#B71C1C", fontSize: 16 }}>
+                    No upcoming tournaments found.
+                  </div>
+                ) : (
+                  tournaments.map((t) => {
+                    const signupStatus = mySignups[t.id];
+                    const label = signupStatus?.signedUp
+                      ? availabilityLabel(signupStatus?.availability)
+                      : "Not Signed Up";
+                    return (
+                      <div
+                        key={t.id}
+                        className="d-flex align-items-center justify-content-between mb-3 pb-2"
                         style={{
-                          background: statusColor(label),
-                          color: "#fff",
-                          fontSize: 15,
-                          padding: "8px 20px"
-                        }}>
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })}
+                          borderBottom: "1px solid #f3d2d9",
+                        }}
+                      >
+                        <div>
+                          <Link
+                            to={`/tournament/${t.id}`}
+                            style={{
+                              textDecoration: "none",
+                              fontWeight: 600,
+                              color: "#232323",
+                              fontSize: 17,
+                            }}
+                          >
+                            <span
+                              role="img"
+                              aria-label="calendar"
+                              style={{
+                                fontSize: 18,
+                                marginRight: 8,
+                                color: "#DF2E38",
+                              }}
+                            >
+                              📅
+                            </span>
+                            {t.eventName}
+                          </Link>
+                          <div style={{ fontSize: 13, color: "#888" }}>
+                            {t.date}
+                          </div>
+                        </div>
+                        <span
+                          className="badge badge-pill"
+                          style={{
+                            background: statusColor(label),
+                            color: "#fff",
+                            fontSize: 15,
+                            padding: "8px 22px",
+                            fontWeight: 600,
+                            borderRadius: 13,
+                            letterSpacing: 1,
+                          }}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>
-    </div>
+  </div>
+  <Footer />
+</div>
   );
 };
+
 
 
 export default ProfileScreen;

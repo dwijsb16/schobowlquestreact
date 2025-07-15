@@ -7,6 +7,14 @@ import { db } from "../.firebase/utils/firebase";
 import { Eye, EyeOff } from "lucide-react";
 import emailjs from "emailjs-com";
 
+const RED = "#DF2E38";
+const DARK_RED = "#B71C1C";
+const BLACK = "#212121";
+const GREY = "#888";
+const LIGHT_GREY = "#f7f7f7";
+const WHITE = "#fff";
+const GREEN = "#51c775";
+
 const GRADE_OPTIONS = ["5th", "6th", "7th", "8th"];
 const VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 mins in ms
 
@@ -291,141 +299,222 @@ const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="container">
-      <div className="row justify-content-center mt-5 mb-5">
+    <div className="container-fluid" style={{ background: LIGHT_GREY, minHeight: "100vh" }}>
+      <div className="row justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
         <div className="col-md-7 col-lg-6">
-          <div className="card shadow-lg p-4" style={{ borderRadius: 18 }}>
-            <h2 className="text-center mb-4" style={{ color: "#0058c9", fontWeight: 700 }}>
+          <div className="card shadow-lg p-4" style={{
+            borderRadius: 18,
+            border: `1.8px solid ${RED}22`,
+            background: WHITE,
+            boxShadow: "0 2px 32px #d1a2a822"
+          }}>
+            <h2 className="text-center mb-4" style={{
+              color: RED,
+              fontWeight: 700,
+              letterSpacing: 0.5
+            }}>
               {currentUser ? "Complete Your Profile" : "Create an Account"}
             </h2>
             {/* ---------- GOOGLE LOADING SPINNER OR FORM ---------- */}
-              <form onSubmit={handleSignup}>
-                <div className="form-group mb-3">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    autoComplete="username"
-                    disabled={fromGoogle}
-                  />
-                  {!emailValid && (
-                    <div className="invalid-feedback">
-                      Please enter a valid email address.
-                    </div>
-                  )}
-                </div>
-                <div className="form-group mb-3">
-  <label>Password</label>
-  <input
-    type="password"
-    className={`form-control ${error && password ? "is-invalid" : ""}`}
-    value={password}
-    onChange={e => setPassword(e.target.value)}
-    required
-    autoComplete="new-password"
-    disabled={showVerification || !!auth.currentUser}
-  />
-  <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: "#777" }}>
-    {passwordRules.map((rule) => (
-      <li key={rule.key} style={{
-        color: checkPasswordStrength(password)[rule.key as keyof typeof pwStrength] ? "#51c775" : "#aaa"
-      }}>
-        {rule.text}
-      </li>
-    ))}
-  </ul>
-</div>
-<div className="form-group mb-3">
-  <label>Confirm Password</label>
-  <input
-    type="password"
-    className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
-    value={confirmPassword}
-    onChange={e => setConfirmPassword(e.target.value)}
-    required
-    autoComplete="new-password"
-    disabled={showVerification || !!auth.currentUser}
-  />
-  {!pwMatch && confirmPassword && (
-    <div className="invalid-feedback" style={{ display: "block" }}>
-      Passwords do not match.
-    </div>
-  )}
-</div>
-
-                <div className="form-group mb-3">
-                  <label>First Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    required
-                    disabled={showVerification}
-                  />
-                </div>
-                <div className="form-group mb-3">
-                  <label>Last Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    required
-                    disabled={showVerification}
-                  />
-                </div>
-                <div className="form-group mb-3">
-                  <label>Role</label>
-                  <select
-                    className="form-control"
-                    value={role}
-                    onChange={e => setRole(e.target.value)}
-                    required
-                    disabled={showVerification}
-                  >
-                    <option value="player">Player</option>
-                    <option value="parent">Parent</option>
-                  </select>
-                </div>
-                {role === "player" && (
-                  <div className="form-group mb-3">
-                    <label>Grade</label>
-                    <select
-                      className="form-control"
-                      value={grade}
-                      onChange={e => setGrade(e.target.value)}
-                      required
-                      disabled={showVerification}
-                    >
-                      <option value="">Select grade</option>
-                      {GRADE_OPTIONS.map((g) => (
-                        <option value={g} key={g}>{g}</option>
-                      ))}
-                    </select>
+            <form onSubmit={handleSignup}>
+              <div className="form-group mb-3">
+                <label style={{ fontWeight: 500, color: BLACK }}>Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="username"
+                  disabled={fromGoogle}
+                  style={{
+                    borderRadius: 12,
+                    border: `1.3px solid ${LIGHT_GREY}`,
+                    background: WHITE,
+                    color: BLACK
+                  }}
+                />
+                {!emailValid && (
+                  <div className="invalid-feedback" style={{ display: "block", color: RED }}>
+                    Please enter a valid email address.
                   </div>
                 )}
-                {error && <div className="alert alert-danger mt-2">{error}</div>}
-                <button className="btn btn-primary mt-3 w-100" type="submit" disabled={showVerification}>
-                  {currentUser ? "Save Profile" : "Sign Up"}
+              </div>
+              {/* --- Password --- */}
+              <div className="form-group mb-3" style={{ position: "relative" }}>
+                <label style={{ fontWeight: 500, color: BLACK }}>Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className={`form-control ${error && password ? "is-invalid" : ""}`}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  disabled={showVerification || !!auth.currentUser}
+                  style={{
+                    borderRadius: 12,
+                    border: `1.3px solid ${LIGHT_GREY}`,
+                    background: WHITE,
+                    color: BLACK,
+                    paddingRight: 40,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  tabIndex={-1}
+                  style={{
+                    position: "absolute",
+                    right: 14,
+                    top: "65%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    zIndex: 2,
+                    color: DARK_RED,
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                 </button>
-              </form>
+                <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: GREY }}>
+                  {passwordRules.map((rule) => (
+                    <li key={rule.key} style={{
+                      color: checkPasswordStrength(password)[rule.key as keyof typeof pwStrength] ? GREEN : "#aaa"
+                    }}>
+                      {rule.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {/* --- Confirm Password --- */}
+              <div className="form-group mb-3">
+                <label style={{ fontWeight: 500, color: BLACK }}>Confirm Password</label>
+                <input
+                  type="password"
+                  className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  disabled={showVerification || !!auth.currentUser}
+                  style={{
+                    borderRadius: 12,
+                    border: `1.3px solid ${LIGHT_GREY}`,
+                    background: WHITE,
+                    color: BLACK
+                  }}
+                />
+                {!pwMatch && confirmPassword && (
+                  <div className="invalid-feedback" style={{ display: "block", color: RED }}>
+                    Passwords do not match.
+                  </div>
+                )}
+              </div>
+              <div className="form-group mb-3">
+                <label style={{ fontWeight: 500, color: BLACK }}>First Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  required
+                  disabled={showVerification}
+                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                />
+              </div>
+              <div className="form-group mb-3">
+                <label style={{ fontWeight: 500, color: BLACK }}>Last Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  required
+                  disabled={showVerification}
+                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                />
+              </div>
+              <div className="form-group mb-3">
+                <label style={{ fontWeight: 500, color: BLACK }}>Role</label>
+                <select
+                  className="form-control"
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  required
+                  disabled={showVerification}
+                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                >
+                  <option value="player">Player</option>
+                  <option value="parent">Parent</option>
+                </select>
+              </div>
+              {role === "player" && (
+                <div className="form-group mb-3">
+                  <label style={{ fontWeight: 500, color: BLACK }}>Grade</label>
+                  <select
+                    className="form-control"
+                    value={grade}
+                    onChange={e => setGrade(e.target.value)}
+                    required
+                    disabled={showVerification}
+                    style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                  >
+                    <option value="">Select grade</option>
+                    {GRADE_OPTIONS.map((g) => (
+                      <option value={g} key={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {error && <div className="alert alert-danger mt-2" style={{
+                background: "#ffeef0",
+                color: RED,
+                border: `1px solid #ffd3db`
+              }}>{error}</div>}
+              <button
+                className="btn mt-3 w-100"
+                type="submit"
+                disabled={showVerification}
+                style={{
+                  background: `linear-gradient(90deg,${RED} 0,${DARK_RED} 100%)`,
+                  color: WHITE,
+                  fontWeight: 600,
+                  borderRadius: 12,
+                  padding: "12px 0",
+                  fontSize: 16,
+                  border: "none",
+                  boxShadow: "0 2px 12px #f2b8bb55"
+                }}
+              >
+                {currentUser ? "Save Profile" : "Sign Up"}
+              </button>
+            </form>
             {/* --- VERIFICATION CODE ENTRY --- */}
             {showVerification && (
-              <div className="card mt-4 p-3" style={{ borderRadius: 10, background: "#f6fafd" }}>
-                <h5 style={{ color: "#0a8754" }}>Email Verification</h5>
-                <p>
+              <div className="card mt-4 p-3" style={{
+                borderRadius: 10,
+                background: "#fff8f8",
+                border: `1.5px solid #fad5da`
+              }}>
+                <h5 style={{ color: RED, fontWeight: 700 }}>Email Verification</h5>
+                <p style={{ color: BLACK }}>
                   A 6-digit code was sent to <b>{email}</b>.<br />
                   Please enter it below.<br />
-                  <span style={{ color: "#888" }}>Expires in: <b>{formatTimer(timer)}</b></span>
+                  <span style={{ color: GREY }}>Expires in: <b>{formatTimer(timer)}</b></span>
                 </p>
                 <form onSubmit={handleVerify} className="d-flex mb-2">
                   <input
                     className="form-control mr-2"
-                    style={{ maxWidth: 150, letterSpacing: "0.2em" }}
+                    style={{
+                      maxWidth: 150,
+                      letterSpacing: "0.2em",
+                      borderRadius: 12,
+                      border: `1.2px solid ${LIGHT_GREY}`,
+                      background: WHITE,
+                      color: BLACK
+                    }}
                     maxLength={6}
                     type="text"
                     pattern="\d{6}"
@@ -441,27 +530,51 @@ const SignupPage: React.FC = () => {
                     required
                   />
                   <button
-                    className="btn btn-success"
+                    className="btn"
                     type="submit"
                     disabled={verifStatus === "success" || timer <= 0}
+                    style={{
+                      background: GREEN,
+                      color: WHITE,
+                      fontWeight: 600,
+                      borderRadius: 8,
+                      border: "none",
+                      marginLeft: 12,
+                    }}
                   >
                     Verify
                   </button>
                 </form>
                 {verifStatus === "success" && (
-                  <div className="alert alert-success">Success! Verified.</div>
+                  <div className="alert alert-success" style={{
+                    background: "#f0fcf5",
+                    color: GREEN,
+                    border: "1px solid #c1efdb"
+                  }}>Success! Verified.</div>
                 )}
                 {verifStatus === "expired" && (
-                  <div className="alert alert-warning">
+                  <div className="alert alert-warning" style={{
+                    background: "#fff7eb",
+                    color: "#ff9e36",
+                    border: "1px solid #ffe4bd"
+                  }}>
                     Code expired. Please click "Resend Email".
                   </div>
                 )}
                 {verifError && (
-                  <div className="alert alert-danger">{verifError}</div>
+                  <div className="alert alert-danger" style={{
+                    background: "#ffeef0",
+                    color: RED,
+                    border: "1px solid #ffd3db"
+                  }}>{verifError}</div>
                 )}
                 <button
                   className="btn btn-link"
-                  style={{ color: "#0058c9" }}
+                  style={{
+                    color: RED,
+                    fontWeight: 600,
+                    textDecoration: "underline"
+                  }}
                   onClick={handleResend}
                   disabled={resending || timer > 0}
                 >

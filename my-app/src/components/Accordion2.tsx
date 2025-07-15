@@ -2,6 +2,25 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
+import Footer from "../components/footer";
+
+
+// --- SVG Chevron Icon ---
+const Chevron = ({ open }: { open: boolean }) => (
+  <svg
+    width="24"
+    height="24"
+    style={{
+      transform: open ? "rotate(90deg)" : "rotate(0deg)",
+      transition: "transform .22s cubic-bezier(.87, .18, .51, 1.15)",
+      verticalAlign: "middle"
+    }}
+    viewBox="0 0 24 24"
+    fill="none"
+  >
+    <path d="M9 6l6 6-6 6" stroke="#DF2E38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 const Accordion: React.FC = () => {
   const [tournaments, setTournaments] = useState<any[]>([]);
@@ -52,75 +71,95 @@ const Accordion: React.FC = () => {
     fetchAll();
   }, []);
 
+  
   return (
-    <div id="accordion1" role="tablist">
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+  <div style={{ flex: 1 }}>
       {tournaments.map((tournament, index) => (
-        <div className="card mb-2" key={tournament.id}>
-          <div className="card-header" role="tab" id={`heading${index}`}>
-            <h5 className="mb-0">
-              <a
-                data-toggle="collapse"
-                href={`#collapse${index}`}
-                role="button"
-                aria-expanded={expanded === index}
-                aria-controls={`collapse${index}`}
-                onClick={() => setExpanded(expanded === index ? null : index)}
-                style={{ cursor: "pointer", textDecoration: "none", color: "#1469a8" }}
-              >
-                {tournament.eventName} {tournament.date ? `(${tournament.date})` : ""}
-              </a>
-            </h5>
+        <div
+          className="card mb-3 border-0 shadow-sm"
+          key={tournament.id}
+          style={{
+            borderLeft: "6px solid #DF2E38",
+            borderRadius: 18,
+            background: "#fff",
+            boxShadow: "0 2px 18px #FFD6E115"
+          }}
+        >
+          <div
+            className="card-header d-flex align-items-center justify-content-between"
+            style={{
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              background: "#fff",
+              padding: "1rem 1.3rem",
+              cursor: "pointer"
+            }}
+            onClick={() => setExpanded(expanded === index ? null : index)}
+          >
+            <div style={{ fontWeight: 700, fontSize: 20, color: "#232323", letterSpacing: 0.2 }}>
+              {tournament.eventName}{" "}
+              <span style={{ color: "#666", fontWeight: 400, fontSize: 15 }}>
+                {tournament.date ? `(${tournament.date})` : ""}
+              </span>
+            </div>
+            <Chevron open={expanded === index} />
           </div>
           <div
-            id={`collapse${index}`}
             className={`collapse${expanded === index ? " show" : ""}`}
+            style={{
+              background: "#fafbfc",
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
+              borderTop: "1px solid #f0f0f0"
+            }}
+            id={`collapse${index}`}
             role="tabpanel"
             aria-labelledby={`heading${index}`}
-            data-parent="#accordion1"
           >
-            <div className="card-body">
-              <p><b>Location:</b> {tournament.location || <span className="text-muted">N/A</span>}</p>
+            <div className="card-body" style={{ color: "#232323" }}>
+              <p><b style={{color:"#DF2E38"}}>Location:</b> {tournament.location || <span className="text-muted">N/A</span>}</p>
               <p>
-                <b>Start/End Time:</b>{" "}
+                <b style={{color:"#232323"}}>Start/End Time:</b>{" "}
                 {tournament.startTime ? `Start: ${tournament.startTime}` : ""}
                 {tournament.endTime ? `, End: ${tournament.endTime}` : ""}
                 {!tournament.startTime && !tournament.endTime && <span className="text-muted">N/A</span>}
               </p>
               <p>
-                <b>Players Coming:</b>{" "}
+                <b style={{color:"#232323"}}>Players Coming:</b>{" "}
                 {tournament.players.length > 0
                   ? tournament.players.join(", ")
                   : <span className="text-muted">None yet</span>}
               </p>
               <p>
-                <b>Teams:</b>{" "}
+                <b style={{color:"#232323"}}>Teams:</b>{" "}
                 {tournament.teams.length > 0
                   ? tournament.teams.join(", ")
                   : <span className="text-muted">No teams yet</span>}
               </p>
-              <p><b>Shirt Color:</b> {tournament.shirtColor || <span className="text-muted">N/A</span>}</p>
+              <p><b style={{color:"#232323"}}>Shirt Color:</b> {tournament.shirtColor || <span className="text-muted">N/A</span>}</p>
               <p>
-                <b>People who can Carpool:</b>{" "}
+                <b style={{color:"#232323"}}>People who can Carpool:</b>{" "}
                 {tournament.carpoolers.length > 0
                   ? tournament.carpoolers.join(", ")
                   : <span className="text-muted">None</span>}
               </p>
               <p>
-                <b>People who can Moderate:</b>{" "}
+                <b style={{color:"#232323"}}>People who can Moderate:</b>{" "}
                 {tournament.moderators.length > 0
                   ? tournament.moderators.join(", ")
                   : <span className="text-muted">None</span>}
               </p>
               {tournament.additionalInfo && (
                 <p>
-                  <b>Notes:</b> {tournament.additionalInfo}
+                  <b style={{color:"#232323"}}>Notes:</b> {tournament.additionalInfo}
                 </p>
               )}
               <div className="d-flex gap-3 mt-3">
-                <Link to={`/edit-tournament`} className="btn btn-warning">
+                <Link to={`/edit-tournament`} className="btn btn-danger rounded-pill px-4">
                   Edit Tournament Info
                 </Link>
-                <Link to={`/make-teams`} className="btn btn-success">
+                <Link to={`/make-teams`} className="btn btn-dark rounded-pill px-4">
                   Add Teams
                 </Link>
               </div>
@@ -134,7 +173,9 @@ const Accordion: React.FC = () => {
         </div>
       )}
     </div>
+    </div>
   );
 };
+
 
 export default Accordion;

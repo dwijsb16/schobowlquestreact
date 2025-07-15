@@ -7,11 +7,9 @@ const login: React.FC = () => {
   return (
     <div>
       <Navbar />
-      <div className="container">
         <LoginForm />
-      </div>
       <Footer />
-    </div>
+      </div>
   );
 };
 

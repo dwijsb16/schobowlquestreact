@@ -220,51 +220,75 @@ const EditTournamentForm: React.FC = () => {
 
   // --- Render ---
   return (
-    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", background: "linear-gradient(110deg, #e8f1fa 60%, #fffbe7 100%)" }}>
-      <div className="card shadow" style={{
-        maxWidth: 700,
-        width: "100%",
-        borderRadius: 24,
-        border: "none",
-        boxShadow: "0 4px 36px #b4d3fb60",
-        margin: "40px 0"
+    <div className="container d-flex justify-content-center align-items-center"
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(120deg, #fff 60%, #F7F7F7 100%)"
       }}>
-        <div style={{
-          background: "linear-gradient(90deg, #43b0f1 0, #ffe17b 120%)",
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          padding: "30px 28px 20px 28px"
+      <div className="card shadow"
+        style={{
+          maxWidth: 700,
+          width: "100%",
+          borderRadius: 24,
+          border: "none",
+          boxShadow: "0 4px 36px #df2e3810",
+          margin: "40px 0",
+          background: "#fff"
         }}>
-          <h2 className="mb-2 text-center" style={{
-            color: "#253c60",
-            fontWeight: 800,
-            letterSpacing: "1.2px"
-          }}>
+        <div style={{
+          background: "linear-gradient(90deg, #DF2E38 0, #B71C1C 100%)",
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          padding: "32px 28px 20px 28px",
+          textAlign: "center"
+        }}>
+          <h2 className="mb-2"
+            style={{
+              color: "#fff",
+              fontWeight: 900,
+              letterSpacing: "1.2px",
+              fontSize: 32,
+              textShadow: "0 1px 10px #B71C1C30"
+            }}>
             Edit or Delete Event
           </h2>
-          <p className="mb-0 text-center" style={{
-            color: "#2e3a59", fontSize: 15, opacity: 0.83
-          }}>
+          <p style={{ color: "#fff", fontSize: 15, opacity: 0.9 }}>
             Update an event in the club calendar and database.
           </p>
         </div>
-
+  
         <div className="p-4">
           {alert && (
-            <div className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-1 mb-3`} role="alert">
+            <div
+              className={`alert alert-${alert.type === "error" ? "danger" : "success"} alert-dismissible fade show mx-1 mb-3`}
+              role="alert"
+              style={{
+                borderRadius: 12,
+                background: alert.type === "error" ? "#FFD6E1" : "#e5fbe9",
+                color: alert.type === "error" ? "#DF2E38" : "#219a61",
+                border: "none",
+                fontWeight: 600
+              }}>
               {alert.message}
-              <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)}></button>
+              <button type="button" className="btn-close" aria-label="Close" onClick={() => setAlert(null)} />
             </div>
           )}
-
+  
           {/* Tournament Selection */}
           <div className="d-flex flex-wrap align-items-end gap-2 mb-4">
             <div style={{ flex: 1, minWidth: 200 }}>
-              <label className="fw-semibold" style={{ fontWeight: 600, color: "#1e417d" }}>Select Event:</label>
+              <label className="fw-semibold" style={{ fontWeight: 600, color: "#DF2E38" }}>Select Event:</label>
               <select
                 className="form-select"
                 value={selectedTournId}
                 onChange={e => setSelectedTournId(e.target.value)}
                 disabled={loading}
+                style={{
+                  borderRadius: 14,
+                  background: "#F7F7F7",
+                  border: "1.5px solid #f3dadf",
+                  color: "#232323"
+                }}
               >
                 <option value="">-- Choose an event --</option>
                 {tournaments.map((t: any) => (
@@ -275,21 +299,30 @@ const EditTournamentForm: React.FC = () => {
               </select>
             </div>
             <button
-              className="btn btn-primary"
-              style={{ minWidth: 80, borderRadius: 10, fontWeight: 600 }}
+              className="btn"
+              style={{
+                minWidth: 80,
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: 17,
+                background: "linear-gradient(90deg,#DF2E38 0,#B71C1C 100%)",
+                color: "#fff",
+                boxShadow: "0 2px 8px #DF2E3820",
+                border: "none"
+              }}
               onClick={handleGo}
               disabled={loading || !selectedTournId}
             >
               Go
             </button>
           </div>
-
+  
           {/* Only show form if tournament loaded */}
           {formData && (
             <form onSubmit={handleEditSubmit} className="row g-3">
               {/* Event Name */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Event Name:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Event Name:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -297,13 +330,18 @@ const EditTournamentForm: React.FC = () => {
                   onChange={e => handleChange("eventName", e.target.value)}
                   required
                   disabled={loading}
+                  style={{
+                    borderRadius: 14,
+                    background: "#F7F7F7",
+                    border: "1.5px solid #f3dadf",
+                    color: "#232323"
+                  }}
                 />
               </div>
-
               {/* Event Type & Status */}
               <div className="row mb-2">
                 <div className="form-group col-md-6">
-                  <label htmlFor="event_type" className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Event Type:</label>
+                  <label htmlFor="event_type" className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Event Type:</label>
                   <select
                     id="event_type"
                     className="form-control"
@@ -311,6 +349,12 @@ const EditTournamentForm: React.FC = () => {
                     onChange={e => handleChange("eventType", e.target.value)}
                     required
                     disabled={loading}
+                    style={{
+                      borderRadius: 14,
+                      background: "#F7F7F7",
+                      border: "1.5px solid #f3dadf",
+                      color: "#232323"
+                    }}
                   >
                     <option value="">Select an event type</option>
                     <option value="extra_practice">Extra Practice</option>
@@ -319,7 +363,7 @@ const EditTournamentForm: React.FC = () => {
                   </select>
                 </div>
                 <div className="form-group col-md-6">
-                  <label htmlFor="status" className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Status:</label>
+                  <label htmlFor="status" className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Status:</label>
                   <select
                     id="status"
                     className="form-control"
@@ -327,6 +371,12 @@ const EditTournamentForm: React.FC = () => {
                     onChange={e => handleChange("status", e.target.value)}
                     required
                     disabled={loading}
+                    style={{
+                      borderRadius: 14,
+                      background: "#F7F7F7",
+                      border: "1.5px solid #f3dadf",
+                      color: "#232323"
+                    }}
                   >
                     <option value="">Select status</option>
                     <option value="tentative">Tentative</option>
@@ -335,11 +385,10 @@ const EditTournamentForm: React.FC = () => {
                   </select>
                 </div>
               </div>
-
               {/* Date, Start, End */}
               <div className="row mb-2">
                 <div className="form-group col-md-5">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Date:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Date:</label>
                   <input
                     type="date"
                     className="form-control rounded-3"
@@ -347,10 +396,16 @@ const EditTournamentForm: React.FC = () => {
                     onChange={e => handleChange("date", e.target.value)}
                     required
                     disabled={loading}
+                    style={{
+                      borderRadius: 14,
+                      background: "#F7F7F7",
+                      border: "1.5px solid #f3dadf",
+                      color: "#232323"
+                    }}
                   />
                 </div>
                 <div className="form-group col-md-3 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Start Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Start Time:</label>
                   <TimePicker
                     onChange={(value: string | null) => handleChange("startTime", value || "")}
                     value={formData.startTime || ""}
@@ -361,11 +416,11 @@ const EditTournamentForm: React.FC = () => {
                     required
                     disabled={loading}
                     className="w-100 custom-timepicker"
-                    clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+                    clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: "#DF2E38" }}>🕒</span>}
                   />
                 </div>
                 <div className="form-group col-md-4 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>End Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>End Time:</label>
                   <TimePicker
                     onChange={(value: string | null) => handleChange("endTime", value || "")}
                     value={formData.endTime || ""}
@@ -375,49 +430,65 @@ const EditTournamentForm: React.FC = () => {
                     amPmAriaLabel="Select AM/PM"
                     disabled={loading}
                     className="w-100 custom-timepicker"
-                    clockIcon={<span style={{ fontSize: 20, marginRight: 5 }}>🕒</span>}
+                    clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: "#DF2E38" }}>🕒</span>}
                   />
                 </div>
               </div>
-
               {/* RSVP */}
               <div className="row mb-2">
                 <div className="form-group col-md-7">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>RSVP Date:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>RSVP Date:</label>
                   <input
                     type="date"
                     className="form-control rounded-3"
                     value={formData.rsvpDate || ""}
                     onChange={e => handleChange("rsvpDate", e.target.value)}
                     disabled={loading}
+                    style={{
+                      borderRadius: 14,
+                      background: "#F7F7F7",
+                      border: "1.5px solid #f3dadf",
+                      color: "#232323"
+                    }}
                   />
                 </div>
                 <div className="form-group col-md-5">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>RSVP Time:</label>
+                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>RSVP Time:</label>
                   <input
                     type="time"
                     className="form-control rounded-3"
                     value={formData.rsvpTime || ""}
                     onChange={e => handleChange("rsvpTime", e.target.value)}
                     disabled={loading}
+                    style={{
+                      borderRadius: 14,
+                      background: "#F7F7F7",
+                      border: "1.5px solid #f3dadf",
+                      color: "#232323"
+                    }}
                   />
                 </div>
               </div>
-
               {/* Rules */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Rules:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Rules:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
                   value={formData.rules || ""}
                   onChange={e => handleChange("rules", e.target.value)}
                   disabled={loading}
+                  style={{
+                    borderRadius: 14,
+                    background: "#F7F7F7",
+                    border: "1.5px solid #f3dadf",
+                    color: "#232323"
+                  }}
                 />
               </div>
               {/* Location */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Location:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Location:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -425,11 +496,17 @@ const EditTournamentForm: React.FC = () => {
                   onChange={e => handleChange("location", e.target.value)}
                   placeholder="Enter address"
                   disabled={loading}
+                  style={{
+                    borderRadius: 14,
+                    background: "#F7F7F7",
+                    border: "1.5px solid #f3dadf",
+                    color: "#232323"
+                  }}
                 />
               </div>
               {/* Shirt Color */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Shirt Color:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Shirt Color:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -437,11 +514,17 @@ const EditTournamentForm: React.FC = () => {
                   onChange={e => handleChange("shirtColor", e.target.value)}
                   placeholder="e.g., Red/Black"
                   disabled={loading}
+                  style={{
+                    borderRadius: 14,
+                    background: "#F7F7F7",
+                    border: "1.5px solid #f3dadf",
+                    color: "#232323"
+                  }}
                 />
               </div>
               {/* Additional Info */}
               <div className="col-12 mb-2">
-                <label className="fw-semibold mb-1" style={{ fontWeight: 600 }}>Additional Info:</label>
+                <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Additional Info:</label>
                 <input
                   type="text"
                   className="form-control rounded-3"
@@ -449,23 +532,28 @@ const EditTournamentForm: React.FC = () => {
                   onChange={e => handleChange("additionalInfo", e.target.value)}
                   placeholder="Any notes..."
                   disabled={loading}
+                  style={{
+                    borderRadius: 14,
+                    background: "#F7F7F7",
+                    border: "1.5px solid #f3dadf",
+                    color: "#232323"
+                  }}
                 />
               </div>
-
               <div className="col-12 d-flex flex-wrap justify-content-between align-items-center mt-4 mb-2 gap-3">
                 <button
                   type="submit"
                   className="btn"
                   disabled={loading}
                   style={{
-                    background: "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
+                    background: "linear-gradient(90deg,#DF2E38 0,#B71C1C 100%)",
                     color: "#fff",
-                    fontWeight: 700,
+                    fontWeight: 800,
                     minWidth: 140,
-                    fontSize: 17,
-                    borderRadius: 14,
+                    fontSize: 18,
+                    borderRadius: 16,
                     border: "none",
-                    boxShadow: "0 2px 8px #b4c4ec2d"
+                    boxShadow: "0 2px 8px #DF2E3820"
                   }}
                 >
                   {loading ? "Saving..." : "Save Changes"}
@@ -475,14 +563,14 @@ const EditTournamentForm: React.FC = () => {
                   className="btn"
                   disabled={loading}
                   style={{
-                    background: "linear-gradient(90deg,#ef5350 0,#fcae67 100%)",
-                    color: "#fff",
-                    fontWeight: 700,
+                    background: "#fff",
+                    color: "#DF2E38",
+                    fontWeight: 800,
                     minWidth: 140,
-                    fontSize: 17,
-                    borderRadius: 14,
-                    border: "none",
-                    boxShadow: "0 2px 8px #c7b6b14d"
+                    fontSize: 18,
+                    borderRadius: 16,
+                    border: "2px solid #DF2E38",
+                    boxShadow: "0 2px 8px #df2e3810"
                   }}
                   onClick={handleDelete}
                 >
@@ -492,12 +580,13 @@ const EditTournamentForm: React.FC = () => {
             </form>
           )}
         </div>
-        <div className="text-center pb-3 px-4" style={{
-          fontSize: 14,
-          color: "#546a85"
-        }}>
-          <b style={{ color: "#ef5350" }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
-          <span style={{ opacity: 0.7 }}>
+        <div className="text-center pb-3 px-4"
+          style={{
+            fontSize: 14,
+            color: "#888"
+          }}>
+          <b style={{ color: "#DF2E38" }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
+          <span style={{ opacity: 0.8 }}>
             (A Google login popup will appear only if needed!)
           </span>
         </div>

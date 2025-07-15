@@ -11,12 +11,21 @@ import {
 } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 
+// --- SVG Crown for Captain Badge ---
+const Crown = () => (
+  <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
+    <path d="M2 6l3.5 6 3.5-8 3.5 8 3.5-6" stroke="#DF2E38" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="3" y="13.7" width="12" height="2.1" rx="1" fill="#DF2E38" />
+  </svg>
+);
+
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 type Tournament = {
   id: string;
   eventName: string;
   date: string;
 };
-
 type Signup = {
   id: string;
   playerId: string;
@@ -26,7 +35,6 @@ type Signup = {
   startTime?: string;
   endTime?: string;
 };
-
 type Team = {
   id?: string;
   name: string;
@@ -35,8 +43,6 @@ type Team = {
     isCaptain: boolean;
   }[];
 };
-
-const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 const TeamManagement: React.FC = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -70,7 +76,6 @@ const TeamManagement: React.FC = () => {
         return;
       }
       setLoading(true);
-
       // Eligible players
       const entriesRef = collection(
         db,
@@ -239,258 +244,297 @@ const TeamManagement: React.FC = () => {
   }));
 
   return (
-    <div className="container py-4" style={{ minHeight: 600 }}>
-      <h1 className="text-center mb-4" style={{ color: "#2155CD", fontWeight: 800 }}>
-        Make Teams
-      </h1>
-      {/* Tournament Selection */}
-      <div className="mb-4 d-flex align-items-center gap-2">
-        <select
-          className="form-select"
-          style={{ maxWidth: 400 }}
-          value={selectedTournament}
-          onChange={(e) => setSelectedTournament(e.target.value)}
-        >
-          <option value="">Select Tournament...</option>
-          {tournaments.map((t) => (
-            <option value={t.id} key={t.id}>
-              {t.eventName} {t.date ? `(${t.date})` : ""}
-            </option>
-          ))}
-        </select>
-        <button
-          className="btn btn-success"
-          onClick={handleAddTeam}
-          disabled={!selectedTournament || loading}
-        >
-          <i className="bi bi-plus-lg"></i> Add Team
-        </button>
-        <button
-          className="btn btn-danger"
-          onClick={handleDeleteTeam}
-          disabled={teams.length === 0}
-        >
-          <i className="bi bi-trash"></i> Delete Team
-        </button>
-        <button
-          className="btn btn-primary ms-auto"
-          onClick={handleSaveTeams}
-          disabled={!selectedTournament || teams.length === 0 || saving}
-        >
-          {saving ? "Saving..." : <><i className="bi bi-save2"></i> Save Teams</>}
-        </button>
-      </div>
-
-      {loading && <div>Loading eligible players & teams...</div>}
-
-      {/* --- TEAM CARDS --- */}
-      <div className="row g-4">
-        {!loading &&
-          selectedTournament &&
-          expandedTeams.map((team, tIdx) => (
-            <div className="col-md-6 col-lg-4" key={team.name}>
-              <div
-                className="card shadow"
-                style={{
-                  borderRadius: 16,
-                  border: "none",
-                  background: "linear-gradient(90deg, #e0ecff 0%, #e8ffe6 100%)",
-                }}
-              >
-                <div className="card-header d-flex justify-content-between align-items-center bg-white" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-                  <span style={{ fontWeight: 600, fontSize: 18, color: "#2155CD" }}>
-                    <i className="bi bi-people-fill me-2"></i>{team.name}
-                  </span>
-                  <button
-                    className="btn btn-outline-success btn-sm px-2"
-                    style={{ borderRadius: 14 }}
-                    onClick={() => setActiveAddTeamIdx(tIdx)}
-                    disabled={unassignedPlayers.length === 0}
-                  >
-                    <i className="bi bi-person-plus-fill"></i> Add
-                  </button>
-                </div>
-                <ul className="list-group list-group-flush">
-                  {team.players.length === 0 && (
-                    <li className="list-group-item text-center text-secondary py-4">
-                      <em>No players yet!</em>
-                    </li>
-                  )}
-                  {team.players.map(
-                    ({ signupId, isCaptain }, idx) => {
-                      const full = eligiblePlayers.find(
-                        (ep) => ep.id === signupId
-                      );
-                      return (
-                        <li
-                          key={signupId}
-                          className="list-group-item d-flex justify-content-between align-items-center"
-                          style={{ background: isCaptain ? "#f5f9ff" : "" }}
-                        >
-                          <div className="d-flex align-items-center">
-                            {/* Radial toggle for Captain */}
-                            <input
-                              type="radio"
-                              name={`captain-team-${tIdx}`}
-                              checked={isCaptain}
-                              onChange={() => handleSetCaptain(tIdx, signupId)}
-                              style={{
-                                accentColor: "#2155CD",
-                                marginRight: 8,
-                                width: 18,
-                                height: 18,
-                                cursor: "pointer",
-                              }}
-                            />
-                            <span
-                              className="fw-bold"
-                              style={{
-                                color: "#2e3a59",
-                                fontWeight: 700,
-                                fontSize: 16,
-                              }}
-                            >
-                              {full
-                                ? `${full.firstName} ${full.lastName}`
-                                : "Unknown"}
-                            </span>
-                            {isCaptain && (
-                              <span
-                                className="badge bg-primary ms-2"
-                                style={{
-                                  borderRadius: "12px",
-                                  fontSize: "0.85em",
-                                  verticalAlign: "middle",
-                                }}
-                              >
-                                Captain
-                              </span>
-                            )}
-                            <span
-                              style={{
-                                fontSize: 13,
-                                marginLeft: 10,
-                                color: "#458",
-                              }}
-                            >
-                              {full?.availability === "early" &&
-                                ` (Leaving Early${full.endTime ? `: ${full.endTime}` : ""})`}
-                              {full?.availability === "late" &&
-                                ` (Arriving Late${full.startTime ? `: ${full.startTime}` : ""})`}
-                              {full?.availability === "late_early" &&
-                                ` (Late & Early: ${full.startTime || "?"} - ${full.endTime || "?"})`}
-                            </span>
-                          </div>
-                          {/* X for Remove */}
-                          <button
-                            className="btn btn-link text-danger"
-                            onClick={() => handleRemovePlayer(tIdx, signupId)}
-                            style={{
-                              fontSize: 21,
-                              fontWeight: 900,
-                              padding: 0,
-                              marginLeft: 10,
-                              lineHeight: "1",
-                              border: "none",
-                              background: "none",
-                              outline: "none",
-                              boxShadow: "none",
-                              textDecoration: "none",
-                            }}
-                            title="Remove player"
-                          >
-                            <i className="bi bi-x-lg"></i>
-                          </button>
-                        </li>
-                      );
-                    }
-                  )}
-                </ul>
-              </div>
-            </div>
-          ))}
-      </div>
-
-      {/* --- ADD PLAYER MODAL --- */}
-      {activeAddTeamIdx !== null && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", background: "#0005" }}
-          tabIndex={-1}
-          role="dialog"
-          onClick={() => setActiveAddTeamIdx(null)}
-        >
-          <div
-            className="modal-dialog modal-dialog-centered"
-            role="document"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  Add Player to {expandedTeams[activeAddTeamIdx].name}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setActiveAddTeamIdx(null)}
-                  aria-label="Close"
-                ></button>
-              </div>
-              <div className="modal-body">
-                {unassignedPlayers.length === 0 ? (
-                  <div className="text-secondary">No unassigned players.</div>
-                ) : (
-                  <ul className="list-group">
-                    {unassignedPlayers.map((user) => (
-                      <li
-                        className="list-group-item d-flex justify-content-between align-items-center"
-                        key={user.playerId}
-                      >
-                        <span>
-                          <i className="bi bi-person me-2"></i>
-                          {user.firstName} {user.lastName}{" "}
-                          <span className="badge bg-info ms-2">
-                            {user.availability === "yes" && "Attending"}
-                            {user.availability === "early" &&
-                              `Leaving Early${user.endTime ? `: ${user.endTime}` : ""}`}
-                            {user.availability === "late" &&
-                              `Arriving Late${user.startTime ? `: ${user.startTime}` : ""}`}
-                            {user.availability === "late_early" &&
-                              `Late & Early (${user.startTime || "?"} - ${user.endTime || "?"})`}
-                          </span>
-                        </span>
-                        <button
-                          className="btn btn-success btn-sm"
-                          style={{ borderRadius: 16 }}
-                          onClick={() => handleAddPlayer(activeAddTeamIdx, user)}
-                        >
-                          <i className="bi bi-plus"></i> Add
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      background: "#f7f9fb"
+    }}>
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center"
+      }}>
+        <div className="container py-4" style={{ maxWidth: 1050, width: "100%" }}>
+          <h1 className="text-center mb-4" style={{ color: "#DF2E38", fontWeight: 800, letterSpacing: 0.6 }}>
+            Team Management
+          </h1>
+          {/* Tournament Selection */}
+          <div className="mb-4 d-flex align-items-center gap-2 flex-wrap justify-content-center">
+            <select
+              className="form-select"
+              style={{ maxWidth: 370, minWidth: 200, borderRadius: 13, fontWeight: 600 }}
+              value={selectedTournament}
+              onChange={(e) => setSelectedTournament(e.target.value)}
+            >
+              <option value="">Select Tournament...</option>
+              {tournaments.map((t) => (
+                <option value={t.id} key={t.id}>
+                  {t.eventName} {t.date ? `(${t.date})` : ""}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-success"
+              style={{ borderRadius: 13, fontWeight: 700 }}
+              onClick={handleAddTeam}
+              disabled={!selectedTournament || loading}
+            >
+              <i className="bi bi-plus-lg"></i> Add Team
+            </button>
+            <button
+              className="btn btn-danger"
+              style={{ borderRadius: 13, fontWeight: 700 }}
+              onClick={handleDeleteTeam}
+              disabled={teams.length === 0}
+            >
+              <i className="bi bi-trash"></i> Delete Team
+            </button>
+            <button
+              className="btn btn-primary ms-auto"
+              style={{
+                borderRadius: 13,
+                fontWeight: 700,
+                background: "#2155CD",
+                border: "none"
+              }}
+              onClick={handleSaveTeams}
+              disabled={!selectedTournament || teams.length === 0 || saving}
+            >
+              {saving ? "Saving..." : <><i className="bi bi-save2"></i> Save Teams</>}
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* Unassigned players */}
-      {!loading && selectedTournament && teams.length > 0 && unassignedPlayers.length > 0 && (
-        <div className="mt-4">
-          <h5 style={{ color: "#2155CD" }}>Unassigned Players</h5>
-          <ul>
-            {unassignedPlayers.map((p) => (
-              <li key={p.playerId}>
-                <i className="bi bi-person me-2"></i>
-                {p.firstName} {p.lastName}
-              </li>
-            ))}
-          </ul>
+          {loading && <div className="text-center mt-4 mb-4">Loading eligible players & teams...</div>}
+
+          {/* --- TEAM CARDS --- */}
+          <div className="row g-4 justify-content-center">
+            {!loading &&
+              selectedTournament &&
+              expandedTeams.map((team, tIdx) => (
+                <div className="col-md-6 col-lg-4" key={team.name}>
+                  <div
+                    className="card shadow"
+                    style={{
+                      borderRadius: 18,
+                      border: "none",
+                      background: "#fff",
+                      boxShadow: "0 4px 26px #df2e380f"
+                    }}
+                  >
+                    <div className="card-header d-flex justify-content-between align-items-center bg-white"
+                      style={{ borderTopLeftRadius: 18, borderTopRightRadius: 18, border: "none" }}>
+                      <span style={{ fontWeight: 700, fontSize: 19, color: "#2155CD", letterSpacing: 0.5 }}>
+                        <i className="bi bi-people-fill me-2"></i>{team.name}
+                      </span>
+                      <button
+                        className="btn btn-outline-success btn-sm px-2"
+                        style={{ borderRadius: 13, fontWeight: 600 }}
+                        onClick={() => setActiveAddTeamIdx(tIdx)}
+                        disabled={unassignedPlayers.length === 0}
+                      >
+                        <i className="bi bi-person-plus-fill"></i> Add
+                      </button>
+                    </div>
+                    <ul className="list-group list-group-flush">
+                      {team.players.length === 0 && (
+                        <li className="list-group-item text-center text-secondary py-4">
+                          <em>No players yet!</em>
+                        </li>
+                      )}
+                      {team.players.map(
+                        ({ signupId, isCaptain }, idx) => {
+                          const full = eligiblePlayers.find(
+                            (ep) => ep.id === signupId
+                          );
+                          return (
+                            <li
+                              key={signupId}
+                              className="list-group-item d-flex justify-content-between align-items-center"
+                              style={{
+                                background: isCaptain ? "#fef3f4" : "#fafbfc",
+                                border: "none",
+                                borderRadius: 13,
+                                marginBottom: 4
+                              }}
+                            >
+                              <div className="d-flex align-items-center">
+                                {/* Radial toggle for Captain */}
+                                <input
+                                  type="radio"
+                                  name={`captain-team-${tIdx}`}
+                                  checked={isCaptain}
+                                  onChange={() => handleSetCaptain(tIdx, signupId)}
+                                  style={{
+                                    accentColor: "#DF2E38",
+                                    marginRight: 9,
+                                    width: 18,
+                                    height: 18,
+                                    cursor: "pointer",
+                                  }}
+                                />
+                                <span
+                                  className="fw-bold"
+                                  style={{
+                                    color: "#232323",
+                                    fontWeight: 700,
+                                    fontSize: 16,
+                                  }}
+                                >
+                                  {full
+                                    ? `${full.firstName} ${full.lastName}`
+                                    : "Unknown"}
+                                </span>
+                                {isCaptain && (
+                                  <span
+                                    className="badge ms-2"
+                                    style={{
+                                      borderRadius: "14px",
+                                      background: "#fff0f0",
+                                      color: "#DF2E38",
+                                      fontWeight: 700,
+                                      fontSize: "0.97em",
+                                      display: "flex",
+                                      alignItems: "center"
+                                    }}
+                                  >
+                                    <Crown />
+                                    <span className="ms-1">Captain</span>
+                                  </span>
+                                )}
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    marginLeft: 10,
+                                    color: "#456",
+                                    fontStyle: "italic"
+                                  }}
+                                >
+                                  {full?.availability === "early" &&
+                                    ` (Leaving Early${full.endTime ? `: ${full.endTime}` : ""})`}
+                                  {full?.availability === "late" &&
+                                    ` (Arriving Late${full.startTime ? `: ${full.startTime}` : ""})`}
+                                  {full?.availability === "late_early" &&
+                                    ` (Late & Early: ${full.startTime || "?"} - ${full.endTime || "?"})`}
+                                </span>
+                              </div>
+                              {/* X for Remove */}
+                              <button
+                                className="btn btn-link text-danger"
+                                onClick={() => handleRemovePlayer(tIdx, signupId)}
+                                style={{
+                                  fontSize: 21,
+                                  fontWeight: 900,
+                                  padding: 0,
+                                  marginLeft: 10,
+                                  lineHeight: "1",
+                                  border: "none",
+                                  background: "none",
+                                  outline: "none",
+                                  boxShadow: "none",
+                                  textDecoration: "none",
+                                }}
+                                title="Remove player"
+                              >
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            </li>
+                          );
+                        }
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* --- ADD PLAYER MODAL --- */}
+          {activeAddTeamIdx !== null && (
+            <div
+              className="modal fade show"
+              style={{
+                display: "block",
+                background: "#2e3a5960"
+              }}
+              tabIndex={-1}
+              role="dialog"
+              onClick={() => setActiveAddTeamIdx(null)}
+            >
+              <div
+                className="modal-dialog modal-dialog-centered"
+                role="document"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="modal-content" style={{ borderRadius: 18 }}>
+                  <div className="modal-header" style={{ borderTopLeftRadius: 18, borderTopRightRadius: 18, background: "#2155CD" }}>
+                    <h5 className="modal-title text-white" style={{ fontWeight: 800 }}>
+                      Add Player to {expandedTeams[activeAddTeamIdx].name}
+                    </h5>
+                    <button
+                      type="button"
+                      className="btn-close btn-close-white"
+                      onClick={() => setActiveAddTeamIdx(null)}
+                      aria-label="Close"
+                    ></button>
+                  </div>
+                  <div className="modal-body" style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}>
+                    {unassignedPlayers.length === 0 ? (
+                      <div className="text-secondary">No unassigned players.</div>
+                    ) : (
+                      <ul className="list-group">
+                        {unassignedPlayers.map((user) => (
+                          <li
+                            className="list-group-item d-flex justify-content-between align-items-center"
+                            key={user.playerId}
+                            style={{ background: "#fff", border: "none", borderRadius: 12, marginBottom: 4 }}
+                          >
+                            <span>
+                              <i className="bi bi-person me-2" style={{ color: "#2155CD" }}></i>
+                              {user.firstName} {user.lastName}{" "}
+                              <span className="badge bg-info ms-2" style={{ fontWeight: 600 }}>
+                                {user.availability === "yes" && "Attending"}
+                                {user.availability === "early" &&
+                                  `Leaving Early${user.endTime ? `: ${user.endTime}` : ""}`}
+                                {user.availability === "late" &&
+                                  `Arriving Late${user.startTime ? `: ${user.startTime}` : ""}`}
+                                {user.availability === "late_early" &&
+                                  `Late & Early (${user.startTime || "?"} - ${user.endTime || "?"})`}
+                              </span>
+                            </span>
+                            <button
+                              className="btn btn-success btn-sm"
+                              style={{ borderRadius: 14, fontWeight: 600 }}
+                              onClick={() => handleAddPlayer(activeAddTeamIdx, user)}
+                            >
+                              <i className="bi bi-plus"></i> Add
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Unassigned players */}
+          {!loading && selectedTournament && teams.length > 0 && unassignedPlayers.length > 0 && (
+            <div className="mt-4">
+              <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
+              <ul>
+                {unassignedPlayers.map((p) => (
+                  <li key={p.playerId}>
+                    <i className="bi bi-person me-2" style={{ color: "#2155CD" }}></i>
+                    {p.firstName} {p.lastName}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

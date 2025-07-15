@@ -6,10 +6,13 @@ import { db } from "../.firebase/utils/firebase";
 import { toast, ToastContainer } from "react-toastify";
 import emailjs from "emailjs-com";
 
-const EMAIL_SERVICE_ID = "service_cfows1h"; // or yours
-const EMAIL_TEMPLATE_ID = "template_mk7qghu"; // or yours
-const EMAIL_USER_ID = "GRAfhbyKXL9qsCDKk"; // Your public key
+const RED = "#DF2E38";
+const LIGHT_GREY = "#F7F7F7";
+const BLACK = "#232323";
 
+const EMAIL_SERVICE_ID = "service_cfows1h";
+const EMAIL_TEMPLATE_ID = "template_mk7qghu";
+const EMAIL_USER_ID = "GRAfhbyKXL9qsCDKk";
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -19,12 +22,12 @@ const Contact: React.FC = () => {
     message: ''
   });
   const [loading, setLoading] = useState(false);
+
   async function fetchCoachEmails(): Promise<string[]> {
     const coachQuery = query(collection(db, "users"), where("role", "==", "coach"));
     const snapshot = await getDocs(coachQuery);
     return snapshot.docs.map(doc => doc.data().email).filter(Boolean);
   }
-  
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
@@ -34,113 +37,174 @@ const Contact: React.FC = () => {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-
-    // Use the same to_email and bcc_list as messages page, or hardcode as needed:
-    // Fetch BCC coach emails
-  let bccEmails: string[] = [];
-  try {
-    bccEmails = await fetchCoachEmails();
-  } catch (err) {
-    // If this fails, still try to send without BCC
-    bccEmails = [];
-  }
-  const templateParams = {
-    subject: formData.subject,
-    message: formData.message + `\n\nFrom: ${formData.name} (${formData.email})`,
-    to_email: "questsbclub@gmail.com",
-    bcc_list: bccEmails.join(","), // BCC all coaches here!
-    message_type: "CONTACT COACHES MESSAGE",
-    from_email: formData.email, // for reply-to
-  };
+    let bccEmails: string[] = [];
+    try {
+      bccEmails = await fetchCoachEmails();
+    } catch {
+      bccEmails = [];
+    }
+    const templateParams = {
+      subject: formData.subject,
+      message: formData.message + `\n\nFrom: ${formData.name} (${formData.email})`,
+      to_email: "questsbclub@gmail.com",
+      bcc_list: bccEmails.join(","),
+      message_type: "CONTACT COACHES MESSAGE",
+      from_email: formData.email,
+    };
 
     try {
       await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams, EMAIL_USER_ID);
-      toast.success("Message sent!");
+      toast.success("Message sent!", { theme: "colored" });
       setFormData({ name: "", email: "", subject: "", message: "" });
-    } catch (err) {
-      toast.error("Failed to send message. Please try again.");
+    } catch {
+      toast.error("Failed to send message. Please try again.", { theme: "colored" });
     }
     setLoading(false);
   }
 
   return (
-    <Container fluid className="py-5">
-      <ToastContainer />
-      <Container>
-        <h1 className="text-center mb-5">Contact Us</h1>
+    <div style={{ background: LIGHT_GREY, minHeight: "100vh", paddingTop: 24 }}>
+      <ToastContainer
+        position="top-center"
+        autoClose={2800}
+        hideProgressBar
+        theme="colored"
+      />
+      <Container style={{ maxWidth: 1050 }}>
+        <h1
+          className="text-center mb-5"
+          style={{
+            color: RED,
+            fontWeight: 900,
+            letterSpacing: 2,
+            fontSize: "2.7rem",
+            marginTop: 18
+          }}
+        >
+          Contact Us
+        </h1>
         <Row className="justify-content-center">
-          <Col md={6} className="mb-4">
-            <Card className="shadow-sm">
-              <Card.Body>
-                <h2 className="h4 mb-4">Send us a Message</h2>
-                <Form onSubmit={handleSubmit}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Name</Form.Label>
+          <Col md={7} className="mb-4">
+            <Card
+              className="shadow"
+              style={{
+                borderRadius: 24,
+                border: `2px solid ${RED}`,
+                background: "#fff",
+              }}
+            >
+              <Card.Body style={{ padding: "2.4rem 2rem" }}>
+                <h2 className="h4 mb-4" style={{ color: RED, fontWeight: 800 }}>
+                  Send Us a Message
+                </h2>
+                <Form onSubmit={handleSubmit} autoComplete="on">
+                  <Form.Group className="mb-4">
+                    <Form.Label style={{ color: BLACK, fontWeight: 600 }}>Name</Form.Label>
                     <Form.Control
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
                       required
+                      size="lg"
+                      style={{ background: LIGHT_GREY, borderRadius: 12 }}
+                      autoFocus
                     />
                   </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
+                  <Form.Group className="mb-4">
+                    <Form.Label style={{ color: BLACK, fontWeight: 600 }}>Email</Form.Label>
                     <Form.Control
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
                       required
+                      size="lg"
+                      style={{ background: LIGHT_GREY, borderRadius: 12 }}
+                      autoComplete="from_email"
+                      inputMode="email"
                     />
                   </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Subject</Form.Label>
+                  <Form.Group className="mb-4">
+                    <Form.Label style={{ color: BLACK, fontWeight: 600 }}>Subject</Form.Label>
                     <Form.Control
                       type="text"
                       name="subject"
                       value={formData.subject}
                       onChange={handleChange}
                       required
+                      size="lg"
+                      style={{ background: LIGHT_GREY, borderRadius: 12 }}
                     />
                   </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Message</Form.Label>
+                  <Form.Group className="mb-4">
+                    <Form.Label style={{ color: BLACK, fontWeight: 600 }}>Message</Form.Label>
                     <Form.Control
                       as="textarea"
-                      rows={5}
+                      rows={6}
                       name="message"
                       value={formData.message}
                       onChange={handleChange}
                       required
+                      style={{
+                        background: LIGHT_GREY,
+                        borderRadius: 12,
+                        fontSize: 17
+                      }}
                     />
                   </Form.Group>
-                  <Button variant="primary" type="submit" disabled={loading}>
+                  <Button
+                    variant="danger"
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "12px 0",
+                      fontWeight: 700,
+                      fontSize: 20,
+                      borderRadius: 12,
+                      background: RED,
+                      border: "none",
+                      boxShadow: "0 2px 10px #df2e381a"
+                    }}
+                  >
                     {loading ? "Sending..." : "Send Message"}
                   </Button>
                 </Form>
               </Card.Body>
             </Card>
           </Col>
-          <Col md={4}>
-            <Card className="shadow-sm">
-              <Card.Body>
-                <h2 className="h4 mb-4">Contact Information</h2>
+          <Col md={5}>
+            <Card
+              className="shadow"
+              style={{
+                borderRadius: 24,
+                border: `2px solid #eee`,
+                background: "#fff",
+              }}
+            >
+              <Card.Body style={{ padding: "2.1rem 2rem" }}>
+                <h2
+                  className="h5 mb-4"
+                  style={{ color: RED, fontWeight: 700, letterSpacing: 1.5 }}
+                >
+                  Contact Information
+                </h2>
                 <div className="mb-4">
-                  <h3 className="h6">Address</h3>
+                  <h3 className="h6" style={{ color: BLACK }}>Address</h3>
                   <p className="mb-0">500 North Benton</p>
                   <p>Palatine, IL 60067</p>
                 </div>
                 <div className="mb-4">
-                  <h3 className="h6">Email</h3>
+                  <h3 className="h6" style={{ color: BLACK }}>Email</h3>
                   <p className="mb-0">contact@questacademy.org</p>
                 </div>
                 <div className="mb-4">
-                  <h3 className="h6">Phone</h3>
+                  <h3 className="h6" style={{ color: BLACK }}>Phone</h3>
                   <p className="mb-0">(847) 202-8035</p>
                 </div>
                 <div>
-                  <h3 className="h6">Office Hours</h3>
+                  <h3 className="h6" style={{ color: BLACK }}>Office Hours</h3>
                   <p className="mb-0">Monday - Friday</p>
                   <p>8:00 AM - 4:00 PM</p>
                 </div>
@@ -148,9 +212,22 @@ const Contact: React.FC = () => {
             </Card>
           </Col>
         </Row>
-        <Footer />
+        <div className="mt-5">
+          <Footer />
+        </div>
       </Container>
-    </Container>
+      <style>
+        {`
+          .btn-danger:hover, .btn-danger:focus {
+            background: #b71c1c !important;
+          }
+          .form-control:focus {
+            border-color: #df2e38;
+            box-shadow: 0 0 0 0.08rem #df2e3844;
+          }
+        `}
+      </style>
+    </div>
   );
 };
 

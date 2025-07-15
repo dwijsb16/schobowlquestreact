@@ -57,23 +57,52 @@ const Carousel: React.FC = () => {
 
         {/* Controls */}
         <a
-          className="carousel-control-prev"
-          href="#carouselExampleIndicators"
-          role="button"
-          data-bs-slide="prev"
-        >
-          <span className="carousel-control-prev-icon" aria-hidden="true"></span>
-          <span className="sr-only">Previous</span>
-        </a>
-        <a
-          className="carousel-control-next"
-          href="#carouselExampleIndicators"
-          role="button"
-          data-bs-slide="next"
-        >
-          <span className="carousel-control-next-icon" aria-hidden="true"></span>
-          <span className="sr-only">Next</span>
-        </a>
+  className="carousel-control-prev"
+  href="#carouselExampleIndicators"
+  role="button"
+  data-bs-slide="prev"
+>
+  <span
+    aria-hidden="true"
+    style={{ display: "inline-block", width: 32, height: 32 }}
+  >
+    {/* Black left arrow SVG */}
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <polyline points="20,8 12,16 20,24"
+        fill="none"
+        stroke="black"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </span>
+  <span className="sr-only">Previous</span>
+</a>
+<a
+  className="carousel-control-next"
+  href="#carouselExampleIndicators"
+  role="button"
+  data-bs-slide="next"
+>
+  <span
+    aria-hidden="true"
+    style={{ display: "inline-block", width: 32, height: 32 }}
+  >
+    {/* Black right arrow SVG */}
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <polyline points="12,8 20,16 12,24"
+        fill="none"
+        stroke="black"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </span>
+  <span className="sr-only">Next</span>
+</a>
+
       </div>
     </div>
   );

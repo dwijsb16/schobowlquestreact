@@ -5,7 +5,7 @@ import Footer from "../components/footer";
 
 const EditTournamentPage: React.FC = () => {
   return (
-    <div style={{ paddingTop: "100px", background: "linear-gradient(to bottom, #b22222, #fff)" }}>
+    <div>
       <Navbar />
       <EditTournamentForm />
       <Footer />
