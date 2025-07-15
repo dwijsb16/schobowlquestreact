@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, signInWithGooglePopup, db } from "../.firebase/utils/firebase";
@@ -18,6 +18,8 @@ function generateResetToken() {
   return Math.random().toString(36).slice(2) + Date.now();
 }
 
+const MAX_RESENDS = 3; // NEW
+
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string>("");
@@ -30,6 +32,11 @@ const LoginForm: React.FC = () => {
   const [resetEmail, setResetEmail] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Resend logic state (NEW)
+  const [canResend, setCanResend] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
 
   // Handle Google Sign-In (no changes)
   const logGoogleUser = async () => {
@@ -89,13 +96,12 @@ const LoginForm: React.FC = () => {
     }
   };
 
-  // === Forgot Password Functionality using EmailJS and Firestore ===
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // === Forgot Password Functionality with Resend ===
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setSending(true);
     setSent(false);
 
-    // Check if user exists in Firebase Auth
     try {
       const usersQuery = query(collection(db, "users"), where("email", "==", resetEmail));
       const userSnap = await getDocs(usersQuery);
@@ -115,7 +121,8 @@ const LoginForm: React.FC = () => {
 
       // 2. Build reset link and send email via EmailJS
       const resetLink = `${window.location.origin}/reset?token=${token}`;
-      await emailjs.send(
+      console.log("resetLink:", resetLink);
+      const result = await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
@@ -124,13 +131,31 @@ const LoginForm: React.FC = () => {
         },
         EMAILJS_PUBLIC_KEY
       );
+      console.log("Result:", result);
+
       toast.success("Reset email sent! Check your inbox.");
       setSent(true);
+      setResendCount((c) => c + 1); // NEW: increment resend count
+      setCanResend(false);           // NEW: disable resend immediately
+      setResendCooldown(30);         // NEW: 30 second cooldown
     } catch (err) {
       toast.error("Failed to send reset email. Try again later.");
     }
     setSending(false);
   };
+
+  // Cooldown timer effect (NEW)
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1);
+      }, 1000);
+    } else if (sent && resendCount < MAX_RESENDS) {
+      setCanResend(true);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown, sent, resendCount]);
 
   // Error parser (no changes)
   const firebaseErrorParser = (error: any): string => {
@@ -146,116 +171,151 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center min-vh-100"
-      style={{
-        background: "linear-gradient(90deg,#4F8CFD 0,#183A66 100%)",
-        minHeight: "100vh"
-      }}
-    >
-      <div className="card p-4 shadow-lg"
+    <>
+      <div className="d-flex justify-content-center align-items-center min-vh-100"
         style={{
-          minWidth: 340, maxWidth: 400, borderRadius: 18, border: "none", background: "#fff"
+          background: "linear-gradient(90deg,#4F8CFD 0,#183A66 100%)",
+          minHeight: "100vh"
         }}>
-        <div className="mb-4 text-center">
-          <h2 style={{
-            color: "#2155CD", fontWeight: 700, letterSpacing: 0.5
-          }}>Quest Academy <span style={{ color: "#5C7AEA" }}>Scholastic Bowl</span></h2>
-          <div style={{
-            fontSize: 16, color: "#7fa2b2", fontWeight: 400
-          }}>Sign in to your account</div>
-        </div>
-        <form onSubmit={handleLogin}>
-          <div className="form-group mb-3">
-            <label htmlFor="email" style={{ fontWeight: 500 }}>Email</label>
-            <input type="email" className="form-control" id="email"
-              placeholder="Enter email" value={email}
-              onChange={(e) => setEmail(e.target.value)} required
-              style={{
-                borderRadius: 12,
-                border: "1px solid #e7eaf6",
-                padding: "12px",
-                fontSize: 15
-              }}
-            />
+        <div className="card p-4 shadow-lg"
+          style={{
+            minWidth: 340, maxWidth: 400, borderRadius: 18, border: "none", background: "#fff"
+          }}>
+          <div className="mb-4 text-center">
+            <h2 style={{
+              color: "#2155CD", fontWeight: 700, letterSpacing: 0.5
+            }}>Quest Academy <span style={{ color: "#5C7AEA" }}>Scholastic Bowl</span></h2>
+            <div style={{
+              fontSize: 16, color: "#7fa2b2", fontWeight: 400
+            }}>Sign in to your account</div>
           </div>
-          {/* Password field with show/hide eye */}
-          <div className="form-group mb-2" style={{ position: "relative" }}>
-            <label htmlFor="password" style={{ fontWeight: 500 }}>Password</label>
-            <input
-              type={showPassword ? "text" : "password"}
-              className="form-control"
-              id="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                borderRadius: 12,
-                border: "1px solid #e7eaf6",
-                padding: "12px",
-                fontSize: 15,
-                paddingRight: 40, // Make room for the eye icon
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(s => !s)}
-              tabIndex={-1}
-              style={{
-                position: "absolute",
-                right: 14,
-                top: "65%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                padding: 0,
-                margin: 0,
-                cursor: "pointer",
-                zIndex: 2,
-                color: "#333"
-              }}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-            </button>
-          </div>
-          {/* Error message */}
-          {errorMessage && (
-  <div className="alert alert-danger text-center mt-2 mb-0"
-    style={{
-      borderRadius: 12, fontWeight: 500, fontSize: 15,
-      color: "#D7263D", background: "#fff3f6", border: "1px solid #ffe2ea"
-    }}>
-    <span>{errorMessage}</span>
-  </div>
-)}
-<div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
-  Forgot password?{" "}
-  <button
-    className="btn btn-link p-0 m-0"
-    type="button"
-    style={{ color: "#2155CD", fontWeight: 600, textDecoration: "underline", fontSize: 14 }}
-    onClick={() => setShowForgot((s) => !s)}
-  >
-    Reset here
-  </button>
-</div>
-
-          {/* Forgot password dropdown */}
-          {showForgot && (
+          {!showForgot ? (
+            // ---- LOGIN FORM ----
+            <form onSubmit={handleLogin}>
+              <div className="form-group mb-3">
+                <label htmlFor="email" style={{ fontWeight: 500 }}>Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  id="email"
+                  placeholder="Enter email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid #e7eaf6",
+                    padding: "12px",
+                    fontSize: 15,
+                  }} />
+              </div>
+              {/* Password field with show/hide eye */}
+              <div className="form-group mb-2" style={{ position: "relative" }}>
+                <label htmlFor="password" style={{ fontWeight: 500 }}>Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="form-control"
+                  id="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    borderRadius: 12,
+                    border: "1px solid #e7eaf6",
+                    padding: "12px",
+                    fontSize: 15,
+                    paddingRight: 40,
+                  }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  tabIndex={-1}
+                  style={{
+                    position: "absolute",
+                    right: 14,
+                    top: "65%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    margin: 0,
+                    cursor: "pointer",
+                    zIndex: 2,
+                    color: "#333",
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                </button>
+              </div>
+              {/* Error message */}
+              {errorMessage && (
+                <div
+                  className="alert alert-danger text-center mt-2 mb-0"
+                  style={{
+                    borderRadius: 12,
+                    fontWeight: 500,
+                    fontSize: 15,
+                    color: "#D7263D",
+                    background: "#fff3f6",
+                    border: "1px solid #ffe2ea",
+                  }}
+                >
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+              <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
+                Forgot password?{" "}
+                <button
+                  className="btn btn-link p-0 m-0"
+                  type="button"
+                  style={{
+                    color: "#2155CD",
+                    fontWeight: 600,
+                    textDecoration: "underline",
+                    fontSize: 14,
+                  }}
+                  onClick={() => setShowForgot(true)}
+                >
+                  Reset here
+                </button>
+              </div>
+              <div className="text-center mt-4 mb-2">
+                <button
+                  type="submit"
+                  className="btn"
+                  style={{
+                    background: "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
+                    color: "#fff",
+                    fontWeight: 600,
+                    borderRadius: 12,
+                    padding: "12px 0",
+                    width: "100%",
+                    fontSize: 16,
+                    boxShadow: "0 2px 8px #c7e0ff33",
+                  }}
+                >
+                  Login
+                </button>
+              </div>
+            </form>
+          ) : (
+            // ---- FORGOT PASSWORD FORM WITH RESEND ----
             <form onSubmit={handleForgotPassword}>
               <div className="form-group mt-3">
-                <label htmlFor="resetEmail" style={{ fontWeight: 500 }}>Email for Reset</label>
+                <label htmlFor="resetEmail" style={{ fontWeight: 500 }}>
+                  Email for Reset
+                </label>
                 <input
                   type="email"
                   className="form-control"
                   id="resetEmail"
                   placeholder="Enter your email"
                   value={resetEmail}
-                  onChange={e => setResetEmail(e.target.value)}
+                  onChange={(e) => setResetEmail(e.target.value)}
                   required
-                  disabled={sending || sent}
-                />
+                  disabled={sending || sent} />
               </div>
               <div className="text-center mt-3">
                 <button
@@ -267,54 +327,88 @@ const LoginForm: React.FC = () => {
                   {sending ? "Sending..." : sent ? "Sent!" : "Send Reset Email"}
                 </button>
               </div>
+              {/* Resend email button */}
+              {sent && resendCount < MAX_RESENDS && (
+                <div className="text-center mt-3">
+                  <span style={{ fontSize: 14, color: "#888" }}>
+                    Didn’t receive the email?&nbsp;
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-link"
+                    disabled={!canResend || sending}
+                    style={{
+                      color: canResend ? "#2155CD" : "#aaa",
+                      fontWeight: 600,
+                      textDecoration: "underline",
+                      fontSize: 14,
+                      cursor: canResend ? "pointer" : "not-allowed",
+                      marginLeft: 0,
+                    }}
+                    onClick={() => {
+                      setSent(false);
+                      handleForgotPassword();
+                    }}
+                  >
+                    {canResend
+                      ? "Resend Email"
+                      : `Resend available in ${resendCooldown}s`}
+                  </button>
+                </div>
+              )}
+              {resendCount >= MAX_RESENDS && (
+                <div className="text-center mt-2" style={{ fontSize: 13, color: "#e74c3c" }}>
+                  You have reached the maximum number of resends. Please try again later.
+                </div>
+              )}
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  className="btn btn-link"
+                  style={{ fontSize: 14, color: "#2155CD" }}
+                  onClick={() => setShowForgot(false)}
+                >
+                  Back to Login
+                </button>
+              </div>
             </form>
           )}
-          <div className="text-center mt-4 mb-2">
-            <button type="submit"
-              className="btn"
+  
+          <hr style={{ background: "#d7e6fc", margin: "30px 0 18px 0" }} />
+          <div className="text-center">
+            <button
+              onClick={logGoogleUser}
+              className="btn d-flex align-items-center justify-content-center mx-auto"
               style={{
-                background: "linear-gradient(90deg,#2155CD 0,#6BCB77 100%)",
-                color: "#fff", fontWeight: 600,
-                borderRadius: 12, padding: "12px 0",
-                width: "100%", fontSize: 16, boxShadow: "0 2px 8px #c7e0ff33"
-              }}>
-              Login
+                background: "#fff",
+                color: "#21325b",
+                border: "1px solid #b4c4ec",
+                borderRadius: 14,
+                boxShadow: "0 2px 8px #b4c4ec2d",
+                padding: "10px 24px",
+                fontWeight: 600,
+                fontSize: 15,
+                minWidth: 220
+              }}
+            >
+              {/* Google icon svg here */}
+              Sign in with Google
             </button>
           </div>
-        </form>
-        <hr style={{ background: "#d7e6fc", margin: "30px 0 18px 0" }} />
-        <div className="text-center">
-          <button
-            onClick={logGoogleUser}
-            className="btn d-flex align-items-center justify-content-center mx-auto"
-            style={{
-              background: "#fff",
-              color: "#21325b",
-              border: "1px solid #b4c4ec",
-              borderRadius: 14,
-              boxShadow: "0 2px 8px #b4c4ec2d",
-              padding: "10px 24px",
-              fontWeight: 600,
-              fontSize: 15,
-              minWidth: 220
-            }}
-          >
-            {/* Google icon svg here */}
-            Sign in with Google
-          </button>
+          <div className="text-center mt-4" style={{ fontSize: 15 }}>
+            <span style={{ color: "#888" }}>First time? </span>
+            <a href="/signup" style={{
+              color: "#2155CD",
+              textDecoration: "underline",
+              fontWeight: 600
+            }}>Create an account</a>
+          </div>
         </div>
-        <div className="text-center mt-4" style={{ fontSize: 15 }}>
-          <span style={{ color: "#888" }}>First time? </span>
-          <a href="/signup" style={{
-            color: "#2155CD",
-            textDecoration: "underline",
-            fontWeight: 600
-          }}>Create an account</a>
-        </div>
+        <ToastContainer />
       </div>
-      <ToastContainer />
-    </div>
+    </>
   );
+  
 };
 
 export default LoginForm;

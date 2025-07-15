@@ -14,9 +14,7 @@ const passwordRules: { key: PasswordStrengthKey; text: string }[] = [
   { key: "digit", text: "At least one digit" },
   { key: "hasSpecial", text: "At least one special character (e.g. !@#$%^&*)" }
 ];
-// Define the keys for password strength
 
-// Make checkPasswordStrength take only a string:
 function checkPasswordStrength(password: string) {
   return {
     length: password.length >= 6,
@@ -62,7 +60,8 @@ const ResetPassword: React.FC = () => {
           setError("This reset link has already been used.");
           return;
         }
-        if (Date.now() > expires) {
+        // --- FIX: compare expires as Timestamp ---
+        if (Date.now() > expires.toMillis()) {
           setError("This reset link has expired.");
           return;
         }
@@ -89,16 +88,11 @@ const ResetPassword: React.FC = () => {
       return;
     }
     try {
-      // Step 2: Check if user exists and sign in
       const methods = await fetchSignInMethodsForEmail(auth, email);
       if (!methods.length) {
         setError("No user even exists. Please try again later.");
         return;
       }
-      // You may want to use an "admin" or server function to update the password,
-      // but for client-side, you need the user's credential.
-      // So you can ask for the user's password or send a custom sign-in link.
-      // Here, we'll just show a not-implemented error for this demo.
       setError("Please implement server-side password reset logic here, or use Firebase's email reset flow.");
       // --- If you had a way to sign in the user or use admin SDK, you would do:
       // await updatePassword(user, password);
@@ -111,40 +105,65 @@ const ResetPassword: React.FC = () => {
   };
 
   return (
-    <div className="d-flex align-items-center justify-content-center" style={{minHeight: "100vh", background: "#f8fafc"}}>
-      <div className="card shadow-sm p-4" style={{minWidth: 320, maxWidth: 370, borderRadius: 18}}>
-        <h3 className="mb-3 text-primary fw-bold text-center">Reset Password</h3>
-        {!verified ? (
-          <div className="text-danger text-center">{error || "Verifying reset link..."}</div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-2">Set new password for <b>{email}</b></div>
-            <label className="mb-1 fw-semibold">New Password:</label>
-            <input
-              type="password" className="form-control mb-2" value={password}
-              onChange={e => setPassword(e.target.value)} required minLength={6}
-            />
-            <label className="mb-1 fw-semibold">Confirm New Password:</label>
-            <input
-              type="password" className="form-control mb-2" value={confirm}
-              onChange={e => setConfirm(e.target.value)} required minLength={6}
-            />
-            <ul>
-  {passwordRules.map(rule => (
-    <li key={rule.key} style={{color: pwStrength[rule.key]  ? "#48bb78" : "#aaa"}}>
-      {rule.text}
-    </li>
-  ))}
-</ul>
-            {error && <div className="alert alert-danger py-2 mb-2">{error}</div>}
-            {success && <div className="alert alert-success py-2 mb-2 text-center">Done!</div>}
-            <button className="btn btn-primary w-100" type="submit" disabled={success}>Set New Password</button>
-          </form>
-        )}
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      background: "#f8fafc"
+    }}>
+      <div style={{
+        flexGrow: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}>
+        <div className="card shadow-sm p-4"
+          style={{
+            minWidth: 320,
+            maxWidth: 370,
+            borderRadius: 18,
+            margin: 24
+          }}>
+          <h3 className="mb-3 text-primary fw-bold text-center">Reset Password</h3>
+          {!verified ? (
+            <div className="text-danger text-center" style={{fontWeight: 500, fontSize: 16}}>
+              {error || "Verifying reset link..."}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div className="mb-2">Set new password for <b>{email}</b></div>
+              <label className="mb-1 fw-semibold">New Password:</label>
+              <input
+                type="password" className="form-control mb-2" value={password}
+                onChange={e => setPassword(e.target.value)} required minLength={6}
+              />
+              <label className="mb-1 fw-semibold">Confirm New Password:</label>
+              <input
+                type="password" className="form-control mb-2" value={confirm}
+                onChange={e => setConfirm(e.target.value)} required minLength={6}
+              />
+              <ul style={{listStyle: "none", padding: 0, marginTop: 12, marginBottom: 8}}>
+                {passwordRules.map(rule => (
+                  <li key={rule.key} style={{color: pwStrength[rule.key] ? "#48bb78" : "#aaa", display: "flex", alignItems: "center", fontSize: 14}}>
+                    <span style={{marginRight: 5, fontWeight: 700, fontSize: 16}}>
+                      {pwStrength[rule.key] ? "✓" : "✗"}
+                    </span>
+                    {rule.text}
+                  </li>
+                ))}
+              </ul>
+              {error && <div className="alert alert-danger py-2 mb-2 text-center">{error}</div>}
+              {success && <div className="alert alert-success py-2 mb-2 text-center">Done!</div>}
+              <button className="btn btn-primary w-100" type="submit" disabled={success}>Set New Password</button>
+            </form>
+          )}
+        </div>
       </div>
+      {/* Footer always at bottom */}
       <Footer />
     </div>
   );
+  
 };
 
 export default ResetPassword;
