@@ -1,26 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-  getDoc,
-  doc,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import {
-  onAuthStateChanged,
-  getAuth,
-  User as FirebaseUser,
-} from "firebase/auth";
+import {getDoc,doc,collection,addDoc,query,where,getDocs, updateDoc,serverTimestamp,} from "firebase/firestore";
+import {onAuthStateChanged,getAuth,User as FirebaseUser,} from "firebase/auth";
 import { db } from "../.firebase/utils/firebase";
 import { Tournament } from "../types/event";
 import { Player } from "../types/player";
 import { Signup } from "../types/signup";
 import emailjs from "emailjs-com";
+import { useNavigate } from "react-router-dom";
+
 
 const green = "#6BCB77";
 const blue = "#2e3a59";
@@ -119,6 +107,7 @@ const TournamentPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [linkedPlayers, setLinkedPlayers] = useState<Player[]>([]);
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const navigate = useNavigate();
 
   // --- Registration Form State ---
   const [selectedPlayer, setSelectedPlayer] = useState("");
@@ -143,6 +132,7 @@ const TournamentPage: React.FC = () => {
 
   const showStartTime = availability === "late" || availability === "late_early";
   const showEndTime = availability === "early" || availability === "late_early";
+  
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -259,8 +249,10 @@ const TournamentPage: React.FC = () => {
   }, [signups, teams]);
 
   // Autofill registration form with previous signup
+
+
   useEffect(() => {
-    if (!selectedPlayer || !currentUser || !tournamentId) {
+    if (!selectedPlayer || !tournamentId) {
       setExistingSignupDocId(null);
       setAvailability("");
       setCarpool([]);
@@ -276,15 +268,12 @@ const TournamentPage: React.FC = () => {
     setFetchingSignup(true);
     (async () => {
       const entriesRef = collection(db, "signups", tournamentId, "entries");
-      const existingQ = query(
-        entriesRef,
-        where("userId", "==", currentUser.uid),
-        where("playerId", "==", selectedPlayer)
-      );
+      const existingQ = query(entriesRef, where("playerId", "==", selectedPlayer));
       const existingSnap = await getDocs(existingQ);
       if (!existingSnap.empty) {
         const docData = existingSnap.docs[0].data();
         setExistingSignupDocId(existingSnap.docs[0].id);
+        // Set form state from docData as you do now...
         setAvailability(docData.availability || "");
         setCarpool(docData.carpool || []);
         setParentAttending(!!docData.parentAttending);
@@ -296,6 +285,7 @@ const TournamentPage: React.FC = () => {
         setDriveCapacity(docData.driveCapacity || "");
       } else {
         setExistingSignupDocId(null);
+        // ...reset form fields...
         setAvailability("");
         setCarpool([]);
         setParentAttending(false);
@@ -309,14 +299,14 @@ const TournamentPage: React.FC = () => {
       setFetchingSignup(false);
     })();
     // eslint-disable-next-line
-  }, [selectedPlayer, currentUser, tournamentId]);
+  }, [selectedPlayer, tournamentId]);
 
-  // --- SUBMIT HANDLER (EDIT/CREATE) ---
+
   const handleSubmit = async () => {
     if (!selectedPlayer || !currentUser || !tournamentId) return;
     setSubmitting(true);
-
-    // Build signup object: only include fields if set!
+  
+    // Build signup object
     const signup: Signup = {
       tournamentId: tournamentId as string,
       userId: currentUser.uid,
@@ -332,61 +322,64 @@ const TournamentPage: React.FC = () => {
       ...(showEndTime && endTime ? { endTime } : {}),
       ...(carpool.includes("can-drive") && driveCapacity ? { driveCapacity } : {}),
     };
-
-    if (existingSignupDocId) {
-      // EDIT MODE: update signup and set hasEdited
-      const signupRef = doc(
-        db,
-        "signups",
-        tournamentId as string,
-        "entries",
-        existingSignupDocId
-      );
-      await updateDoc(signupRef, {
+  
+    // Always check Firestore for this player/tournament signup
+    const entriesRef = collection(db, "signups", tournamentId, "entries");
+    const existingQ = query(
+      entriesRef,
+      where("playerId", "==", selectedPlayer)
+    );
+    const existingSnap = await getDocs(existingQ);
+  
+    if (!existingSnap.empty) {
+      // EDIT MODE: update the existing signup doc (should only be one)
+      const docRef = existingSnap.docs[0].ref;
+      await updateDoc(docRef, {
         ...signup,
         hasEdited: true,
         lastEdited: serverTimestamp(),
       });
       alert("Signup updated!");
+  
+      // --- Send email ONLY on EDIT
+      const coachEmailsArr = await getAllCoachEmails();
+      const coachEmails = coachEmailsArr.join(",");
+      const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
+  
+      await sendSignupNotification({
+        playerName: playerObj
+          ? `${playerObj.firstName} ${playerObj.lastName}`
+          : "N/A",
+        tournamentName: tournament?.eventName || "N/A",
+        editorEmail: currentUser.email || "",
+        timestamp: new Date().toLocaleString(),
+        actionType: "Edit",
+        bccList: coachEmails,
+        toEmail: "questsbclub@gmail.com",
+        availability,
+        startTime,
+        endTime,
+        carpool: carpool.join(", "),
+        driveCapacity,
+        parentAttending: parentAttending ? "Yes" : "No",
+        canModerate: canModerate ? "Yes" : "No",
+        canScorekeep: canScorekeep ? "Yes" : "No",
+        additionalInfo,
+        allInfo: JSON.stringify(signup, null, 2),
+      });
     } else {
-      // CREATE MODE: add new doc
+      // CREATE MODE: add new doc, NO EMAIL
       await addDoc(
         collection(db, "signups", tournamentId as string, "entries"),
         signup
       );
       alert("Signup submitted!");
+      // You can optionally redirect here (navigate("/")) or stay on page
     }
-    // Get ALL coach emails
-    const coachEmailsArr = await getAllCoachEmails();
-    const coachEmails = coachEmailsArr.join(","); // comma-separated
-
-    // Find player name
-    const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
-
-    await sendSignupNotification({
-      playerName: playerObj
-        ? `${playerObj.firstName} ${playerObj.lastName}`
-        : "N/A",
-      tournamentName: tournament?.eventName || "N/A",
-      editorEmail: currentUser.email || "",
-      timestamp: new Date().toLocaleString(),
-      actionType: existingSignupDocId ? "Edit" : "Create",
-      bccList: coachEmails, // <-- BCC
-      toEmail: "questsbclub@gmail.com",
-      availability,
-      startTime,
-      endTime,
-      carpool: carpool.join(", "), // <-- EmailJS doesn't handle arrays, join as string
-      driveCapacity,
-      parentAttending: parentAttending ? "Yes" : "No",
-      canModerate: canModerate ? "Yes" : "No",
-      canScorekeep: canScorekeep ? "Yes" : "No",
-      additionalInfo,
-      allInfo: JSON.stringify(signup, null, 2),
-    });
-
+  
     setSubmitting(false);
   };
+  
 
   if (!tournament) return <div className="text-center mt-5">Loading tournament...</div>;
   if (loadingPlayers) return <div className="text-center mt-5">Loading players...</div>;
