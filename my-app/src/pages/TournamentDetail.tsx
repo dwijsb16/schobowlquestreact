@@ -143,32 +143,41 @@ const TournamentPage: React.FC = () => {
 
   const showStartTime = availability === "late" || availability === "late_early";
   const showEndTime = availability === "early" || availability === "late_early";
-
-  // Auth & linked players (for the registration form)
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLinkedPlayers([]);
       setLoadingPlayers(true);
+  
       if (user) {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
-          const linkedPlayersUids: string[] = data.linkedPlayers || [];
-          if (linkedPlayersUids.length) {
-            const playerSnaps = await Promise.all(
-              linkedPlayersUids.map((pid) => getDoc(doc(db, "players", pid)))
-            );
-            setLinkedPlayers(
-              playerSnaps
-                .filter((snap) => snap.exists())
-                .map((snap) => ({
-                  ...(snap.data() as Player),
-                  uid: snap.id,
-                }))
-            );
+          if (data.role === "player") {
+            // They're a player, just use themselves
+            const playerDoc = await getDoc(doc(db, "players", user.uid));
+            if (playerDoc.exists()) {
+              setLinkedPlayers([{ ...(playerDoc.data() as Player), uid: user.uid }]);
+              setSelectedPlayer(user.uid); // autofill!
+            }
+          } else {
+            // Otherwise, use linkedPlayers as before (parent flow)
+            const linkedPlayersUids: string[] = data.linkedPlayers || [];
+            if (linkedPlayersUids.length) {
+              const playerSnaps = await Promise.all(
+                linkedPlayersUids.map((pid) => getDoc(doc(db, "players", pid)))
+              );
+              setLinkedPlayers(
+                playerSnaps
+                  .filter((snap) => snap.exists())
+                  .map((snap) => ({
+                    ...(snap.data() as Player),
+                    uid: snap.id,
+                  }))
+              );
+            }
           }
         }
       }
@@ -176,6 +185,7 @@ const TournamentPage: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+  
 
   // Tournament details
   useEffect(() => {
