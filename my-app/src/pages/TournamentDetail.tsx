@@ -376,7 +376,7 @@ const TournamentPage: React.FC = () => {
       alert("Signup submitted!");
       // You can optionally redirect here (navigate("/")) or stay on page
     }
-    navigate("/");
+    navigate("/profile");
     setSubmitting(false);
   };
   

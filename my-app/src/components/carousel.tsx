@@ -17,40 +17,57 @@ const Carousel: React.FC = () => {
           ></li>
           <li data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1"></li>
           <li data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2"></li>
+          <li data-bs-target="#carouselExampleIndicators" data-bs-slide-to="3"></li>
         </ol>
 
         {/* Carousel Items */}
         <div className="carousel-inner">
           <div className="carousel-item active">
             <img
-              src="/images/IMG_5824.png"
+              src="/images/IMG_8142.png"
               className="d-block w-100"
               alt="First slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
+            <div className="carousel-caption d-none d-md-block">
+              <h5>MSNCT 20th Place</h5>
+              <p>2025</p>
+            </div>
           </div>
           <div className="carousel-item">
             <img
-              src="/images/IMG_5825.png"
+              src="/images/IMG_8533.png"
               className="d-block w-100"
               alt="Second slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>IESA Regional Champions</h5>
-              <p>2024</p>
+              <h5>IESA Class 1A State Champions</h5>
+              <p>2025</p>
             </div>
           </div>
           <div className="carousel-item">
             <img
-              src="/images/IMG_5831.png"
+              src="/images/imageweuse1.png"
               className="d-block w-100"
               alt="Third slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>IESA Regional Champions</h5>
-              <p>2024</p>
+              <h5>NAC Junion National Champions</h5>
+              <p>2025</p>
+            </div>
+          </div>
+          <div className="carousel-item">
+            <img
+              src="/images/IMG_8134.jpeg"
+              className="d-block w-100"
+              alt="Fourth slide"
+              style={{ maxHeight: "500px", objectFit: "contain" }}
+            />
+            <div className="carousel-caption d-none d-md-block">
+              <h5>MSNCT 20th Place</h5>
+              <p>2025</p>
             </div>
           </div>
         </div>
