@@ -10,11 +10,12 @@
 
 ## Profile Editing
 
-- [ ] "Edit Profile" button toggles profile edit form
+- [x] "Edit Profile" button toggles profile edit form
 - [ ] User can update first name, last name, and role
+    - First Name, Last Name Labels need to be added
 - [ ] Changes are saved and reflected on the profile card
 - [ ] Error message appears if profile update fails
-- [ ] "Cancel" button closes the edit form without saving
+- [x] "Cancel" button closes the edit form without saving
 
 ## Linked Players (for non-player roles)
 

@@ -19,10 +19,9 @@
 - [x] User is redirected to the correct page after successful login
 - [ ] Loading indicator appears during login process (if applicable)
 - [ ] "Forgot password" link works as expected (if present)
-    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
+    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Link shows up but does not work
 - [x] "Sign up" link works as expected (if present)
-- [ ] Login page password should also have an `eyeball` to check password
-    - ![#1589F0](https://placehold.co/15x15/1589F0/1589F0.png) Needs to be added
+- [x] Login page password should also have an `eyeball` to check password
 
 ## Navigation
 

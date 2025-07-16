@@ -12,7 +12,7 @@
 - [x] Carousel is visible and cycles through images/content correctly
 - [x] Cards section is visible and displays expected content
 - [x] Accordion is visible and expands/collapses sections correctly
-- [ ] Footer is visible and displays expected information
+- [x] Footer is visible and displays expected information
 
 ## Navigation
 

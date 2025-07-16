@@ -13,6 +13,7 @@
 - [ ] Each card/option provides the correct action or information for coaches
 - [ ] Links/buttons within cards work as expected
 - [ ] Error messages are displayed for failed actions (if applicable)
+- [ ] Coaches page should have a list of all parents, players and coaches available to view/add/remove
 
 ## Navigation
 
