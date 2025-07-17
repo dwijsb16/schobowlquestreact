@@ -311,51 +311,60 @@ const TournamentForm: React.FC = () => {
                 style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
             </div>
-            <div className="form-group col-md-3 d-flex flex-column align-items-start">
-              <label style={{ fontWeight: 600, color: BLACK }}>Start Time<span style={{ color: RED }}> *</span></label>
-              <TimePicker
-                onChange={(value: string | null) => setStartTime(value || "")}
-                value={startTime}
-                disableClock={false}
-                clearIcon={null}
-                format="hh:mm a"
-                amPmAriaLabel="Select AM/PM"
-                required
-                disabled={loading}
-                className="w-100 custom-timepicker"
-                clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: RED }}>🕒</span>}
-              />
             </div>
-            <div className="form-group col-md-4 d-flex flex-column align-items-start">
-              <label style={{ fontWeight: 600, color: BLACK }}>End Time</label>
-              <TimePicker
-                onChange={(value: string | null) => setEndTime(value || "")}
-                value={endTime}
-                disableClock={false}
-                clearIcon={null}
-                format="hh:mm a"
-                amPmAriaLabel="Select AM/PM"
-                disabled={loading}
-                className="w-100 custom-timepicker"
-                clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: RED }}>🕒</span>}
-              />
-            </div>
-          </div>
-          {/* RSVP */}
-          <div className="row mb-3">
-            <div className="form-group col-md-7">
-              <label htmlFor="rsvp_date" style={{ fontWeight: 600, color: BLACK }}>RSVP Date</label>
-              <input type="date" id="rsvp_date" className="form-control"
-                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-                value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
-            </div>
-            <div className="form-group col-md-5">
-              <label htmlFor="rsvp_time" style={{ fontWeight: 600, color: BLACK }}>RSVP Time</label>
-              <input type="time" id="rsvp_time" className="form-control"
-                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-                value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
-            </div>
-          </div>
+            <div className="row mb-3">
+  <div className="form-group col-md-5">
+    <label htmlFor="date" style={{ fontWeight: 600, color: BLACK }}>
+      Date<span style={{ color: RED }}> *</span>
+    </label>
+    <input type="date" id="date" className="form-control"
+      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+      value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
+  </div>
+  <div className="form-group col-md-3">
+    <label style={{ fontWeight: 600, color: BLACK }}>
+      Start Time<span style={{ color: RED }}> *</span>
+    </label>
+    <input
+      type="time"
+      className="form-control"
+      value={startTime}
+      onChange={e => setStartTime(e.target.value)}
+      required
+      disabled={loading}
+      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+    />
+  </div>
+  <div className="form-group col-md-4">
+    <label style={{ fontWeight: 600, color: BLACK }}>
+      End Time
+    </label>
+    <input
+      type="time"
+      className="form-control"
+      value={endTime}
+      onChange={e => setEndTime(e.target.value)}
+      disabled={loading}
+      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+    />
+  </div>
+</div>
+{/* RSVP */}
+<div className="row mb-3">
+  <div className="form-group col-md-7">
+    <label htmlFor="rsvp_date" style={{ fontWeight: 600, color: BLACK }}>RSVP Date</label>
+    <input type="date" id="rsvp_date" className="form-control"
+      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+      value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
+  </div>
+  <div className="form-group col-md-5">
+    <label htmlFor="rsvp_time" style={{ fontWeight: 600, color: BLACK }}>RSVP Time</label>
+    <input type="time" id="rsvp_time" className="form-control"
+      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+      value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
+  </div>
+</div>
+
           {/* Rules */}
           <div className="form-group mb-3">
             <label htmlFor="rules_tourn" style={{ fontWeight: 600, color: BLACK }}>Rules</label>

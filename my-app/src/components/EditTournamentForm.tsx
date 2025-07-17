@@ -404,35 +404,40 @@ const EditTournamentForm: React.FC = () => {
                     }}
                   />
                 </div>
-                <div className="form-group col-md-3 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Start Time:</label>
-                  <TimePicker
-                    onChange={(value: string | null) => handleChange("startTime", value || "")}
-                    value={formData.startTime || ""}
-                    disableClock={false}
-                    clearIcon={null}
-                    format="hh:mm a"
-                    amPmAriaLabel="Select AM/PM"
-                    required
-                    disabled={loading}
-                    className="w-100 custom-timepicker"
-                    clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: "#DF2E38" }}>🕒</span>}
-                  />
-                </div>
-                <div className="form-group col-md-4 d-flex flex-column align-items-start">
-                  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>End Time:</label>
-                  <TimePicker
-                    onChange={(value: string | null) => handleChange("endTime", value || "")}
-                    value={formData.endTime || ""}
-                    disableClock={false}
-                    clearIcon={null}
-                    format="hh:mm a"
-                    amPmAriaLabel="Select AM/PM"
-                    disabled={loading}
-                    className="w-100 custom-timepicker"
-                    clockIcon={<span style={{ fontSize: 20, marginRight: 5, color: "#DF2E38" }}>🕒</span>}
-                  />
-                </div>
+                <div className="form-group col-md-3">
+  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>Start Time:</label>
+  <input
+    type="time"
+    className="form-control rounded-3"
+    value={formData.startTime || ""}
+    onChange={e => handleChange("startTime", e.target.value)}
+    required
+    disabled={loading}
+    style={{
+      borderRadius: 14,
+      background: "#F7F7F7",
+      border: "1.5px solid #f3dadf",
+      color: "#232323"
+    }}
+  />
+</div>
+<div className="form-group col-md-4">
+  <label className="fw-semibold mb-1" style={{ fontWeight: 600, color: "#232323" }}>End Time:</label>
+  <input
+    type="time"
+    className="form-control rounded-3"
+    value={formData.endTime || ""}
+    onChange={e => handleChange("endTime", e.target.value)}
+    disabled={loading}
+    style={{
+      borderRadius: 14,
+      background: "#F7F7F7",
+      border: "1.5px solid #f3dadf",
+      color: "#232323"
+    }}
+  />
+</div>
+
               </div>
               {/* RSVP */}
               <div className="row mb-2">

@@ -21,19 +21,26 @@ const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setIsLoggedIn(!!user);
-      if (user) {
-        const userDoc = await getDoc(firestoreDoc(db, "users", user.uid));
-        setUserRole(userDoc.exists() ? userDoc.data().role : null);
-      } else {
-        setUserRole(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    setIsLoggedIn(!!user);
+    if (user) {
+      const userDoc = await getDoc(firestoreDoc(db, "users", user.uid));
+      setUserRole(userDoc.exists() ? userDoc.data().role : null);
+    } else {
+      setUserRole(null);
+    }
+    setAuthChecked(true); // Done checking!
+  });
+  return () => unsubscribe();
+}, []);
+
+if (!authChecked) {
+  return null; // Or a spinner
+}
+
 
   const handleLogout = async () => {
     try {

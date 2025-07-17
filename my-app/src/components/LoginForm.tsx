@@ -25,7 +25,7 @@ function generateResetToken() {
   return Math.random().toString(36).slice(2) + Date.now();
 }
 
-const MAX_RESENDS = 3; // NEW
+const MAX_RESENDS = 3;
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -40,36 +40,36 @@ const LoginForm: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  // Resend logic state (NEW)
+  // Resend logic state
   const [canResend, setCanResend] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendCount, setResendCount] = useState(0);
 
-  // Handle Google Sign-In (no changes)
+  // Handle Google Sign-In — locked down
   const logGoogleUser = async () => {
     setErrorMessage(null);
     try {
       const response = await signInWithGooglePopup();
       const firebaseUser = response.user;
       const uid = firebaseUser.uid;
-      const email = firebaseUser.email;
+      // Only let them in if the user is pre-approved
       const userRef = doc(db, "users", uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
-        navigate("/"); return;
+        toast.success("Logged In! ✅", {
+          autoClose: 1800,
+          onClose: () => navigate("/")
+        });
+      } else {
+        toast.error("Your account is not authorized. Please contact your coach.");
+        // No redirect to signup!
       }
-      const q = query(collection(db, "users"), where("email", "==", email));
-      const querySnap = await getDocs(q);
-      if (!querySnap.empty) { navigate("/"); return; }
-      localStorage.setItem("pendingGoogleEmail", email || "");
-      localStorage.setItem("pendingGoogleName", firebaseUser.displayName || "");
-      navigate("/signup?google=1");
     } catch (error) {
       toast.error("Google sign-in failed. Try again!");
     }
   };
 
-  // Handle Email/Password Login (no changes)
+  // Handle Email/Password Login — locked down
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -84,26 +84,22 @@ const LoginForm: React.FC = () => {
           onClose: () => navigate("/")
         });
       } else {
-        toast.info("Welcome! Please finish setting up your account.", {
-          autoClose: 2000,
-          onClose: () => navigate("/signup")
-        });
+        toast.error("Your account is not authorized. Please contact your coach.");
+        // No redirect to signup!
       }
     } catch (error: any) {
       const message = firebaseErrorParser(error);
       setErrorMessage(message);
       if (error.code === "auth/user-not-found") {
-        toast.info("Account not found. Redirecting to signup...", {
-          autoClose: 1800,
-          onClose: () => navigate("/signup")
-        });
+        toast.error("Your account is not authorized. Please contact your coach.");
+        // No redirect to signup!
       } else {
         toast.error(message, { autoClose: 2000 });
       }
     }
   };
 
-  // === Forgot Password Functionality with Resend ===
+  // Forgot Password Functionality with Resend (unchanged)
   const handleForgotPassword = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSending(true);
@@ -128,8 +124,7 @@ const LoginForm: React.FC = () => {
 
       // 2. Build reset link and send email via EmailJS
       const resetLink = `${window.location.origin}/reset?token=${token}`;
-      console.log("resetLink:", resetLink);
-      const result = await emailjs.send(
+      await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_TEMPLATE_ID,
         {
@@ -138,20 +133,18 @@ const LoginForm: React.FC = () => {
         },
         EMAILJS_PUBLIC_KEY
       );
-      console.log("Result:", result);
 
       toast.success("Reset email sent! Check your inbox.");
       setSent(true);
-      setResendCount((c) => c + 1); // NEW: increment resend count
-      setCanResend(false);           // NEW: disable resend immediately
-      setResendCooldown(30);         // NEW: 30 second cooldown
+      setResendCount((c) => c + 1);
+      setCanResend(false);
+      setResendCooldown(30);
     } catch (err) {
       toast.error("Failed to send reset email. Try again later.");
     }
     setSending(false);
   };
 
-  // Cooldown timer effect (NEW)
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (resendCooldown > 0) {
@@ -164,7 +157,6 @@ const LoginForm: React.FC = () => {
     return () => clearTimeout(timer);
   }, [resendCooldown, sent, resendCount]);
 
-  // Error parser (no changes)
   const firebaseErrorParser = (error: any): string => {
     switch (error.code) {
       case "auth/email-already-in-use": return "This email is already in use.";
@@ -430,14 +422,15 @@ const LoginForm: React.FC = () => {
               Sign in with Google
             </button>
           </div>
-          <div className="text-center mt-4" style={{ fontSize: 15 }}>
+          {/* REMOVED: Sign up link below */}
+          {/* <div className="text-center mt-4" style={{ fontSize: 15 }}>
             <span style={{ color: GREY }}>First time? </span>
             <a href="/signup" style={{
               color: RED,
               textDecoration: "underline",
               fontWeight: 600
             }}>Create an account</a>
-          </div>
+          </div> */}
         </div>
         <ToastContainer />
       </div>

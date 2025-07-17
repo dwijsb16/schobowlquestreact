@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../.firebase/utils/firebase";
+import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { createUserWithEmailAndPassword, UserCredential, User } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth, db } from "../.firebase/utils/firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../.firebase/utils/firebase";
 import { Eye, EyeOff } from "lucide-react";
 import emailjs from "emailjs-com";
 
@@ -16,7 +16,7 @@ const WHITE = "#fff";
 const GREEN = "#51c775";
 
 const GRADE_OPTIONS = ["5th", "6th", "7th", "8th"];
-const VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 mins in ms
+const VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in ms
 
 const passwordRules = [
   { key: "length", text: "At least 6 characters" },
@@ -26,7 +26,15 @@ const passwordRules = [
   { key: "hasSpecial", text: "At least one special character (e.g. !@#$%^&*)" }
 ];
 
-function checkPasswordStrength(password: string) {
+type PasswordStrength = {
+  length: boolean;
+  upper: boolean;
+  lower: boolean;
+  digit: boolean;
+  hasSpecial: boolean;
+};
+
+function checkPasswordStrength(password: string): PasswordStrength {
   return {
     length: password.length >= 6,
     upper: /[A-Z]/.test(password),
@@ -40,31 +48,34 @@ const SERVICE_ID = "service_9marpbs";
 const TEMPLATE_ID = "template_3psu4d8";
 const PUBLIC_KEY = "1F-ljhM3B95nu3_4i";
 
-const SignupPage: React.FC = () => {
-  // Main state
-  const [email, setEmail] = useState("");
-  const [emailValid, setEmailValid] = useState(true);
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState("player");
-  const [grade, setGrade] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwMatch, setPwMatch] = useState(true);
-  const [fromGoogle, setFromGoogle] = useState(false);
-  //const navigate = useNavigate();
+const provider = new GoogleAuthProvider();
 
-  // Verification state
-  const [showVerification, setShowVerification] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
+const SignupPage: React.FC = () => {
+  // Types
+  type SignupMethod = null | "email" | "google";
+
+  const [signupMethod, setSignupMethod] = useState<SignupMethod>(null);
+  const [email, setEmail] = useState<string>("");
+  const [emailValid, setEmailValid] = useState<boolean>(true);
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [role, setRole] = useState<string>("player");
+  const [grade, setGrade] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [pwMatch, setPwMatch] = useState<boolean>(true);
+
+  // Verification
+  const [showVerification, setShowVerification] = useState<boolean>(false);
+  const [verificationCode, setVerificationCode] = useState<string>("");
   const [sentCode, setSentCode] = useState<string | null>(null);
   const [codeSentAt, setCodeSentAt] = useState<number>(0);
   const [verifStatus, setVerifStatus] = useState<"pending" | "success" | "expired" | "failed">("pending");
   const [verifError, setVerifError] = useState<string | null>(null);
-  const [resending, setResending] = useState(false);
+  const [resending, setResending] = useState<boolean>(false);
   const [timer, setTimer] = useState<number>(VERIFICATION_TIMEOUT);
 
   // For Firestore after verification
@@ -73,33 +84,15 @@ const SignupPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Email pattern validation
   useEffect(() => {
     if (!email) setEmailValid(true);
     else setEmailValid(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
   }, [email]);
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const isGoogle = url.searchParams.get("google") === "1";
-    setFromGoogle(isGoogle);
-    if (isGoogle) {
-      setEmail(localStorage.getItem("pendingGoogleEmail") || "");
-      setFirstName(localStorage.getItem("pendingGoogleName") || "");
-    }
-  }, []);
 
-  // On mount, check auth state
-  useEffect(() => {
-    setCurrentUser(auth.currentUser);
-    // If you want this to be more robust to auth changes, use onAuthStateChanged here
-  }, []);
-
-  const pwStrength = checkPasswordStrength(password);
   useEffect(() => {
     setPwMatch(confirmPassword === "" || password === confirmPassword);
   }, [password, confirmPassword]);
 
-  // Timer countdown effect
   useEffect(() => {
     if (!showVerification || verifStatus !== "pending") return;
     const interval = setInterval(() => {
@@ -114,7 +107,8 @@ const SignupPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [showVerification, codeSentAt, verifStatus]);
 
-  // Helper: Send email via EmailJS
+  const pwStrength = checkPasswordStrength(password);
+
   const sendVerificationEmail = async (to_email: string, to_name: string, code: string) => {
     await emailjs.send(
       SERVICE_ID,
@@ -124,76 +118,82 @@ const SignupPage: React.FC = () => {
     );
   };
 
-  const generateCode = () => String(Math.floor(100000 + Math.random() * 900000));
-  function formatTimer(ms: number) {
+  const generateCode = (): string => String(Math.floor(100000 + Math.random() * 900000));
+  function formatTimer(ms: number): string {
     const min = Math.floor(ms / 60000);
     const sec = Math.floor((ms % 60000) / 1000);
     return `${min}:${sec.toString().padStart(2, "0")}`;
   }
 
-  // MAIN SIGNUP HANDLER
-    const handleSignup = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError(null);
-    
-      // === COMMON FIELD VALIDATION ===
-      if (!emailValid) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-      if (!firstName) {
-        setError("First name is required.");
-        return;
-      }
-      if (!lastName) {
-        setError("Last name is required.");
-        return;
-      }
-      if (!role) {
-        setError("Please select a role.");
-        return;
-      }
-      if (role === "player" && !grade) {
-        setError("Please select a grade.");
-        return;
-      }
-    
-      try {
-        let uid: string;
-        let signupEmail: string;
-        if (!currentUser) {
-          // Validate password fields
-          if (
-            !pwStrength.length ||
-            !pwStrength.upper ||
-            !pwStrength.lower ||
-            !pwStrength.digit ||
-            !pwStrength.hasSpecial
-          ) {
-            setError(
-              "Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character."
-            );
-            return;
-          }
-          if (!pwMatch) {
-            setError("Passwords do not match.");
-            return;
-          }
-          if (!password) {
-            setError("Password is required.");
-            return;
-          }
-          // --- CREATE FIREBASE USER ---
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          uid = userCredential.user.uid;
-          signupEmail = userCredential.user.email!;
-        } else {
-          // === ALREADY AUTHED (Google, etc) ===
-          uid = currentUser.uid;
-          signupEmail = currentUser.email!;
+  // GOOGLE SIGNUP
+  const handleGoogleSignup = async () => {
+    setError(null);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      setSignupMethod("google");
+      setCurrentUser(user);
+      setEmail(user.email || "");
+      setFirstName(user.displayName?.split(" ")[0] || "");
+      setLastName(user.displayName?.split(" ").slice(1).join(" ") || "");
+      setRole("player");
+      setGrade("");
+    } catch (err: any) {
+      setError("Google sign-in failed. Try again.");
+    }
+  };
+
+  // EMAIL SIGNUP
+  const handleShowEmailSignup = () => {
+    setSignupMethod("email");
+    setCurrentUser(null);
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setPassword("");
+    setConfirmPassword("");
+    setRole("player");
+    setGrade("");
+  };
+
+  // MAIN SIGNUP
+  const handleSignup = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!emailValid) return setError("Please enter a valid email address.");
+    if (!firstName) return setError("First name is required.");
+    if (!lastName) return setError("Last name is required.");
+    if (!role) return setError("Please select a role.");
+    if (role === "player" && !grade) return setError("Please select a grade.");
+
+    let uid: string, signupEmail: string;
+    try {
+      if (signupMethod === "email") {
+        if (
+          !pwStrength.length ||
+          !pwStrength.upper ||
+          !pwStrength.lower ||
+          !pwStrength.digit ||
+          !pwStrength.hasSpecial
+        ) {
+          return setError(
+            "Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character."
+          );
         }
-  
-      // Step 2: Prepare objects for Firestore, but DO NOT SAVE YET
+        if (!pwMatch) return setError("Passwords do not match.");
+        if (!password) return setError("Password is required.");
+
+        const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
+        uid = userCredential.user.uid;
+        signupEmail = userCredential.user.email!;
+      } else if (signupMethod === "google" && currentUser) {
+        uid = currentUser.uid;
+        signupEmail = currentUser.email!;
+      } else {
+        return setError("Please choose a signup method.");
+      }
+
       const newUser = {
         uid,
         email: signupEmail,
@@ -203,8 +203,8 @@ const SignupPage: React.FC = () => {
         ...(role === "player" && { grade }),
         linkedPlayers: [],
       };
-  
-      let playerDoc: any = null;
+
+      let playerDoc = null;
       if (role === "player") {
         playerDoc = {
           uid,
@@ -215,23 +215,20 @@ const SignupPage: React.FC = () => {
           linkedUsers: [],
         };
       }
-  
+
       setPendingFirestoreUser({ newUser, uid });
       setPendingPlayerDoc(playerDoc);
-  
-      // Step 3: Send verification code & show code input box
+
       const code = generateCode();
       await sendVerificationEmail(signupEmail, firstName, code);
-  
+
       setSentCode(code);
       setShowVerification(true);
       setVerifStatus("pending");
       setCodeSentAt(Date.now());
       setTimer(VERIFICATION_TIMEOUT);
       setVerifError(null);
-  
     } catch (err: any) {
-      console.error("Signup failed:", err);
       if (err.code === "auth/email-already-in-use") {
         setError("This email is already in use with another account.");
       } else if (err.code === "auth/invalid-email") {
@@ -243,10 +240,9 @@ const SignupPage: React.FC = () => {
       }
     }
   };
-  
 
-  // Handler: verification code entry
-  const handleVerify = async (e: React.FormEvent) => {
+  // VERIFICATION HANDLER
+  const handleVerify = async (e: FormEvent) => {
     e.preventDefault();
     if (!sentCode) return;
     if (verifStatus === "expired") {
@@ -256,7 +252,6 @@ const SignupPage: React.FC = () => {
     if (verificationCode === sentCode) {
       setVerifStatus("success");
       setVerifError(null);
-      // Now actually add to Firestore
       try {
         const { newUser, uid } = pendingFirestoreUser;
         const userDocRef = doc(db, "users", uid);
@@ -281,7 +276,6 @@ const SignupPage: React.FC = () => {
     }
   };
 
-  // Handler: resend code
   const handleResend = async () => {
     setResending(true);
     try {
@@ -298,6 +292,7 @@ const SignupPage: React.FC = () => {
     setResending(false);
   };
 
+  // --- FORM ---
   return (
     <div className="container-fluid" style={{ background: LIGHT_GREY, minHeight: "100vh" }}>
       <div className="row justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
@@ -309,194 +304,237 @@ const SignupPage: React.FC = () => {
             boxShadow: "0 2px 32px #d1a2a822"
           }}>
             <h2 className="text-center mb-4" style={{
-              color: RED,
-              fontWeight: 700,
-              letterSpacing: 0.5
+              color: RED, fontWeight: 700, letterSpacing: 0.5
             }}>
-              {currentUser ? "Complete Your Profile" : "Create an Account"}
+              Create an Account
             </h2>
-            {/* ---------- GOOGLE LOADING SPINNER OR FORM ---------- */}
-            <form onSubmit={handleSignup}>
-              <div className="form-group mb-3">
-                <label style={{ fontWeight: 500, color: BLACK }}>Email</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="username"
-                  disabled={fromGoogle}
-                  style={{
-                    borderRadius: 12,
-                    border: `1.3px solid ${LIGHT_GREY}`,
-                    background: WHITE,
-                    color: BLACK
-                  }}
-                />
-                {!emailValid && (
-                  <div className="invalid-feedback" style={{ display: "block", color: RED }}>
-                    Please enter a valid email address.
-                  </div>
-                )}
-              </div>
-              {/* --- Password --- */}
-              <div className="form-group mb-3" style={{ position: "relative" }}>
-                <label style={{ fontWeight: 500, color: BLACK }}>Password</label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className={`form-control ${error && password ? "is-invalid" : ""}`}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  disabled={showVerification || !!auth.currentUser}
-                  style={{
-                    borderRadius: 12,
-                    border: `1.3px solid ${LIGHT_GREY}`,
-                    background: WHITE,
-                    color: BLACK,
-                    paddingRight: 40,
-                  }}
-                />
+
+            {/* Signup Method Selection */}
+            {!signupMethod && !showVerification && (
+              <div className="d-flex flex-column align-items-center mb-4">
                 <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  tabIndex={-1}
+                  className="btn btn-lg mb-3"
                   style={{
-                    position: "absolute",
-                    right: 14,
-                    top: "65%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    zIndex: 2,
-                    color: DARK_RED,
+                    background: `linear-gradient(90deg,${RED} 0,${DARK_RED} 100%)`,
+                    color: WHITE, fontWeight: 700,
+                    borderRadius: 14, width: 260, fontSize: 18
                   }}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={handleShowEmailSignup}
                 >
-                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                  Sign Up with Email
                 </button>
-                <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: GREY }}>
-                  {passwordRules.map((rule) => (
-                    <li key={rule.key} style={{
-                      color: checkPasswordStrength(password)[rule.key as keyof typeof pwStrength] ? GREEN : "#aaa"
-                    }}>
-                      {rule.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              {/* --- Confirm Password --- */}
-              <div className="form-group mb-3">
-                <label style={{ fontWeight: 500, color: BLACK }}>Confirm Password</label>
-                <input
-                  type="password"
-                  className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  disabled={showVerification || !!auth.currentUser}
+                <button
+                  className="btn btn-lg"
                   style={{
-                    borderRadius: 12,
-                    border: `1.3px solid ${LIGHT_GREY}`,
-                    background: WHITE,
-                    color: BLACK
+                    background: "#fff",
+                    color: RED,
+                    fontWeight: 700,
+                    borderRadius: 14,
+                    width: 260,
+                    fontSize: 18,
+                    border: `2px solid ${RED}`,
+                    boxShadow: "0 2px 8px #f2b8bb2d"
                   }}
-                />
-                {!pwMatch && confirmPassword && (
-                  <div className="invalid-feedback" style={{ display: "block", color: RED }}>
-                    Passwords do not match.
-                  </div>
-                )}
-              </div>
-              <div className="form-group mb-3">
-                <label style={{ fontWeight: 500, color: BLACK }}>First Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                  required
-                  disabled={showVerification}
-                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
-                />
-              </div>
-              <div className="form-group mb-3">
-                <label style={{ fontWeight: 500, color: BLACK }}>Last Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                  required
-                  disabled={showVerification}
-                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
-                />
-              </div>
-              <div className="form-group mb-3">
-                <label style={{ fontWeight: 500, color: BLACK }}>Role</label>
-                <select
-                  className="form-control"
-                  value={role}
-                  onChange={e => setRole(e.target.value)}
-                  required
-                  disabled={showVerification}
-                  style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                  onClick={handleGoogleSignup}
                 >
-                  <option value="player">Player</option>
-                  <option value="parent">Parent</option>
-                </select>
+                  Sign Up with Google
+                </button>
               </div>
-              {role === "player" && (
+            )}
+
+            {/* FORM */}
+            {(signupMethod && !showVerification) && (
+              <form onSubmit={handleSignup}>
+                {/* EMAIL */}
                 <div className="form-group mb-3">
-                  <label style={{ fontWeight: 500, color: BLACK }}>Grade</label>
-                  <select
+                  <label style={{ fontWeight: 500, color: BLACK }}>Email</label>
+                  <input
+                    type="email"
                     className="form-control"
-                    value={grade}
-                    onChange={e => setGrade(e.target.value)}
+                    value={email}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    required
+                    autoComplete="username"
+                    disabled={signupMethod === "google"}
+                    style={{
+                      borderRadius: 12,
+                      border: `1.3px solid ${LIGHT_GREY}`,
+                      background: signupMethod === "google" ? "#f7ffe7" : WHITE,
+                      color: BLACK,
+                      fontWeight: signupMethod === "google" ? 600 : 400,
+                    }}
+                  />
+                  {!emailValid && (
+                    <div className="invalid-feedback" style={{ display: "block", color: RED }}>
+                      Please enter a valid email address.
+                    </div>
+                  )}
+                </div>
+                {/* PASSWORD */}
+                {signupMethod === "email" && (
+                  <>
+                    <div className="form-group mb-3" style={{ position: "relative" }}>
+                      <label style={{ fontWeight: 500, color: BLACK }}>Password</label>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        className={`form-control ${error && password ? "is-invalid" : ""}`}
+                        value={password}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                        required
+                        autoComplete="new-password"
+                        style={{
+                          borderRadius: 12,
+                          border: `1.3px solid ${LIGHT_GREY}`,
+                          background: WHITE,
+                          color: BLACK,
+                          paddingRight: 40,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        tabIndex={-1}
+                        style={{
+                          position: "absolute",
+                          right: 14,
+                          top: "65%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          zIndex: 2,
+                          color: DARK_RED,
+                        }}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+                      </button>
+                      <ul className="mt-2 mb-0 pl-4" style={{ fontSize: 13, color: GREY }}>
+                        {passwordRules.map((rule) => (
+                          <li key={rule.key} style={{
+                            color: pwStrength[rule.key as keyof PasswordStrength] ? GREEN : "#aaa"
+                          }}>
+                            {rule.text}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="form-group mb-3">
+                      <label style={{ fontWeight: 500, color: BLACK }}>Confirm Password</label>
+                      <input
+                        type="password"
+                        className={`form-control ${!pwMatch && confirmPassword ? "is-invalid" : ""}`}
+                        value={confirmPassword}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                        required
+                        autoComplete="new-password"
+                        style={{
+                          borderRadius: 12,
+                          border: `1.3px solid ${LIGHT_GREY}`,
+                          background: WHITE,
+                          color: BLACK
+                        }}
+                      />
+                      {!pwMatch && confirmPassword && (
+                        <div className="invalid-feedback" style={{ display: "block", color: RED }}>
+                          Passwords do not match.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                {/* FIRST/LAST */}
+                <div className="form-group mb-3">
+                  <label style={{ fontWeight: 500, color: BLACK }}>First Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={firstName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
                     required
                     disabled={showVerification}
+                    style={{
+                      borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}`,
+                      background: signupMethod === "google" ? "#f7ffe7" : WHITE,
+                      color: BLACK,
+                      fontWeight: signupMethod === "google" ? 600 : 400,
+                    }}
+                  />
+                </div>
+                <div className="form-group mb-3">
+                  <label style={{ fontWeight: 500, color: BLACK }}>Last Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={lastName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
+                    required
+                    disabled={showVerification}
+                    style={{
+                      borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}`,
+                      background: signupMethod === "google" ? "#f7ffe7" : WHITE,
+                      color: BLACK,
+                      fontWeight: signupMethod === "google" ? 600 : 400,
+                    }}
+                  />
+                </div>
+                {/* ROLE */}
+                <div className="form-group mb-3">
+                  <label style={{ fontWeight: 500, color: BLACK }}>Role</label>
+                  <select
+                    className="form-control"
+                    value={role}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value)}
+                    required
                     style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
                   >
-                    <option value="">Select grade</option>
-                    {GRADE_OPTIONS.map((g) => (
-                      <option value={g} key={g}>{g}</option>
-                    ))}
+                    <option value="player">Player</option>
+                    <option value="parent">Parent</option>
                   </select>
                 </div>
-              )}
-              {error && <div className="alert alert-danger mt-2" style={{
-                background: "#ffeef0",
-                color: RED,
-                border: `1px solid #ffd3db`
-              }}>{error}</div>}
-              <button
-                className="btn mt-3 w-100"
-                type="submit"
-                disabled={showVerification}
-                style={{
-                  background: `linear-gradient(90deg,${RED} 0,${DARK_RED} 100%)`,
-                  color: WHITE,
-                  fontWeight: 600,
-                  borderRadius: 12,
-                  padding: "12px 0",
-                  fontSize: 16,
-                  border: "none",
-                  boxShadow: "0 2px 12px #f2b8bb55"
-                }}
-              >
-                {currentUser ? "Save Profile" : "Sign Up"}
-              </button>
-            </form>
+                {/* GRADE */}
+                {role === "player" && (
+                  <div className="form-group mb-3">
+                    <label style={{ fontWeight: 500, color: BLACK }}>Grade</label>
+                    <select
+                      className="form-control"
+                      value={grade}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setGrade(e.target.value)}
+                      required
+                      disabled={showVerification}
+                      style={{ borderRadius: 12, border: `1.3px solid ${LIGHT_GREY}` }}
+                    >
+                      <option value="">Select grade</option>
+                      {GRADE_OPTIONS.map((g) => (
+                        <option value={g} key={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {/* ERRORS */}
+                {error && <div className="alert alert-danger mt-2" style={{
+                  background: "#ffeef0", color: RED, border: `1px solid #ffd3db`
+                }}>{error}</div>}
+                <button
+                  className="btn mt-3 w-100"
+                  type="submit"
+                  disabled={showVerification}
+                  style={{
+                    background: `linear-gradient(90deg,${RED} 0,${DARK_RED} 100%)`,
+                    color: WHITE, fontWeight: 600, borderRadius: 12,
+                    padding: "12px 0", fontSize: 16, border: "none",
+                    boxShadow: "0 2px 12px #f2b8bb55"
+                  }}
+                >
+                  Sign Up
+                </button>
+              </form>
+            )}
+
             {/* --- VERIFICATION CODE ENTRY --- */}
             {showVerification && (
               <div className="card mt-4 p-3" style={{
-                borderRadius: 10,
-                background: "#fff8f8",
-                border: `1.5px solid #fad5da`
+                borderRadius: 10, background: "#fff8f8", border: `1.5px solid #fad5da`
               }}>
                 <h5 style={{ color: RED, fontWeight: 700 }}>Email Verification</h5>
                 <p style={{ color: BLACK }}>
@@ -508,12 +546,9 @@ const SignupPage: React.FC = () => {
                   <input
                     className="form-control mr-2"
                     style={{
-                      maxWidth: 150,
-                      letterSpacing: "0.2em",
-                      borderRadius: 12,
-                      border: `1.2px solid ${LIGHT_GREY}`,
-                      background: WHITE,
-                      color: BLACK
+                      maxWidth: 150, letterSpacing: "0.2em",
+                      borderRadius: 12, border: `1.2px solid ${LIGHT_GREY}`,
+                      background: WHITE, color: BLACK
                     }}
                     maxLength={6}
                     type="text"
@@ -521,7 +556,7 @@ const SignupPage: React.FC = () => {
                     inputMode="numeric"
                     placeholder="Enter code"
                     value={verificationCode}
-                    onChange={e => {
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
                       setVerificationCode(e.target.value);
                       setVerifStatus("pending");
                       setVerifError(null);
@@ -534,11 +569,8 @@ const SignupPage: React.FC = () => {
                     type="submit"
                     disabled={verifStatus === "success" || timer <= 0}
                     style={{
-                      background: GREEN,
-                      color: WHITE,
-                      fontWeight: 600,
-                      borderRadius: 8,
-                      border: "none",
+                      background: GREEN, color: WHITE,
+                      fontWeight: 600, borderRadius: 8, border: "none",
                       marginLeft: 12,
                     }}
                   >
@@ -547,36 +579,29 @@ const SignupPage: React.FC = () => {
                 </form>
                 {verifStatus === "success" && (
                   <div className="alert alert-success" style={{
-                    background: "#f0fcf5",
-                    color: GREEN,
-                    border: "1px solid #c1efdb"
+                    background: "#f0fcf5", color: GREEN, border: "1px solid #c1efdb"
                   }}>Success! Verified.</div>
                 )}
                 {verifStatus === "expired" && (
                   <div className="alert alert-warning" style={{
-                    background: "#fff7eb",
-                    color: "#ff9e36",
-                    border: "1px solid #ffe4bd"
+                    background: "#fff7eb", color: "#ff9e36", border: "1px solid #ffe4bd"
                   }}>
                     Code expired. Please click "Resend Email".
                   </div>
                 )}
                 {verifError && (
                   <div className="alert alert-danger" style={{
-                    background: "#ffeef0",
-                    color: RED,
-                    border: "1px solid #ffd3db"
+                    background: "#ffeef0", color: RED, border: "1px solid #ffd3db"
                   }}>{verifError}</div>
                 )}
                 <button
                   className="btn btn-link"
                   style={{
-                    color: RED,
-                    fontWeight: 600,
-                    textDecoration: "underline"
+                    color: RED, fontWeight: 600, textDecoration: "underline"
                   }}
                   onClick={handleResend}
                   disabled={resending || timer > 0}
+                  type="button"
                 >
                   {resending ? "Sending..." : "Resend Email"}
                 </button>

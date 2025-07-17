@@ -160,7 +160,7 @@ useEffect(() => {
       for (const uid of linkedPlayers) {
         const playerDoc = await getDocumentById<any>("players", uid);
         if (playerDoc) {
-          out.push(`${playerDoc.firstName} ${playerDoc.lastName} (${playerDoc.email || playerDoc.id})`);
+          out.push(`${playerDoc.firstName} ${playerDoc.lastName}`);
         }
       }
       setLinkedPlayerNames(out);

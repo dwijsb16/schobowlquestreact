@@ -25,10 +25,12 @@ import AssignCoaches from "./pages/AssignCoaches";
 import PlayerList from "./pages/PlayerList";
 import { AuthProvider } from "./hooks/AuthContext";
 import ResetPassword from "./pages/forgotpassword";
+import { useAutoLogout } from './hooks/useAutoLogout';
 
 
 
 const App = () => {
+  useAutoLogout();
   return (
     <AuthProvider>
       <>
