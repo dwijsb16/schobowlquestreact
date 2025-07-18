@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
 interface TournamentCard {
   rsvpDate: string;
@@ -41,6 +42,10 @@ function formatDateString(date: string) {
 
 const Cards: React.FC = () => {
   const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]); // array of player IDs (strings)
+const [signupStatus, setSignupStatus] = useState<Record<string, string>>({}); // tournamentId -> status string
+
 
   useEffect(() => {
     const fetchTournaments = async () => {
@@ -74,6 +79,52 @@ const Cards: React.FC = () => {
 
     fetchTournaments();
   }, []);
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      setLinkedPlayers([]);
+      if (user) {
+        const userDoc = await getDocs(query(collection(db, "users"), where("uid", "==", user.uid)));
+        const data = userDoc.docs[0]?.data();
+        if (!data) return;
+        if (data.role === "player") {
+          setLinkedPlayers([user.uid]);
+        } else if (data.linkedPlayers) {
+          setLinkedPlayers(data.linkedPlayers);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+  useEffect(() => {
+    async function fetchSignupStatuses() {
+      if (!tournaments.length || !linkedPlayers.length) {
+        setSignupStatus({});
+        return;
+      }
+      const statuses: Record<string, string> = {};
+  
+      await Promise.all(tournaments.map(async (tourn) => {
+        const entriesRef = collection(db, "signups", tourn.id, "entries");
+        const snap = await getDocs(entriesRef);
+  
+        const statusForPlayers = linkedPlayers.map(pid => {
+          const entry = snap.docs.find(doc => doc.data().playerId === pid);
+          return entry ? "Registered" : "Not Registered";
+        });
+  
+        // Join with slashes if >1 player, else just string
+        statuses[tourn.id] = statusForPlayers.length
+          ? statusForPlayers.join(" / ")
+          : "(no player linked)";
+      }));
+  
+      setSignupStatus(statuses);
+    }
+    fetchSignupStatuses();
+  }, [tournaments, linkedPlayers]);
+    
 
   return (
     <div className="row justify-content-center" style={{ padding: "32px 8px 32px 8px" }}>
@@ -137,11 +188,50 @@ const Cards: React.FC = () => {
     RSVP by: {formatRsvpString(tourn.rsvpDate)}
   </div>
 )}
-                <div>
-                  <a href={`/tournament/${tourn.id}`} className="btn btn-outline-primary btn-sm mt-2">
-                    Sign Up
-                  </a>
-                </div>
+{/* Registration status badge (only if player or parent logged in) */}
+{currentUser && (
+  <div style={{ marginTop: 6, marginBottom: 5 }}>
+    <span
+      className="badge"
+      style={{
+        background:
+          signupStatus[tourn.id]?.includes("Registered") && !signupStatus[tourn.id].includes("Not Registered")
+            ? "#6BCB77"
+            : signupStatus[tourn.id]?.includes("Registered")
+            ? "#FFD166"
+            : "#f0f0f0",
+        color:
+          signupStatus[tourn.id] === "(no player linked)" ? "#B71C1C"
+            : signupStatus[tourn.id]?.includes("Registered") && !signupStatus[tourn.id].includes("Not Registered") ? "#fff"
+            : signupStatus[tourn.id]?.includes("Registered") ? "#8A6D00"
+            : "#888",
+        fontWeight: 700,
+        fontSize: 13,
+        padding: "6px 13px",
+        borderRadius: 12,
+        border: "1.5px solid #e3e3e3"
+      }}
+    >
+      {linkedPlayers.length === 0
+        ? "(no player linked)"
+        : signupStatus[tourn.id]}
+    </span>
+  </div>
+)}
+
+<div>
+  <a
+    href={`/tournament/${tourn.id}`}
+    className={
+      signupStatus[tourn.id]?.includes("Registered")
+        ? "btn btn-success btn-sm mt-2"
+        : "btn btn-outline-primary btn-sm mt-2"
+    }
+  >
+    {signupStatus[tourn.id]?.includes("Registered") ? "Edit Signup" : "Sign Up"}
+  </a>
+</div>
+
               </div>
             </div>
           </div>

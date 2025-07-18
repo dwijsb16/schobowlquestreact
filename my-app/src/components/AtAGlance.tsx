@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { Link } from "react-router-dom";
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+
 
 const RED = "#DF2E38";
 const LIGHT_GREY = "#F7F7F7";
@@ -29,6 +31,10 @@ const AtAGlanceCalendar: React.FC = () => {
 
   const [events, setEvents] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
+const [signupStatus, setSignupStatus] = useState<Record<string, string>>({});
+
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -49,6 +55,58 @@ const AtAGlanceCalendar: React.FC = () => {
     };
     fetchEvents();
   }, []);
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      setLinkedPlayers([]);
+      if (user) {
+        // Get user data from Firestore
+        const usersQuery = query(collection(db, "users"), where("uid", "==", user.uid));
+        const userSnap = await getDocs(usersQuery);
+        const data = userSnap.docs[0]?.data();
+        if (!data) return;
+        if (data.role === "player") {
+          setLinkedPlayers([user.uid]);
+        } else if (data.linkedPlayers) {
+          setLinkedPlayers(data.linkedPlayers);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+  useEffect(() => {
+    async function fetchSignupStatuses() {
+      if (!events.length || !linkedPlayers.length) {
+        setSignupStatus({});
+        return;
+      }
+      const statuses: Record<string, string> = {};
+      await Promise.all(events.map(async (ev) => {
+        const entriesRef = collection(db, "signups", ev.id, "entries");
+        const snap = await getDocs(entriesRef);
+        const statusForPlayers = linkedPlayers.map(pid => {
+          const entry = snap.docs.find(doc => doc.data().playerId === pid);
+          if (!entry) return "Not Registered";
+          const d = entry.data();
+          if (d.availability === "yes") return "Registered";
+          if (d.availability === "early") return "Leaving Early";
+          if (d.availability === "late") return "Arriving Late";
+          if (d.availability === "late_early") return "Late & Early";
+          if (d.availability === "no") return "Not Attending";
+          return "Registered";
+        });
+        // Show multiple players with slash
+        statuses[ev.id] = statusForPlayers.length
+          ? statusForPlayers.join(" / ")
+          : "(no player linked)";
+      }));
+      setSignupStatus(statuses);
+    }
+    fetchSignupStatuses();
+  }, [events, linkedPlayers]);
+  
+  
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -58,6 +116,7 @@ const AtAGlanceCalendar: React.FC = () => {
   };
 
   return (
+    
     <div className="col-md-4">
       <div
         className="card mt-3 shadow-sm"
@@ -144,6 +203,35 @@ const AtAGlanceCalendar: React.FC = () => {
                 }}>
                 {ev.status ? ev.status.charAt(0).toUpperCase() + ev.status.slice(1) : "TBA"}
               </span>
+              {currentUser && (
+  <span
+    style={{
+      background:
+        signupStatus[ev.id]?.includes("Registered") && !signupStatus[ev.id].includes("Not Registered")
+          ? "#6BCB77"
+          : signupStatus[ev.id]?.includes("Leaving Early") || signupStatus[ev.id]?.includes("Arriving Late") || signupStatus[ev.id]?.includes("Late & Early")
+          ? "#FFD93D"
+          : signupStatus[ev.id]?.includes("Not Registered") || signupStatus[ev.id]?.includes("Not Attending")
+          ? "#FF6B6B"
+          : "#eeeeee",
+      color: "#232323",
+      fontWeight: 700,
+      fontSize: 14,
+      padding: "6px 13px",
+      borderRadius: 12,
+      border: "1.5px solid #e3e3e3",
+      marginLeft: 8,
+      minWidth: 120,
+      textAlign: "center",
+      display: "inline-block"
+    }}
+  >
+    {linkedPlayers.length === 0
+      ? "(no player linked)"
+      : signupStatus[ev.id]}
+  </span>
+)}
+
             </div>
           ))}
           {loading && (

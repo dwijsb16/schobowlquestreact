@@ -30,7 +30,7 @@ const Carousel: React.FC = () => {
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>MSNCT 20th Place</h5>
+              <h5>MSNCT 21st Place</h5>
               <p>2025</p>
             </div>
           </div>
@@ -54,7 +54,7 @@ const Carousel: React.FC = () => {
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>NAC Junion National Champions</h5>
+              <h5>NAC Middle School National Champions</h5>
               <p>2025</p>
             </div>
           </div>

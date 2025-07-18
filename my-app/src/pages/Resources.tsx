@@ -19,12 +19,12 @@ interface Resource {
 
 const resourceCategories = {
   studyMaterials: [
-    {
-      id: 'sm1',
-      title: 'General Study Guide',
-      description: 'Guide introducing key concepts and strategies for Scholastic Bowl',
-      downloadUrl: "/documents/general-study-guide.pdf"
-    },
+    // {
+    //   id: 'sm1',
+    //   title: 'General Study Guide',
+    //   description: 'Guide introducing key concepts and strategies for Scholastic Bowl',
+    //   downloadUrl: "/documents/general-study-guide.pdf"
+    // },
   ],
   practiceQuestions: [
     // {
@@ -52,6 +52,12 @@ const resourceCategories = {
       title: 'SCOP study sheets',
       description: 'Study sheets in certain topics curated by SCOP',
       link: 'https://scop-qb.org/study-sheets/'
+    },
+    {
+      id: 'ul4',
+      title: 'QBreader',
+      description: 'Online question database for practice and study',
+      link: 'https://qbreader.org'
     }
   ]
 };
@@ -177,17 +183,22 @@ const Resources: React.FC = () => {
             </Col>
           </Row>
         </Container>
-        {/* Footer outside so it flows full width */}
-        <div style={{
-          marginTop: 64,
-          background: WHITE,
-          borderTop: `2px solid ${RED}`,
-          padding: "0px",
-          boxShadow: "0 -2px 24px #fae3e6"
-        }}>
+      </Container>
+              {/* Footer outside so it flows full width */}
+              <div style={{
+  marginTop: 64,
+  background: WHITE,
+  borderTop: `2px solid ${RED}`,
+  width: "100vw",
+  position: "relative",
+  left: "50%",
+  right: "50%",
+  marginLeft: "-50vw",
+  marginRight: "-50vw",
+  boxShadow: "none"
+}}>
           <Footer />
         </div>
-      </Container>
     </div>
   );
 };

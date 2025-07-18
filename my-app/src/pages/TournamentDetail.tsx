@@ -122,6 +122,7 @@ const TournamentPage: React.FC = () => {
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [parentName, setParentName] = useState("");
 
   // --- Team, Signup, Player Data ---
   const [teams, setTeams] = useState<TeamDoc[]>([]);
@@ -321,6 +322,7 @@ const TournamentPage: React.FC = () => {
       ...(showStartTime && startTime ? { startTime } : {}),
       ...(showEndTime && endTime ? { endTime } : {}),
       ...(carpool.includes("can-drive") && driveCapacity ? { driveCapacity } : {}),
+      ...(parentAttending && parentName ? { parentName } : {})
     };
   
     // Always check Firestore for this player/tournament signup
@@ -435,27 +437,33 @@ const TournamentPage: React.FC = () => {
                     </span>
                   )}
                   {tournament.status && (
-                    <span
-                      className="badge mx-2"
-                      style={{
-                        background:
-                          tournament.status === "confirmed"
-                            ? "#DF2E38"
-                            : tournament.status === "cancelled"
-                            ? "#f96d6d"
-                            : "#ffe17b",
-                        color:
-                          tournament.status === "tentative"
-                            ? "#a06b00"
-                            : "#fff",
-                        fontSize: 14,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {tournament.status.charAt(0).toUpperCase() +
-                        tournament.status.slice(1)}
-                    </span>
-                  )}
+  <span
+    className="badge mx-2"
+    style={{
+      background:
+        tournament.status === "confirmed"
+          ? "#6BCB77"
+          : tournament.status === "cancelled"
+          ? "#F96D6D"
+          : "#FFD166",
+      color:
+        tournament.status === "tentative"
+          ? "#8A6D00"
+          : "#fff",
+      fontSize: 14,
+      fontWeight: 700,
+      padding: "8px 14px",
+      borderRadius: 12,
+    }}
+  >
+    {tournament.status === "confirmed"
+      ? "Confirmed (This event is fully set and will happen as scheduled.)"
+      : tournament.status === "tentative"
+      ? "Tentative (The event is being planned but is not finalized.)"
+      : "Cancelled (This event will not occur.)"}
+  </span>
+)}
+
                   <div className="mt-3" style={{ fontSize: 15, color: "#B71C1C" }}>
                     {tournament.startTime && (
                       <span>
@@ -593,24 +601,51 @@ const TournamentPage: React.FC = () => {
                       </div>
                     )}
                     <div className="form-group mb-3">
-                      <label htmlFor="carpoolOptions" style={{ fontWeight: 500 }}>
-                        Carpool Options:
-                      </label>
-                      <select
-                        multiple
-                        className="form-control"
-                        id="carpoolOptions"
-                        value={carpool}
-                        onChange={(e) =>
-                          setCarpool(
-                            Array.from(e.target.selectedOptions, (opt) => opt.value)
-                          )
-                        }
-                      >
-                        <option value="can-drive">Can Drive</option>
-                        <option value="needs-ride">Needs a Ride</option>
-                      </select>
-                    </div>
+  <label style={{ fontWeight: 500 }}>Carpool Options:</label>
+  <div style={{ display: "flex", gap: "14px" }}>
+    <button
+      type="button"
+      className={`btn ${carpool.includes("can-drive") ? "btn-success" : "btn-outline-secondary"}`}
+      style={{
+        borderRadius: 12,
+        fontWeight: 600,
+        background: carpool.includes("can-drive") ? "#6BCB77" : "#fff",
+        color: carpool.includes("can-drive") ? "#fff" : "#2e3a59",
+        border: carpool.includes("can-drive") ? "2px solid #6BCB77" : "2px solid #dadada",
+        boxShadow: carpool.includes("can-drive") ? "0 2px 8px #6bcb7711" : "none",
+        transition: "all 0.12s"
+      }}
+      onClick={() =>
+        setCarpool(carpool.includes("can-drive")
+          ? carpool.filter((c) => c !== "can-drive")
+          : [...carpool, "can-drive"])
+      }
+    >
+      Can Drive
+    </button>
+    <button
+      type="button"
+      className={`btn ${carpool.includes("needs-ride") ? "btn-warning" : "btn-outline-secondary"}`}
+      style={{
+        borderRadius: 12,
+        fontWeight: 600,
+        background: carpool.includes("needs-ride") ? "#FFD166" : "#fff",
+        color: carpool.includes("needs-ride") ? "#222" : "#2e3a59",
+        border: carpool.includes("needs-ride") ? "2px solid #FFD166" : "2px solid #dadada",
+        boxShadow: carpool.includes("needs-ride") ? "0 2px 8px #ffd16633" : "none",
+        transition: "all 0.12s"
+      }}
+      onClick={() =>
+        setCarpool(carpool.includes("needs-ride")
+          ? carpool.filter((c) => c !== "needs-ride")
+          : [...carpool, "needs-ride"])
+      }
+    >
+      Needs Ride
+    </button>
+  </div>
+</div>
+
                     {carpool.includes("can-drive") && (
                       <div className="form-group mb-3">
                         <label htmlFor="driveCapacity" style={{ fontWeight: 500 }}>
@@ -642,6 +677,21 @@ const TournamentPage: React.FC = () => {
                     </div>
                     {parentAttending && (
                       <div className="form-group mb-3">
+                        <div className="form-group mb-3">
+    <label htmlFor="parentName" style={{ fontWeight: 500 }}>
+      Parent's Name
+    </label>
+    <input
+      type="text"
+      className="form-control"
+      id="parentName"
+      value={parentName}
+      onChange={e => setParentName(e.target.value)}
+      required={parentAttending}
+      placeholder="Enter parent’s full name"
+      style={{ borderRadius: 10, fontSize: 15 }}
+    />
+  </div>
                         <label style={{ fontWeight: 500 }}>
                           Parent Volunteer Options:
                         </label>
@@ -676,6 +726,7 @@ const TournamentPage: React.FC = () => {
                           </label>
                         </div>
                       </div>
+
                     )}
                     <div className="form-group mb-3">
                       <label
