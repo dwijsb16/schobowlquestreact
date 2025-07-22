@@ -6,12 +6,10 @@ import TimePicker from 'react-time-picker';
 import 'react-time-picker/dist/TimePicker.css';
 import 'react-clock/dist/Clock.css';
 
-// Credentials
-const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
-const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
+const CLIENT_ID = "...";
+const API_KEY = "...";
 const CALENDAR_ID = "questsbclub@gmail.com";
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
-
 
 const RED = "#DF2E38";
 const DARK_RED = "#B71C1C";
@@ -20,7 +18,7 @@ const BLACK = "#232323";
 const WHITE = "#fff";
 
 const TournamentForm: React.FC = () => {
-  // Tournament form state
+  // --- State variables ---
   const [eventName, setEventName] = useState("");
   const [eventType, setEventType] = useState("");
   const [status, setStatus] = useState("");
@@ -36,11 +34,11 @@ const TournamentForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success", message: string } | null>(null);
 
-  // GIS token client and OAuth
+  // --- OAuth ---
   const tokenClient = useRef<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // --- GAPI and GIS setup (run once) ---
+  // --- Setup GAPI/GIS ---
   useEffect(() => {
     gapi.load("client", async () => {
       await gapi.client.init({
@@ -60,7 +58,7 @@ const TournamentForm: React.FC = () => {
     }
   }, []);
 
-  // --- Time helpers ---
+  // --- Helpers ---
   function getTimezoneOffset() {
     const offset = new Date().getTimezoneOffset();
     const sign = offset > 0 ? "-" : "+";
@@ -69,13 +67,12 @@ const TournamentForm: React.FC = () => {
   }
   function padTimeWithSeconds(time: string) {
     if (!time) return "";
-    if (time.length === 8) return time; // already has seconds
+    if (time.length === 8) return time;
     if (time.length === 5) return time + ":00";
     return time;
   }
   function to24Hour(time: string) {
     if (!time) return "";
-    // Accepts "HH:mm", "HH:mm:ss", or "h:mm AM/PM"
     if (/AM|PM/i.test(time)) {
       const [raw, modifier] = time.split(" ");
       let [hours, minutes] = raw.split(":").map(Number);
@@ -85,6 +82,13 @@ const TournamentForm: React.FC = () => {
     }
     return padTimeWithSeconds(time);
   }
+
+  // --- Form reset ---
+  const resetForm = () => {
+    setEventName(""); setEventType(""); setStatus(""); setDate(""); setStartTime(""); setEndTime("");
+    setRsvpDate(""); setRsvpTime(""); setRules(""); setLocation(""); setShirtColor(""); setAdditionalInfo("");
+    setAlert(null);
+  };
 
   // --- Validation ---
   function validateForm() {
@@ -117,7 +121,6 @@ const TournamentForm: React.FC = () => {
     }
     setLoading(true);
 
-    // 1. Prepare Google Calendar event
     const startDateTime = `${date}T${to24Hour(startTime)}${getTimezoneOffset()}`;
     const endDateTime = endTime ? `${date}T${to24Hour(endTime)}${getTimezoneOffset()}` : startDateTime;
     const description = [
@@ -143,7 +146,6 @@ const TournamentForm: React.FC = () => {
       },
     };
 
-    // 2. Google Calendar logic
     const insertEvent = async () => {
       try {
         const calendarRes = await gapi.client.calendar.events.insert({
@@ -151,8 +153,6 @@ const TournamentForm: React.FC = () => {
           resource: eventObj,
         });
         const googleEventID = calendarRes.result.id;
-
-        // 3. Add to Firestore WITH googleEventID
         const tournamentData: Tournament = {
           eventName,
           eventType: eventType as Tournament["eventType"],
@@ -171,16 +171,14 @@ const TournamentForm: React.FC = () => {
         await addDocument("tournaments", tournamentData);
 
         setAlert({ type: "success", message: "Event created in Firestore and added to Google Calendar!" });
-        // Optionally reset form here:
-        setEventName(""); setEventType(""); setStatus(""); setDate(""); setStartTime(""); setEndTime("");
-        setRsvpDate(""); setRsvpTime(""); setRules(""); setLocation(""); setShirtColor(""); setAdditionalInfo("");
+        resetForm();
       } catch (googleErr: any) {
-        let googleMessage = "Event could NOT be added to Google Calendar.";
+        let googleMessage = "Event could NOT be added to Google Calendar. You can clear and re-submit the form below.";
         if (googleErr?.result?.error?.message) {
           if (googleErr.result.error.message.includes("requiredAccessLevel")) {
-            googleMessage = "You don't have edit permission on the club calendar. Ask the owner to grant you access or try a different Google account.";
+            googleMessage = "You don't have edit permission on the club calendar. Ask the owner to grant you access or try a different Google account. (You can clear and retry below.)";
           } else {
-            googleMessage = googleErr.result.error.message;
+            googleMessage = googleErr.result.error.message + " (You can clear and retry below.)";
           }
         }
         setAlert({ type: "error", message: googleMessage });
@@ -275,30 +273,71 @@ const TournamentForm: React.FC = () => {
           {/* Event Type & Status */}
           <div className="row mb-3">
             <div className="form-group col-md-6">
-              <label htmlFor="event_type" style={{ fontWeight: 600, color: BLACK }}>
-                Event Type<span style={{ color: RED }}> *</span>
-              </label>
-              <select id="event_type" className="form-control"
-                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-                value={eventType} onChange={e => setEventType(e.target.value)} required disabled={loading}>
-                <option value="">Select an event type</option>
-                <option value="extra_practice">Extra Practice</option>
-                <option value="match_play">Match Play</option>
-                <option value="tournament">Tournament</option>
-              </select>
+            <label htmlFor="event_type" style={{ fontWeight: 600, color: "#232323" }}>
+  Event Type<span style={{ color: "#DF2E38" }}> *</span>
+</label>
+<select
+  id="event_type"
+  name="event_type"
+  value={eventType}
+  onChange={e => setEventType(e.target.value)}
+  required
+  style={{
+    width: "100%",
+    fontSize: 18,
+    borderRadius: 14,
+    background: "#f7f7f7",
+    padding: "12px 18px",
+    border: "2px solid #f3dadf",
+    color: "#232323",
+    marginBottom: 8,
+    appearance: "auto",
+  }}
+>
+  <option value="">--- Select an Event Type ---</option>
+  <option disabled>——— PRACTICE ——</option>
+  <option value="extra_practice">Extra Practice</option>
+  <option disabled>——— MATCHES ——</option>
+  <option value="match_play">Match Play</option>
+  <option disabled>——— TOURNAMENTS ——</option>
+  <option value="tournament">Tournament</option>
+</select>
+
+              <small style={{ color: "#888", marginTop: 2, display: "block" }}>
+                Choose the best-fit category for this event.
+              </small>
             </div>
             <div className="form-group col-md-6">
-              <label htmlFor="status" style={{ fontWeight: 600, color: BLACK }}>
-                Status<span style={{ color: RED }}> *</span>
-              </label>
-              <select id="status" className="form-control"
-                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-                value={status} onChange={e => setStatus(e.target.value)} required disabled={loading}>
-                <option value="">Select status</option>
-                <option value="tentative">Tentative</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+            <label htmlFor="status" style={{ fontWeight: 600, color: "#232323" }}>
+  Status<span style={{ color: "#DF2E38" }}> *</span>
+</label>
+<select
+  id="status"
+  name="status"
+  value={status}
+  onChange={e => setStatus(e.target.value)}
+  required
+  style={{
+    width: "100%",
+    fontSize: 16,
+    borderRadius: 14,
+    background: "#f7f7f7",
+    padding: "12px 18px",
+    border: "2px solid #f3dadf",
+    color: "#232323",
+    marginBottom: 8,
+    appearance: "auto"
+  }}
+>
+  <option value="">--- Select Status ---</option>
+  <option value="tentative">Tentative (not confirmed yet)</option>
+  <option value="confirmed">Confirmed (official!)</option>
+  <option value="cancelled">Cancelled</option>
+</select>
+
+              <small style={{ color: "#888", marginTop: 2, display: "block" }}>
+                Confirmed means it's finalized and communicated to players.
+              </small>
             </div>
           </div>
           {/* Date, Start, End */}
@@ -311,60 +350,49 @@ const TournamentForm: React.FC = () => {
                 style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
                 value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
             </div>
+            <div className="form-group col-md-3">
+              <label style={{ fontWeight: 600, color: BLACK }}>
+                Start Time<span style={{ color: RED }}> *</span>
+              </label>
+              <input
+                type="time"
+                className="form-control"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                required
+                disabled={loading}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+              />
             </div>
-            <div className="row mb-3">
-  <div className="form-group col-md-5">
-    <label htmlFor="date" style={{ fontWeight: 600, color: BLACK }}>
-      Date<span style={{ color: RED }}> *</span>
-    </label>
-    <input type="date" id="date" className="form-control"
-      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-      value={date} onChange={e => setDate(e.target.value)} required disabled={loading}/>
-  </div>
-  <div className="form-group col-md-3">
-    <label style={{ fontWeight: 600, color: BLACK }}>
-      Start Time<span style={{ color: RED }}> *</span>
-    </label>
-    <input
-      type="time"
-      className="form-control"
-      value={startTime}
-      onChange={e => setStartTime(e.target.value)}
-      required
-      disabled={loading}
-      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-    />
-  </div>
-  <div className="form-group col-md-4">
-    <label style={{ fontWeight: 600, color: BLACK }}>
-      End Time
-    </label>
-    <input
-      type="time"
-      className="form-control"
-      value={endTime}
-      onChange={e => setEndTime(e.target.value)}
-      disabled={loading}
-      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-    />
-  </div>
-</div>
-{/* RSVP */}
-<div className="row mb-3">
-  <div className="form-group col-md-7">
-    <label htmlFor="rsvp_date" style={{ fontWeight: 600, color: BLACK }}>RSVP Date</label>
-    <input type="date" id="rsvp_date" className="form-control"
-      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-      value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
-  </div>
-  <div className="form-group col-md-5">
-    <label htmlFor="rsvp_time" style={{ fontWeight: 600, color: BLACK }}>RSVP Time</label>
-    <input type="time" id="rsvp_time" className="form-control"
-      style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
-      value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
-  </div>
-</div>
-
+            <div className="form-group col-md-4">
+              <label style={{ fontWeight: 600, color: BLACK }}>
+                End Time
+              </label>
+              <input
+                type="time"
+                className="form-control"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                disabled={loading}
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+              />
+            </div>
+          </div>
+          {/* RSVP */}
+          <div className="row mb-3">
+            <div className="form-group col-md-7">
+              <label htmlFor="rsvp_date" style={{ fontWeight: 600, color: BLACK }}>RSVP Date</label>
+              <input type="date" id="rsvp_date" className="form-control"
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+                value={rsvpDate} onChange={e => setRsvpDate(e.target.value)} disabled={loading}/>
+            </div>
+            <div className="form-group col-md-5">
+              <label htmlFor="rsvp_time" style={{ fontWeight: 600, color: BLACK }}>RSVP Time</label>
+              <input type="time" id="rsvp_time" className="form-control"
+                style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+                value={rsvpTime} onChange={e => setRsvpTime(e.target.value)} disabled={loading}/>
+            </div>
+          </div>
           {/* Rules */}
           <div className="form-group mb-3">
             <label htmlFor="rules_tourn" style={{ fontWeight: 600, color: BLACK }}>Rules</label>
@@ -394,9 +422,20 @@ const TournamentForm: React.FC = () => {
               style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={additionalInfo} onChange={e => setAdditionalInfo(e.target.value)} placeholder="Any notes..." disabled={loading}/>
           </div>
-          {/* Button */}
-          <div className="text-center my-4">
-            <button type="submit"
+          <div className="text-center pb-3 px-4"
+          style={{
+            fontSize: 14,
+            color: "#888"
+          }}>
+          <b style={{ color: RED }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
+          <span style={{ opacity: 0.8 }}>
+            (A Google login popup will appear only if needed!)
+          </span>
+        </div>
+          {/* Buttons Row */}
+          <div className="text-center my-4 d-flex justify-content-center gap-3">
+            <button
+              type="submit"
               className="btn"
               style={{
                 background: `linear-gradient(90deg, ${RED}, ${DARK_RED} 100%)`,
@@ -414,21 +453,27 @@ const TournamentForm: React.FC = () => {
             >
               {loading ? "Creating..." : "Create Event"}
             </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={resetForm}
+              disabled={loading}
+              style={{
+                fontWeight: 700,
+                padding: "11px 26px",
+                fontSize: 17,
+                borderRadius: 18,
+                marginLeft: 10
+              }}
+            >
+              Clear Form
+            </button>
           </div>
         </form>
-        <div className="text-center pb-3 px-4"
-          style={{
-            fontSize: 14,
-            color: "#888"
-          }}>
-          <b style={{ color: RED }}>Important:</b> You must be signed in with a Google account <b>with edit access</b> to the shared calendar.<br />
-          <span style={{ opacity: 0.8 }}>
-            (A Google login popup will appear only if needed!)
-          </span>
-        </div>
       </div>
-    </div>
+    </div>  
   );
+  
 };
 
 export default TournamentForm;

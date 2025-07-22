@@ -70,21 +70,35 @@ const Contact: React.FC = () => {
         hideProgressBar
         theme="colored"
       />
-      <Container style={{ maxWidth: 1050 }}>
+      <Container style={{ maxWidth: 650 }}>
         <h1
-          className="text-center mb-5"
+          className="text-center mb-4"
           style={{
             color: RED,
             fontWeight: 900,
             letterSpacing: 2,
-            fontSize: "2.7rem",
+            fontSize: "2.6rem",
             marginTop: 18
           }}
         >
           Contact Us
         </h1>
+        <p
+          className="lead text-center mb-5"
+          style={{
+            color: BLACK,
+            fontWeight: 500,
+            fontSize: 20,
+            maxWidth: 550,
+            margin: "0 auto"
+          }}
+        >
+          Have a question for the Quest Scholastic Bowl Club? Want to get in touch with a coach?  
+          <br />
+          <b>Fill out the form below and our team will get back to you as soon as possible!</b>
+        </p>
         <Row className="justify-content-center">
-          <Col md={7} className="mb-4">
+          <Col md={12} className="mb-4">
             <Card
               className="shadow"
               style={{
@@ -94,9 +108,6 @@ const Contact: React.FC = () => {
               }}
             >
               <Card.Body style={{ padding: "2.4rem 2rem" }}>
-                <h2 className="h4 mb-4" style={{ color: RED, fontWeight: 800 }}>
-                  Send Us a Message
-                </h2>
                 <Form onSubmit={handleSubmit} autoComplete="on">
                   <Form.Group className="mb-4">
                     <Form.Label style={{ color: BLACK, fontWeight: 600 }}>Name</Form.Label>
@@ -171,43 +182,6 @@ const Contact: React.FC = () => {
                     {loading ? "Sending..." : "Send Message"}
                   </Button>
                 </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={5}>
-            <Card
-              className="shadow"
-              style={{
-                borderRadius: 24,
-                border: `2px solid #eee`,
-                background: "#fff",
-              }}
-            >
-              <Card.Body style={{ padding: "2.1rem 2rem" }}>
-                <h2
-                  className="h5 mb-4"
-                  style={{ color: RED, fontWeight: 700, letterSpacing: 1.5 }}
-                >
-                  Contact Information
-                </h2>
-                <div className="mb-4">
-                  <h3 className="h6" style={{ color: BLACK }}>Address</h3>
-                  <p className="mb-0">500 North Benton</p>
-                  <p>Palatine, IL 60067</p>
-                </div>
-                <div className="mb-4">
-                  <h3 className="h6" style={{ color: BLACK }}>Email</h3>
-                  <p className="mb-0">contact@questacademy.org</p>
-                </div>
-                <div className="mb-4">
-                  <h3 className="h6" style={{ color: BLACK }}>Phone</h3>
-                  <p className="mb-0">(847) 202-8035</p>
-                </div>
-                <div>
-                  <h3 className="h6" style={{ color: BLACK }}>Office Hours</h3>
-                  <p className="mb-0">Monday - Friday</p>
-                  <p>8:00 AM - 4:00 PM</p>
-                </div>
               </Card.Body>
             </Card>
           </Col>

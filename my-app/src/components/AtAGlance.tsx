@@ -188,48 +188,55 @@ const [signupStatus, setSignupStatus] = useState<Record<string, string>>({});
                 </div>
               </div>
               <span
-                style={{
-                  background: statusColor(ev.status || "unknown"),
-                  color: "#232323",
-                  fontWeight: 700,
-                  fontSize: 15,
-                  padding: "7px 17px",
-                  borderRadius: 16,
-                  marginLeft: 6,
-                  minWidth: 88,
-                  textAlign: "center",
-                  border: ev.status === "cancelled" ? `2px solid #FF6B6B` : "none",
-                  boxShadow: "0 1px 4px #0000000a"
-                }}>
-                {ev.status ? ev.status.charAt(0).toUpperCase() + ev.status.slice(1) : "TBA"}
-              </span>
+  style={{
+    background: statusColor(ev.status || "unknown"),
+    color: "#232323",
+    fontWeight: 700,
+    fontSize: 13,
+    padding: "3px 11px",
+    borderRadius: 13,
+    minWidth: 75,
+    textAlign: "center",
+    border: ev.status === "cancelled" ? `2px solid #FF6B6B` : "none",
+    boxShadow: "0 1px 4px #0000000a",
+    marginLeft: 6,
+    whiteSpace: "nowrap", // prevent wrapping!
+    lineHeight: 1.2
+  }}
+>
+  {ev.status ? ev.status.charAt(0).toUpperCase() + ev.status.slice(1) : "TBA"}
+</span>
+
               {currentUser && (
   <span
-    style={{
-      background:
-        signupStatus[ev.id]?.includes("Registered") && !signupStatus[ev.id].includes("Not Registered")
-          ? "#6BCB77"
-          : signupStatus[ev.id]?.includes("Leaving Early") || signupStatus[ev.id]?.includes("Arriving Late") || signupStatus[ev.id]?.includes("Late & Early")
-          ? "#FFD93D"
-          : signupStatus[ev.id]?.includes("Not Registered") || signupStatus[ev.id]?.includes("Not Attending")
-          ? "#FF6B6B"
-          : "#eeeeee",
-      color: "#232323",
-      fontWeight: 700,
-      fontSize: 14,
-      padding: "6px 13px",
-      borderRadius: 12,
-      border: "1.5px solid #e3e3e3",
-      marginLeft: 8,
-      minWidth: 120,
-      textAlign: "center",
-      display: "inline-block"
-    }}
-  >
-    {linkedPlayers.length === 0
-      ? "(no player linked)"
-      : signupStatus[ev.id]}
-  </span>
+  style={{
+    background:
+      signupStatus[ev.id]?.includes("Registered") && !signupStatus[ev.id].includes("Not Registered")
+        ? "#6BCB77"
+        : signupStatus[ev.id]?.includes("Leaving Early") || signupStatus[ev.id]?.includes("Arriving Late") || signupStatus[ev.id]?.includes("Late & Early")
+        ? "#FFD93D"
+        : signupStatus[ev.id]?.includes("Not Registered") || signupStatus[ev.id]?.includes("Not Attending")
+        ? "#FF6B6B"
+        : "#eeeeee",
+    color: "#232323",
+    fontWeight: 700,
+    fontSize: 13,
+    padding: "3px 11px",
+    borderRadius: 13,
+    border: "1.5px solid #e3e3e3",
+    marginLeft: 8,
+    minWidth: 75,
+    textAlign: "center",
+    display: "inline-block",
+    whiteSpace: "nowrap", // prevent wrap
+    lineHeight: 1.2
+  }}
+>
+  {linkedPlayers.length === 0
+    ? "(no player linked)"
+    : signupStatus[ev.id]}
+</span>
+
 )}
 
             </div>

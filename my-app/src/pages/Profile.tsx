@@ -771,74 +771,80 @@ useEffect(() => {
               My Tournament Signups
             </h4>
             {loadingSignups ? (
-              <div style={{ color: "#aaa", fontSize: 17 }}>Loading tournaments...</div>
-            ) : (
-              <div style={{ maxHeight: 340, overflowY: "auto" }}>
-                {tournaments.length === 0 ? (
-                  <div style={{ color: "#B71C1C", fontSize: 16 }}>
-                    No upcoming tournaments found.
-                  </div>
-                ) : (
-                  tournaments.map((t) => {
-                    const signupStatus = mySignups[t.id];
-                    const label = signupStatus?.signedUp
-                      ? availabilityLabel(signupStatus?.availability)
-                      : "Not Signed Up";
-                    return (
-                      <div
-                        key={t.id}
-                        className="d-flex align-items-center justify-content-between mb-3 pb-2"
-                        style={{
-                          borderBottom: "1px solid #f3d2d9",
-                        }}
-                      >
-                        <div>
-                          <Link
-                            to={`/tournament/${t.id}`}
-                            style={{
-                              textDecoration: "none",
-                              fontWeight: 600,
-                              color: "#232323",
-                              fontSize: 17,
-                            }}
-                          >
-                            <span
-                              role="img"
-                              aria-label="calendar"
-                              style={{
-                                fontSize: 18,
-                                marginRight: 8,
-                                color: "#DF2E38",
-                              }}
-                            >
-                              📅
-                            </span>
-                            {t.eventName}
-                          </Link>
-                          <div style={{ fontSize: 13, color: "#888" }}>
-                            {t.date}
-                          </div>
-                        </div>
-                        <span
-                          className="badge badge-pill"
-                          style={{
-                            background: statusColor(label),
-                            color: "#fff",
-                            fontSize: 15,
-                            padding: "8px 22px",
-                            fontWeight: 600,
-                            borderRadius: 13,
-                            letterSpacing: 1,
-                          }}
-                        >
-                          {label}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
+  <div style={{ color: "#aaa", fontSize: 17 }}>Loading tournaments...</div>
+) : (
+  <div style={{ maxHeight: 340, overflowY: "auto" }}>
+    {/* If no player is linked (for non-players), show message */}
+    {profile.role !== "player" && linkedPlayers.length === 0 ? (
+      <div style={{ color: "#B71C1C", fontSize: 16, fontWeight: 600 }}>
+        No player linked.
+      </div>
+    ) : tournaments.length === 0 ? (
+      <div style={{ color: "#B71C1C", fontSize: 16 }}>
+        No upcoming tournaments found.
+      </div>
+    ) : (
+      tournaments.map((t) => {
+        const signupStatus = mySignups[t.id];
+        const label = signupStatus?.signedUp
+          ? availabilityLabel(signupStatus?.availability)
+          : "Not Signed Up";
+        return (
+          <div
+            key={t.id}
+            className="d-flex align-items-center justify-content-between mb-3 pb-2"
+            style={{
+              borderBottom: "1px solid #f3d2d9",
+            }}
+          >
+            <div>
+              <Link
+                to={`/tournament/${t.id}`}
+                style={{
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  color: "#232323",
+                  fontSize: 17,
+                }}
+              >
+                <span
+                  role="img"
+                  aria-label="calendar"
+                  style={{
+                    fontSize: 18,
+                    marginRight: 8,
+                    color: "#DF2E38",
+                  }}
+                >
+                  📅
+                </span>
+                {t.eventName}
+              </Link>
+              <div style={{ fontSize: 13, color: "#888" }}>
+                {t.date}
               </div>
-            )}
+            </div>
+            <span
+              className="badge badge-pill"
+              style={{
+                background: statusColor(label),
+                color: "#fff",
+                fontSize: 15,
+                padding: "8px 22px",
+                fontWeight: 600,
+                borderRadius: 13,
+                letterSpacing: 1,
+              }}
+            >
+              {label}
+            </span>
+          </div>
+        );
+      })
+    )}
+  </div>
+)}
+
           </div>
         </div>
       </div>
