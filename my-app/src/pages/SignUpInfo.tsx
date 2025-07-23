@@ -15,7 +15,7 @@ const LIGHT_GREY = "#f7f7f7";
 const WHITE = "#fff";
 const GREEN = "#51c775";
 
-const GRADE_OPTIONS = ["5th", "6th", "7th", "8th"];
+const GRADE_OPTIONS = ["4th","5th", "6th", "7th", "8th"];
 const VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in ms
 
 const passwordRules = [

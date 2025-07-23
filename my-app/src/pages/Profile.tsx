@@ -224,7 +224,13 @@ useEffect(() => {
       setEditError(null);
     }
   }, [editProfile, profile]);
-
+  if (!profile) {
+    return (
+      <div style={{textAlign:"center", marginTop:40, color:"#DF2E38", fontWeight:600, fontSize:22}}>
+        Loading profile...
+      </div>
+    );
+  }
   // PROFILE CREATION FORM
   if (needsProfile) {
     return (
