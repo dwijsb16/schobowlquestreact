@@ -6,8 +6,8 @@ import TimePicker from 'react-time-picker';
 import 'react-time-picker/dist/TimePicker.css';
 import 'react-clock/dist/Clock.css';
 
-const CLIENT_ID = "...";
-const API_KEY = "...";
+const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
+const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
 const CALENDAR_ID = "questsbclub@gmail.com";
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
