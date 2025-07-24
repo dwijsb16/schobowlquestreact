@@ -616,7 +616,6 @@ const EditTournamentForm: React.FC = () => {
               <button
                 type="button"
                 className="btn"
-                disabled={loading}
                 style={{
                   background: "#fff",
                   color: "#DF2E38",

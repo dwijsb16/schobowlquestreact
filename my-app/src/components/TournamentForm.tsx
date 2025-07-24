@@ -88,6 +88,7 @@ const TournamentForm: React.FC = () => {
     setEventName(""); setEventType(""); setStatus(""); setDate(""); setStartTime(""); setEndTime("");
     setRsvpDate(""); setRsvpTime(""); setRules(""); setLocation(""); setShirtColor(""); setAdditionalInfo("");
     setAlert(null);
+    setLoading(false); // <-- add this!
   };
 
   // --- Validation ---
@@ -457,7 +458,6 @@ const TournamentForm: React.FC = () => {
               type="button"
               className="btn btn-outline-secondary"
               onClick={resetForm}
-              disabled={loading}
               style={{
                 fontWeight: 700,
                 padding: "11px 26px",

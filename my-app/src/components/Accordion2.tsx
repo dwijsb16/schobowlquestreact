@@ -185,7 +185,7 @@ const Accordion: React.FC = () => {
                   <Link to={`/edit-tournament`} className="btn btn-danger rounded-pill px-4">
                     Edit Tournament Info
                   </Link>
-                  <Link to={`/make-teams`} className="btn btn-dark rounded-pill px-4">
+                  <Link to={`/coaches/make-teams`} className="btn btn-dark rounded-pill px-4">
                     Add Teams
                   </Link>
                 </div>
