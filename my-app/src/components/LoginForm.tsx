@@ -422,6 +422,18 @@ const LoginForm: React.FC = () => {
               Sign in with Google
             </button>
           </div>
+          <div className="text-center mt-4" style={{ fontSize: 15 }}>
+            <span style={{ color: GREY }}>
+                Want to sign up?{" "}
+              <span style={{
+              color: RED,
+              fontWeight: 600
+              }}>
+              Ask your coach for a signup link!
+              </span>
+            </span>
+          </div>
+
           {/* REMOVED: Sign up link below */}
           {/* <div className="text-center mt-4" style={{ fontSize: 15 }}>
             <span style={{ color: GREY }}>First time? </span>

@@ -5,7 +5,7 @@ export interface Signup {
   userId: string;
   playerId: string;
   availability: string;
-  carpool: string[];
+  carpool: string;
   parentAttending: boolean;
   canModerate: boolean;
   canScorekeep: boolean;

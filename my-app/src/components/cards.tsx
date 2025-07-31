@@ -220,16 +220,26 @@ const [signupStatus, setSignupStatus] = useState<Record<string, string>>({}); //
 )}
 
 <div>
-  <a
-    href={`/tournament/${tourn.id}`}
-    className={
-      signupStatus[tourn.id]?.includes("Registered")
-        ? "btn btn-success btn-sm mt-2"
-        : "btn btn-outline-primary btn-sm mt-2"
-    }
-  >
-    {signupStatus[tourn.id]?.includes("Registered") ? "Edit Signup" : "Sign Up"}
-  </a>
+{(() => {
+  // Determine status: all Registered = Edit, else Register
+  const statusArr = signupStatus[tourn.id]
+    ? signupStatus[tourn.id].split(" / ").map(s => s.trim())
+    : [];
+  const allRegistered = statusArr.length > 0 && statusArr.every(s => s === "Registered");
+  return (
+    <a
+      href={`/tournament/${tourn.id}`}
+      className={
+        allRegistered
+          ? "btn btn-success btn-sm mt-2"
+          : "btn btn-outline-primary btn-sm mt-2"
+      }
+    >
+      {allRegistered ? "Edit Signup" : "Register"}
+    </a>
+  );
+})()}
+
 </div>
 
               </div>

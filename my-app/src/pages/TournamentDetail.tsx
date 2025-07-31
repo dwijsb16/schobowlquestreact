@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { data, useParams } from "react-router-dom";
 import {getDoc,doc,collection,addDoc,query,where,getDocs, updateDoc,serverTimestamp,} from "firebase/firestore";
 import {onAuthStateChanged,getAuth,User as FirebaseUser,} from "firebase/auth";
 import { db } from "../.firebase/utils/firebase";
@@ -8,6 +8,8 @@ import { Player } from "../types/player";
 import { Signup } from "../types/signup";
 import emailjs from "emailjs-com";
 import { useNavigate } from "react-router-dom";
+import { format, parseISO } from "date-fns";
+import { getCollection } from "../hooks/firestore";
 
 
 const green = "#6BCB77";
@@ -16,6 +18,25 @@ const TEMPLATE_ID = "template_lsh00qp";
 const SERVICE_ID = "service_cfows1h";
 const EMAIL_API_KEY = "GRAfhbyKXL9qsCDKk";
 
+
+// Helper to format date with day of week
+function formatDateWithDay(dateString: string) {
+  if (!dateString) return "";
+  const date = parseISO(dateString);
+  return format(date, "EEEE, MMMM d, yyyy"); // e.g. Saturday, July 20, 2025
+}
+
+// Helper to format time to 12hr am/pm
+function formatTime12hr(timeString: string) {
+  if (!timeString) return "";
+  let [h, m] = timeString.split(":");
+  const hourNum = Number(h);
+  const ampm = hourNum >= 12 ? "PM" : "AM";
+  const hour12 = ((hourNum + 11) % 12 + 1); // converts 0->12, 13->1
+  return `${hour12}:${m.padStart(2, "0")} ${ampm}`;
+}
+
+
 // Utility function to fetch all coaches' emails
 async function getAllCoachEmails() {
   const coachesSnap = await getDocs(
@@ -23,6 +44,18 @@ async function getAllCoachEmails() {
   );
   return coachesSnap.docs.map((doc) => doc.data().email).filter(Boolean);
 }
+type InfoRowProps = {
+  label: string;
+  value?: string | number | null;
+};
+
+const InfoRow: React.FC<InfoRowProps> = ({ label, value }) =>
+  value ? (
+    <div className="d-flex align-items-baseline justify-content-center mb-2">
+      <span style={{ fontWeight: 700, color: "#B71C1C", minWidth: 100 }}>{label}:</span>
+      <span style={{ marginLeft: 8, fontWeight: 500, color: "#232323" }}>{value}</span>
+    </div>
+  ) : null;
 
 export async function sendSignupNotification({
   playerName,
@@ -102,7 +135,7 @@ type SignupDoc = Signup & {
 
 type PlayerMap = Record<string, Player>;
 
-const TournamentPage: React.FC = () => {
+const TournamentPage: React.FC= () => {
   const { id: tournamentId } = useParams();
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [linkedPlayers, setLinkedPlayers] = useState<Player[]>([]);
@@ -114,7 +147,7 @@ const TournamentPage: React.FC = () => {
   const [availability, setAvailability] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [carpool, setCarpool] = useState<string[]>([]);
+  const [carpool, setCarpool] = useState<string>("");
   const [driveCapacity, setDriveCapacity] = useState("");
   const [parentAttending, setParentAttending] = useState(false);
   const [canModerate, setCanModerate] = useState(false);
@@ -123,17 +156,105 @@ const TournamentPage: React.FC = () => {
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [parentName, setParentName] = useState("");
+  const [playerSignupDocId, setPlayerSignupDocId] = useState<string | null>(null);
+  const [coachSignupDocId, setCoachSignupDocId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   // --- Team, Signup, Player Data ---
   const [teams, setTeams] = useState<TeamDoc[]>([]);
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [signups, setSignups] = useState<SignupDoc[]>([]);
   const [playerMap, setPlayerMap] = useState<PlayerMap>({});
   const [existingSignupDocId, setExistingSignupDocId] = useState<string | null>(null);
   const [fetchingSignup, setFetchingSignup] = useState(false);
-
+  const [signupMode, setSignupMode] = useState<"player" | "coach">("player");
   const showStartTime = availability === "late" || availability === "late_early";
   const showEndTime = availability === "early" || availability === "late_early";
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUser) return;
+      const docRef = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setProfile({ ...snap.data(), uid: snap.id });
+      }
+    };
+    fetchProfile();
+  }, [currentUser]);
+  const userRole = profile?.role || "player";
+  useEffect(() => {
+    if (userRole === "player" && currentUser) {
+      setSelectedPlayer(currentUser.uid);
+    }
+  }, [userRole, currentUser]);
+
+  const resetFormFields = () => {
+    setAvailability("");
+    setStartTime("");
+    setEndTime("");
+    setCarpool("");
+    setDriveCapacity("");
+    setParentAttending(false);
+    setParentName("");
+    setCanModerate(false);
+    setCanScorekeep(false);
+    setAdditionalInfo("");
+  };
   
+
+  useEffect(() => {
+  if (!tournamentId || !currentUser) return;
+
+  const fetchSignup = async () => {
+    resetFormFields();
+
+    const collectionName = signupMode === "coach" ? "coach_signups" : "signups";
+    const entriesRef = collection(db, collectionName, tournamentId, "entries");
+
+    const queryField = signupMode === "coach" ? "userId" : "playerId";
+    const queryValue = signupMode === "coach" ? currentUser.uid : selectedPlayer;
+
+    // Only run if playerId or userId exists
+    if (!queryValue) return;
+
+    const q = query(entriesRef, where(queryField, "==", queryValue));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const existing = snap.docs[0];
+      const data = existing.data();
+
+      if (signupMode === "coach") {
+        setCoachSignupDocId(existing.id);
+      } else {
+        setPlayerSignupDocId(existing.id);
+      }
+
+      // Autofill the form
+      setAvailability(data.availability || "");
+      setStartTime(data.startTime || "");
+      setEndTime(data.endTime || "");
+      setCarpool(data.carpool || "");
+      setDriveCapacity(data.driveCapacity || "");
+      setParentAttending(data.parentAttending ?? false);
+      setParentName(data.parentName || "");
+      setCanModerate(data.canModerate || false);
+      setCanScorekeep(data.canScorekeep || false);
+      setAdditionalInfo(data.additionalInfo || "");
+    } else {
+      // Clear existingSignupDocId to ensure button says "Sign Up"
+      if (signupMode === "coach") {
+        setCoachSignupDocId(null);
+      } else {
+        setPlayerSignupDocId(null);
+      }
+    }
+  };
+
+  fetchSignup();
+}, [signupMode, selectedPlayer, tournamentId]);
+
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -168,6 +289,7 @@ const TournamentPage: React.FC = () => {
                     uid: snap.id,
                   }))
               );
+              
             }
           }
         }
@@ -177,6 +299,39 @@ const TournamentPage: React.FC = () => {
     return () => unsubscribe();
   }, []);
   
+  // 🧠 Get the favorite player (the only one in linkedPlayers array)
+const favoritePlayer = linkedPlayers?.[0] || "";
+useEffect(() => {
+  const loadPlayers = async () => {
+    if (!currentUser) return;
+
+    const userWithRole = currentUser as FirebaseUser & { role?: string };
+
+    if (userWithRole.role === "coach") {
+      const players = await getCollection<any>("players");
+      console.log("Loaded all players:", players);
+      setAllPlayers(players);
+    } else {
+      setAllPlayers([]); // Reset for non-coaches
+    }
+  };
+
+  loadPlayers();
+}, [currentUser]);
+
+useEffect(() => {
+  const loadStuff = async () => {
+    const players = await getCollection<any>("players");
+    setAllPlayers(players);
+  };
+  loadStuff();
+}, []);
+
+console.log("🔗 linkedPlayers:", linkedPlayers); // should show both player IDs
+console.log("⭐ favoritePlayerId:", favoritePlayer.firstName); // just one ID
+console.log("📋 allPlayers:", allPlayers); // should show all player IDs
+console.log("🧠 playerMap:", playerMap); // should show ID → Player object map
+
 
   // Tournament details
   useEffect(() => {
@@ -253,65 +408,81 @@ const TournamentPage: React.FC = () => {
 
 
   useEffect(() => {
-    if (!selectedPlayer || !tournamentId) {
-      setExistingSignupDocId(null);
-      setAvailability("");
-      setCarpool([]);
-      setParentAttending(false);
-      setCanModerate(false);
-      setCanScorekeep(false);
-      setAdditionalInfo("");
-      setStartTime("");
-      setEndTime("");
-      setDriveCapacity("");
-      return;
-    }
-    setFetchingSignup(true);
-    (async () => {
-      const entriesRef = collection(db, "signups", tournamentId, "entries");
-      const existingQ = query(entriesRef, where("playerId", "==", selectedPlayer));
-      const existingSnap = await getDocs(existingQ);
-      if (!existingSnap.empty) {
-        const docData = existingSnap.docs[0].data();
-        setExistingSignupDocId(existingSnap.docs[0].id);
-        // Set form state from docData as you do now...
-        setAvailability(docData.availability || "");
-        setCarpool(docData.carpool || []);
-        setParentAttending(!!docData.parentAttending);
-        setCanModerate(!!docData.canModerate);
-        setCanScorekeep(!!docData.canScorekeep);
-        setAdditionalInfo(docData.additionalInfo || "");
-        setStartTime(docData.startTime || "");
-        setEndTime(docData.endTime || "");
-        setDriveCapacity(docData.driveCapacity || "");
-      } else {
-        setExistingSignupDocId(null);
-        // ...reset form fields...
-        setAvailability("");
-        setCarpool([]);
-        setParentAttending(false);
-        setCanModerate(false);
-        setCanScorekeep(false);
-        setAdditionalInfo("");
-        setStartTime("");
-        setEndTime("");
-        setDriveCapacity("");
-      }
-      setFetchingSignup(false);
-    })();
-    // eslint-disable-next-line
-  }, [selectedPlayer, tournamentId]);
-
-
-  const handleSubmit = async () => {
-    if (!selectedPlayer || !currentUser || !tournamentId) return;
-    setSubmitting(true);
+    if (!tournamentId || fetchingSignup) return;
   
+    const fetchSignup = async () => {
+      const entriesRef = collection(
+        db,
+        signupMode === "coach" ? "coach_signups" : "signups",
+        tournamentId,
+        "entries"
+      );
+  
+      const q = signupMode === "coach"
+        ? query(entriesRef, where("userId", "==", currentUser?.uid))
+        : selectedPlayer
+          ? query(entriesRef, where("playerId", "==", selectedPlayer))
+          : null;
+  
+      if (!q) return;
+  
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const existing = snap.docs[0];
+        signupMode === "coach"
+  ? setCoachSignupDocId(existing.id)
+  : setPlayerSignupDocId(existing.id);
+        const data = existing.data();
+  
+        setAvailability(data.availability || []);
+        setStartTime(data.startTime || "");
+        setEndTime(data.endTime || "");
+        setCarpool(data.carpool || []);
+        setDriveCapacity(data.driveCapacity || 0);
+        setParentAttending(data.parentAttending ?? false);
+        setParentName(data.parentName || "");
+        setCanModerate(data.canModerate || false);
+        setCanScorekeep(data.canScorekeep || false);
+        setAdditionalInfo(data.additionalInfo || "");
+      }
+  
+      setFetchingSignup(false);
+    };
+  
+    fetchSignup();
+  }, [selectedPlayer, signupMode, tournamentId]);
+
+
+    const handleSubmit = async () => {
+      if (!currentUser || !tournamentId || (signupMode === "player" && !selectedPlayer)) return;
+    
+      // --- Field validation ---
+      if (!availability) return alert("Please select your availability.");
+      if ((availability === "late" || availability === "late_early") && !startTime)
+        return alert("Please enter your arrival time.");
+      if ((availability === "early" || availability === "late_early") && !endTime)
+        return alert("Please enter your departure time.");
+      if (!carpool) return alert("Please choose a carpool option.");
+      if (carpool === "can-drive" && !driveCapacity)
+        return alert("Please enter the number of available seats.");
+    
+      if (signupMode === "player" && parentAttending) {
+        if (!parentName) return alert("Please enter the parent’s name.");
+        if (!canModerate && !canScorekeep)
+          return alert("Please select at least one parent volunteer option.");
+      }
+    
+      if (signupMode === "coach" && !canModerate && !canScorekeep) {
+        return alert("Please select at least one coach volunteer option.");
+      }
+    setSubmitting(true);
+    const existingDocId = signupMode === "coach" ? coachSignupDocId : playerSignupDocId;
+
     // Build signup object
     const signup: Signup = {
       tournamentId: tournamentId as string,
       userId: currentUser.uid,
-      playerId: selectedPlayer,
+      playerId: signupMode === "player" ? selectedPlayer : currentUser.uid,
       availability,
       carpool,
       parentAttending,
@@ -326,11 +497,15 @@ const TournamentPage: React.FC = () => {
     };
   
     // Always check Firestore for this player/tournament signup
-    const entriesRef = collection(db, "signups", tournamentId, "entries");
-    const existingQ = query(
-      entriesRef,
-      where("playerId", "==", selectedPlayer)
-    );
+    const entriesRef = collection(
+      db,
+      signupMode === "coach" ? "coach_signups" : "signups",
+      tournamentId,
+      "entries"
+    );    
+    const existingQ = signupMode === "coach"
+  ? query(entriesRef, where("userId", "==", currentUser.uid))
+  : query(entriesRef, where("playerId", "==", selectedPlayer));
     const existingSnap = await getDocs(existingQ);
   
     if (!existingSnap.empty) {
@@ -361,7 +536,7 @@ const TournamentPage: React.FC = () => {
         availability,
         startTime,
         endTime,
-        carpool: carpool.join(", "),
+        carpool,
         driveCapacity,
         parentAttending: parentAttending ? "Yes" : "No",
         canModerate: canModerate ? "Yes" : "No",
@@ -385,6 +560,11 @@ const TournamentPage: React.FC = () => {
 
   if (!tournament) return <div className="text-center mt-5">Loading tournament...</div>;
   if (loadingPlayers) return <div className="text-center mt-5">Loading players...</div>;
+  const shouldShowForm =
+  (userRole === "player") ||
+  (userRole === "parent" && selectedPlayer) ||
+  (userRole === "coach" && signupMode === "player" && selectedPlayer) ||
+  (userRole === "coach" && signupMode === "coach");
 
   return (
       <div
@@ -407,100 +587,101 @@ const TournamentPage: React.FC = () => {
                 }}
               >
                 <div className="card-body text-center px-5 py-4">
-                  <h1
-                    className="display-5 mb-2"
-                    style={{ color: "#DF2E38", fontWeight: 900 }}
-                  >
-                    {tournament.eventName}
-                  </h1>
-                  <div className="mb-2" style={{ fontSize: 19, color: "#B71C1C" }}>
-                    <span role="img" aria-label="calendar" style={{ fontSize: 24 }}>
-                      📅
-                    </span>{" "}
-                    {tournament.date}
-                  </div>
-                  <div className="mb-2" style={{ fontSize: 16, color: "#a22" }}>
-                    {tournament.location}
-                  </div>
-                  {tournament.eventType && (
-                    <span
-                      className="badge mx-2"
-                      style={{
-                        fontSize: 14,
-                        background: "#fff0f0",
-                        color: "#B71C1C",
-                        border: "1px solid #DF2E38",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {tournament.eventType}
-                    </span>
-                  )}
-                  {tournament.status && (
-  <span
-    className="badge mx-2"
-    style={{
-      background:
-        tournament.status === "confirmed"
-          ? "#6BCB77"
-          : tournament.status === "cancelled"
-          ? "#F96D6D"
-          : "#FFD166",
-      color:
-        tournament.status === "tentative"
-          ? "#8A6D00"
-          : "#fff",
-      fontSize: 14,
-      fontWeight: 700,
-      padding: "8px 14px",
-      borderRadius: 12,
-    }}
+                <>
+  <h1
+    className="display-5 mb-3"
+    style={{ color: "#DF2E38", fontWeight: 900 }}
   >
-    {tournament.status === "confirmed"
-      ? "Confirmed (This event is fully set and will happen as scheduled.)"
-      : tournament.status === "tentative"
-      ? "Tentative (The event is being planned but is not finalized.)"
-      : "Cancelled (This event will not occur.)"}
-  </span>
-)}
+    {tournament.eventName}
+  </h1>
+  <div style={{
+    fontSize: 18,
+    color: "#B71C1C",
+    fontWeight: 600,
+    marginBottom: 8
+  }}>
+    {formatDateWithDay(tournament.date)}
+  </div>
 
-                  <div className="mt-3" style={{ fontSize: 15, color: "#B71C1C" }}>
-                    {tournament.startTime && (
-                      <span>
-                        <b>Start:</b> {tournament.startTime} &nbsp;|&nbsp;{" "}
-                      </span>
-                    )}
-                    {tournament.endTime && (
-                      <span>
-                        <b>End:</b> {tournament.endTime} &nbsp;|&nbsp;{" "}
-                      </span>
-                    )}
-                    {tournament.rsvpDate && (
-                      <span>
-                        <b>RSVP By:</b> {tournament.rsvpDate}{" "}
-                        {tournament.rsvpTime || ""} &nbsp;|&nbsp;{" "}
-                      </span>
-                    )}
-                    {tournament.rules && (
-                      <span>
-                        <b>Rules:</b> {tournament.rules} &nbsp;|&nbsp;{" "}
-                      </span>
-                    )}
-                    {tournament.shirtColor && (
-                      <span>
-                        <b>Shirt:</b> {tournament.shirtColor} &nbsp;|&nbsp;{" "}
-                      </span>
-                    )}
-                    {tournament.additionalInfo && (
-                      <span>
-                        <b>Notes:</b> {tournament.additionalInfo}
-                      </span>
-                    )}
-                  </div>
+  <InfoRow label="Location" value={tournament.location} />
+
+  <InfoRow
+    label="Time"
+    value={
+      tournament.startTime && tournament.endTime
+        ? `${formatTime12hr(tournament.startTime)} — ${formatTime12hr(tournament.endTime)}`
+        : tournament.startTime
+        ? `${formatTime12hr(tournament.startTime)}`
+        : tournament.endTime
+        ? `${formatTime12hr(tournament.endTime)}`
+        : "—"
+    }
+  />
+
+  <InfoRow
+    label="RSVP By"
+    value={
+      tournament.rsvpDate
+        ? tournament.rsvpTime
+          ? `${formatDateWithDay(tournament.rsvpDate)} at ${formatTime12hr(tournament.rsvpTime)}`
+          : formatDateWithDay(tournament.rsvpDate)
+        : null
+    }
+  />
+
+  <InfoRow label="Rules" value={tournament.rules} />
+  <InfoRow label="Shirt Color" value={tournament.shirtColor} />
+  <InfoRow label="Notes" value={tournament.additionalInfo} />
+
+  {/* Event Type & Status as badges */}
+  <div className="mt-3 mb-1 d-flex justify-content-center flex-wrap gap-2">
+    {tournament.eventType && (
+      <span
+        className="badge"
+        style={{
+          fontSize: 15,
+          background: "#fff0f0",
+          color: "#B71C1C",
+          border: "1px solid #DF2E38",
+          fontWeight: 700,
+        }}
+      >
+        {tournament.eventType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+      </span>
+    )}
+    {tournament.status && (
+      <span
+        className="badge"
+        style={{
+          background:
+            tournament.status === "confirmed"
+              ? "#6BCB77"
+              : tournament.status === "cancelled"
+              ? "#F96D6D"
+              : "#FFD166",
+          color:
+            tournament.status === "tentative"
+              ? "#8A6D00"
+              : "#fff",
+          fontSize: 15,
+          fontWeight: 700,
+          padding: "9px 14px",
+          borderRadius: 12,
+        }}
+      >
+        {tournament.status === "confirmed"
+          ? "Confirmed"
+          : tournament.status === "tentative"
+          ? "Tentative"
+          : "Cancelled"}
+      </span>
+    )}
+  </div>
+</>
                 </div>
               </div>
-
             {/* Registration Form */}
+            {shouldShowForm && (
             <div
             className="card shadow-lg"
             style={{
@@ -513,24 +694,81 @@ const TournamentPage: React.FC = () => {
               <h4 className="mb-4" style={{ fontWeight: 700, color: "#DF2E38" }}>
                 Event Registration
               </h4>
-                <div className="form-group mb-3">
-                  <label htmlFor="playerSelect" style={{ fontWeight: 500 }}>
-                    Select Player:
-                  </label>
-                  <select
-                    className="form-control"
-                    id="playerSelect"
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                  >
-                    <option value="">-- Choose a player --</option>
-                    {linkedPlayers.map((p) => (
-                      <option key={p.uid} value={p.uid}>
-                        {`${p.firstName} ${p.lastName}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="form-group mb-3">
+  <label htmlFor="signupMode" style={{ fontWeight: 500 }}>I'm signing up as:</label>
+  <select
+  value={signupMode}
+  onChange={(e) => {
+    const selected = e.target.value;
+    if (selected === "coach" && userRole !== "coach") {
+      alert("Only coaches can sign up as coaches.");
+      return;
+    }
+    setSignupMode(selected as "player" | "coach");
+  }}
+>
+  <option value="player">Sign up as Player</option>
+  {userRole === "coach" && <option value="coach">Sign up as Coach</option>}
+</select>
+
+</div>
+<div className="form-group mb-3">
+  <label htmlFor="playerSelect" style={{ fontWeight: 500 }}>
+    Select Player<span style={{ color: "red" }}> *</span>
+  </label>
+  {userRole === "coach" && signupMode === "player" && (
+  <div className="form-group mb-3">
+    <label style={{ fontWeight: 500 }}>Select Player*</label>
+    <select
+      className="form-control"
+      value={selectedPlayer}
+      onChange={(e) => setSelectedPlayer(e.target.value)}
+      required
+    >
+      {favoritePlayer && (
+        <optgroup label="⭐ Favorite Player">
+          <option value={favoritePlayer.uid}>
+            {favoritePlayer.firstName} {favoritePlayer.lastName}
+          </option>
+        </optgroup>
+      )}
+      <optgroup label="All Players">
+        {allPlayers
+          .filter((p) => p.uid !== favoritePlayer?.uid)
+          .map((p) => (
+            <option key={p.uid} value={p.uid}>
+              {p.firstName} {p.lastName}
+            </option>
+          ))}
+      </optgroup>
+    </select>
+  </div>
+)}
+
+{userRole === "parent" && (
+  <div className="form-group mb-3">
+    <label style={{ fontWeight: 500 }}>Select Player*</label>
+    <select
+      className="form-control"
+      value={selectedPlayer}
+      onChange={(e) => setSelectedPlayer(e.target.value)}
+      required
+    >
+      <option value="" disabled>Select one</option>
+      {linkedPlayers.map((p) => (
+        <option key={p.uid} value={p.uid}>
+          {p.firstName} {p.lastName}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
+
+</div>
+
+
+
                 {linkedPlayers.length === 0 && (
                   <div
                     className="alert alert-info mt-3"
@@ -548,11 +786,11 @@ const TournamentPage: React.FC = () => {
                   </div>
                 )}
 
-                {selectedPlayer && !fetchingSignup && (
+                {(signupMode === "coach" || selectedPlayer) && !fetchingSignup && (
                   <>
                     <div className="form-group mb-3">
                       <label htmlFor="availability" style={{ fontWeight: 500 }}>
-                        Availability:
+                        Availability: <span style={{ color: "red" }}>*</span>
                       </label>
                       <select
                         id="availability"
@@ -575,7 +813,7 @@ const TournamentPage: React.FC = () => {
                     {showStartTime && (
                       <div className="form-group mb-3">
                         <label htmlFor="startTime" style={{ fontWeight: 500 }}>
-                          Estimated Arrival Time:
+                          Estimated Arrival Time: <span style={{ color: "red" }}>*</span>
                         </label>
                         <input
                           type="time"
@@ -589,7 +827,7 @@ const TournamentPage: React.FC = () => {
                     {showEndTime && (
                       <div className="form-group mb-3">
                         <label htmlFor="endTime" style={{ fontWeight: 500 }}>
-                          Estimated Departure Time:
+                          Estimated Departure Time: <span style={{ color: "red" }}>*</span>
                         </label>
                         <input
                           type="time"
@@ -601,68 +839,98 @@ const TournamentPage: React.FC = () => {
                       </div>
                     )}
                     <div className="form-group mb-3">
-  <label style={{ fontWeight: 500 }}>Carpool Options:</label>
+  <label style={{ fontWeight: 500 }}>Carpool Options: <span style={{ color: "red" }}>*</span> </label>
+  <div style={{ display: "flex", gap: "14px" }}>
+  <div className="form-group mb-3">
+  <label style={{ fontWeight: 500 }}>Carpool Option:</label>
   <div style={{ display: "flex", gap: "14px" }}>
     <button
       type="button"
-      className={`btn ${carpool.includes("can-drive") ? "btn-success" : "btn-outline-secondary"}`}
+      className={`btn ${carpool === "can-drive" ? "btn-success" : "btn-outline-secondary"}`}
       style={{
         borderRadius: 12,
         fontWeight: 600,
-        background: carpool.includes("can-drive") ? "#6BCB77" : "#fff",
-        color: carpool.includes("can-drive") ? "#fff" : "#2e3a59",
-        border: carpool.includes("can-drive") ? "2px solid #6BCB77" : "2px solid #dadada",
-        boxShadow: carpool.includes("can-drive") ? "0 2px 8px #6bcb7711" : "none",
+        background: carpool === "can-drive" ? "#6BCB77" : "#fff",
+        color: carpool === "can-drive" ? "#fff" : "#2e3a59",
+        border: carpool === "can-drive" ? "2px solid #6BCB77" : "2px solid #dadada",
+        boxShadow: carpool === "can-drive" ? "0 2px 8px #6bcb7711" : "none",
         transition: "all 0.12s"
       }}
-      onClick={() =>
-        setCarpool(carpool.includes("can-drive")
-          ? carpool.filter((c) => c !== "can-drive")
-          : [...carpool, "can-drive"])
-      }
+      onClick={() => setCarpool("can-drive")}
     >
-      Can Drive
+      {signupMode === "coach" ? "Can Drive" : "Parent Can Drive"}
     </button>
     <button
       type="button"
-      className={`btn ${carpool.includes("needs-ride") ? "btn-warning" : "btn-outline-secondary"}`}
+      className={`btn ${carpool === "needs-ride" ? "btn-warning" : "btn-outline-secondary"}`}
       style={{
         borderRadius: 12,
         fontWeight: 600,
-        background: carpool.includes("needs-ride") ? "#FFD166" : "#fff",
-        color: carpool.includes("needs-ride") ? "#222" : "#2e3a59",
-        border: carpool.includes("needs-ride") ? "2px solid #FFD166" : "2px solid #dadada",
-        boxShadow: carpool.includes("needs-ride") ? "0 2px 8px #ffd16633" : "none",
+        background: carpool === "needs-ride" ? "#FFD166" : "#fff",
+        color: carpool === "needs-ride" ? "#222" : "#2e3a59",
+        border: carpool === "needs-ride" ? "2px solid #FFD166" : "2px solid #dadada",
+        boxShadow: carpool === "needs-ride" ? "0 2px 8px #ffd16633" : "none",
         transition: "all 0.12s"
       }}
-      onClick={() =>
-        setCarpool(carpool.includes("needs-ride")
-          ? carpool.filter((c) => c !== "needs-ride")
-          : [...carpool, "needs-ride"])
-      }
+      onClick={() => setCarpool("needs-ride")}
     >
-      Needs Ride
+      Needs A Ride
     </button>
   </div>
 </div>
 
-                    {carpool.includes("can-drive") && (
-                      <div className="form-group mb-3">
-                        <label htmlFor="driveCapacity" style={{ fontWeight: 500 }}>
-                          Can drive how many people?
-                        </label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          id="driveCapacity"
-                          value={driveCapacity}
-                          onChange={(e) => setDriveCapacity(e.target.value)}
-                        />
-                      </div>
-                    )}
+  </div>
+</div>
+
+{carpool === "can-drive" && (
+  <div className="form-group mb-3">
+    <label htmlFor="driveCapacity" style={{ fontWeight: 500 }}>
+      How many seats available? <span style={{ color: "red" }}>*</span>
+    </label>
+    <input
+      type="number"
+      className="form-control"
+      id="driveCapacity"
+      value={driveCapacity}
+      onChange={(e) => setDriveCapacity(e.target.value)}
+    />
+  </div>
+)}
+{signupMode === "coach" && (
+  <div className="form-group mb-3">
+    <label style={{ fontWeight: 500 }}>Coach Volunteer Options:</label>
+    <div className="form-check">
+      <input
+        className="form-check-input"
+        type="checkbox"
+        id="canModerate"
+        checked={canModerate}
+        onChange={() => setCanModerate(!canModerate)}
+      />
+      <label className="form-check-label" htmlFor="canModerate">
+        Can Moderate
+      </label>
+    </div>
+    <div className="form-check">
+      <input
+        className="form-check-input"
+        type="checkbox"
+        id="canScorekeep"
+        checked={canScorekeep}
+        onChange={() => setCanScorekeep(!canScorekeep)}
+      />
+      <label className="form-check-label" htmlFor="canScorekeep">
+        Can Scorekeep
+      </label>
+    </div>
+  </div>
+)}
+
+{signupMode === "player" && (
+  <>
                     <div className="form-group mb-3">
                       <label style={{ fontWeight: 500 }}>
-                        Will a Parent Attend?
+                        Will a Parent Attend? <span style={{ color: "red" }}>*</span>
                       </label>
                       <select
                         className="form-control"
@@ -679,7 +947,7 @@ const TournamentPage: React.FC = () => {
                       <div className="form-group mb-3">
                         <div className="form-group mb-3">
     <label htmlFor="parentName" style={{ fontWeight: 500 }}>
-      Parent's Name
+      Parent's Name <span style={{ color: "red" }}>*</span>
     </label>
     <input
       type="text"
@@ -693,7 +961,7 @@ const TournamentPage: React.FC = () => {
     />
   </div>
                         <label style={{ fontWeight: 500 }}>
-                          Parent Volunteer Options:
+                          Parent Volunteer Options: <span style={{ color: "red" }}>*</span>
                         </label>
                         <div className="form-check">
                           <input
@@ -726,7 +994,8 @@ const TournamentPage: React.FC = () => {
                           </label>
                         </div>
                       </div>
-
+                      )}
+                      </>
                     )}
                     <div className="form-group mb-3">
                       <label
@@ -762,18 +1031,25 @@ const TournamentPage: React.FC = () => {
                   }}
                 >
                   {submitting
-                    ? "Submitting..."
-                    : existingSignupDocId
-                    ? "Edit Signup"
-                    : "Submit Registration"}
+  ? "Submitting..."
+  : signupMode === "coach"
+    ? coachSignupDocId
+      ? "Edit Coach Signup"
+      : "Sign Up as Coach"
+    : playerSignupDocId
+      ? "Edit Player Signup"
+      : "Sign Up as Player"}
+
                 </button>
                     </div>
                   </>
                 )}
               </div>
             </div>
+            )}
           </div>
         </div>
+              
         {/* --- TEAMS & DRIVERS --- */}
       <div className="row mt-5">
         <div className="col-12 mb-5">
@@ -870,46 +1146,77 @@ const TournamentPage: React.FC = () => {
           </div>
         </div>
           {/* Drivers & Seats Card */}
-          <div className="col-12">
-          <div
-            className="card shadow mb-5"
-            style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
-          >
-            <div className="card-body">
-              <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>
-                Drivers & Seats
-              </h4>
-              <ul style={{ fontSize: 17 }}>
-                {signups.filter((s) => s.carpool?.includes("can-drive")).length === 0 ? (
-                  <li className="text-muted">No drivers yet!</li>
-                ) : (
-                  signups
-                    .filter((s) => s.carpool?.includes("can-drive"))
-                    .map((s, idx) => {
-                      const player = playerMap[s.playerId];
-                      return (
-                        <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                          {player
-                            ? `${player.firstName} ${player.lastName}`
-                            : s.playerId}{" "}
-                          —{" "}
-                          <b>
-                            {s.driveCapacity !== undefined
-                              ? s.driveCapacity
-                              : 0}
-                          </b>{" "}
-                          seat(s)
-                        </li>
-                      );
-                    })
-                )}
-              </ul>
-            </div>
           </div>
+  {/* Row with drivers/riders */}
+  <div className="row">
+    {/* Drivers & Seats */}
+    <div className="col-md-6 mb-4">
+      <div
+        className="card shadow mb-3"
+        style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
+      >
+        <div className="card-body">
+          <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Drivers & Seats</h4>
+          <ul style={{ fontSize: 17 }}>
+            {signups.filter((s) => s.carpool === "can-drive").length === 0 ? (
+              <li className="text-muted">No drivers yet!</li>
+            ) : (
+              signups
+                .filter((s) => s.carpool === "can-drive")
+                .map((s, idx) => {
+                  const player = playerMap[s.playerId];
+const name =
+  player ? `${player.firstName} ${player.lastName}` :
+  s.playerId === currentUser?.uid ? currentUser.displayName || "Coach" :
+  "Unknown";
+
+                  return (
+                    <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
+                      {player
+                        ? `${player.firstName} ${player.lastName}`
+                        : s.playerId}{" "}
+                      — <b>{s.driveCapacity !== undefined ? s.driveCapacity : 0}</b> seat(s)
+                    </li>
+                  );
+                })
+            )}
+          </ul>
         </div>
       </div>
     </div>
+    {/* Needs Ride */}
+    <div className="col-md-6 mb-4">
+      <div
+        className="card shadow mb-3"
+        style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
+      >
+        <div className="card-body">
+          <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Needs A Ride</h4>
+          <ul style={{ fontSize: 17 }}>
+            {signups.filter((s) => s.carpool === "needs-ride").length === 0 ? (
+              <li className="text-muted">No riders yet!</li>
+            ) : (
+              signups
+                .filter((s) => s.carpool === "needs-ride")
+                .map((s, idx) => {
+                  const player = playerMap[s.playerId];
+                  return (
+                    <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
+                      {player
+                        ? `${player.firstName} ${player.lastName}`
+                        : s.playerId}
+                    </li>
+                  );
+                })
+            )}
+          </ul>
+        </div>
+      </div>
+    </div>
+      </div>
+    </div>
   </div>
+
   );
 };
 

@@ -83,26 +83,33 @@ function availabilityLabel(a?: string) {
   }
 }
 
-const ProfileScreen: React.FC = () => {
-  const [firebaseUser, setFirebaseUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [needsProfile, setNeedsProfile] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState("player");
-  const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
-  const [editProfile, setEditProfile] = useState(false);
-  const [editValues, setEditValues] = useState({ firstName: "", lastName: "", role: "player", password: "", confirmPassword: "" });
-  const [editError, setEditError] = useState<string | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [showEditLinked, setShowEditLinked] = useState(false);
-  const [allPlayers, setAllPlayers] = useState<any[]>([]);
-  const [selectedPlayerUid, setSelectedPlayerUid] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [pwMatch, setPwMatch] = useState(true);
+const ProfileScreen: React.FC = () => {
+    // 🔥 ALL HOOKS AT THE TOP, NOTHING ELSE BEFORE THIS
+    const [firebaseUser, setFirebaseUser] = useState<any>(null);
+    const [profile, setProfile] = useState<any>(null);
+    const [needsProfile, setNeedsProfile] = useState(false);
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [role, setRole] = useState("player");
+    const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
+    const [editProfile, setEditProfile] = useState(false);
+    const [editValues, setEditValues] = useState({ firstName: "", lastName: "", role: "player", password: "", confirmPassword: "" });
+    const [editError, setEditError] = useState<string | null>(null);
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [showEditLinked, setShowEditLinked] = useState(false);
+    const [allPlayers, setAllPlayers] = useState<any[]>([]);
+    const [selectedPlayerUid, setSelectedPlayerUid] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
+    const [showPassword, setShowPassword] = useState(false);
+    const [pwMatch, setPwMatch] = useState(true);
+  
+    const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
+    const [mySignups, setMySignups] = useState<{
+      [tournId: string]: { signedUp: boolean; availability?: string }
+    }>({});
+    const [loadingSignups, setLoadingSignups] = useState(false);
 
 const pwStrength = checkPasswordStrength(editValues.password);
 useEffect(() => {
@@ -112,11 +119,6 @@ useEffect(() => {
   );
 }, [editValues.password, editValues.confirmPassword]);
   // For "My Signups"
-  const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
-  const [mySignups, setMySignups] = useState<{
-    [tournId: string]: { signedUp: boolean; availability?: string }
-  }>({});
-  const [loadingSignups, setLoadingSignups] = useState(false);
 
   // Fetch user & profile
   useEffect(() => {
@@ -143,11 +145,12 @@ useEffect(() => {
   }, []);
 
   // Fetch all players for linking dropdown
-  useEffect(() => {
-    if (showEditLinked && profile && profile.role !== "player") {
-      getCollection<any>("players").then(players => setAllPlayers(players));
-    }
-  }, [showEditLinked, profile]);
+  // Fetch all players for dropdown if non-player (coach/parent)
+useEffect(() => {
+  if (profile && profile.role !== "player") {
+    getCollection<any>("players").then(players => setAllPlayers(players));
+  }
+}, [profile]);
 
   // Fetch names for linked players (from players collection)
   useEffect(() => {
@@ -193,8 +196,8 @@ useEffect(() => {
           snap.forEach((doc) => {
             const data = doc.data();
             if (
-              (profile.role === "player" && data.playerId === firebaseUser.uid) ||
-              (profile.role !== "player" && linkedPlayers.includes(data.playerId))
+              (profile && profile.role === "player" && data.playerId === firebaseUser.uid) || (profile.role !== "player" && effectiveLinkedPlayers.includes(data.playerId))
+
             ) {
               found = { signedUp: true, availability: data.availability };
             }
@@ -209,7 +212,6 @@ useEffect(() => {
       load();
     }
   }, [firebaseUser, profile, linkedPlayers]);
-
   // Preload edit form with current profile data when toggling
   useEffect(() => {
     if (editProfile && profile) {
@@ -231,6 +233,13 @@ useEffect(() => {
       </div>
     );
   }
+  // Now profile is guaranteed non-null
+  const effectiveLinkedPlayers =
+    profile.role === "coach"
+      ? (linkedPlayers[0] ? [linkedPlayers[0]] : [])
+      : linkedPlayers;
+
+
   // PROFILE CREATION FORM
   if (needsProfile) {
     return (
@@ -629,135 +638,208 @@ useEffect(() => {
           )}
         </div>
         {/* Linked Players */}
-        {profile && profile.role !== "player" && (
-          <div
-            className="mb-4"
-            style={{
-              background: "#fff",
-              borderRadius: 20,
-              padding: "22px 26px 14px 26px",
-              border: "2px solid #f5d7dc",
-              marginTop: 4,
-              boxShadow: "0 1.5px 8px #ffd6e144",
-            }}
-          >
-            <div
+        {profile && profile.role === "coach" && (
+  <div
+    className="mb-4"
+    style={{
+      background: "#fff",
+      borderRadius: 20,
+      padding: "22px 26px 18px 26px",
+      border: "2px solid #f5d7dc",
+      marginTop: 4,
+      boxShadow: "0 1.5px 8px #ffd6e144",
+    }}
+  >
+    <div
+      style={{
+        fontWeight: 700,
+        color: "#DF2E38",
+        letterSpacing: 1,
+        fontSize: 17,
+        marginBottom: 7,
+      }}
+    >
+      Favorite Player
+    </div>
+    <div style={{ color: "#888", fontSize: 15, marginBottom: 10 }}>
+      Coaches are automatically linked to all players for registration,<br />
+      but you may select a <b>favorite player</b> below. Their signup status will show up in your dashboard.
+    </div>
+    <div className="d-flex align-items-center gap-2">
+      <select
+        className="form-select"
+        value={linkedPlayers[0] || ""}
+        style={{ width: 240, marginRight: 16 }}
+        onChange={async e => {
+          const favUid = e.target.value;
+          await updateDocumentFields("users", firebaseUser.uid, { linkedPlayers: favUid ? [favUid] : [] });
+          setLinkedPlayers(favUid ? [favUid] : []);
+        }}
+      >
+        <option value="">-- Select favorite player --</option>
+        {allPlayers.map(p => (
+          <option key={p.id} value={p.id}>
+            {p.firstName} {p.lastName} ({p.id})
+          </option>
+        ))}
+      </select>
+      {linkedPlayers[0] && (
+        <button
+          className="btn btn-outline-danger btn-sm"
+          onClick={async () => {
+            await updateDocumentFields("users", firebaseUser.uid, { linkedPlayers: [] });
+            setLinkedPlayers([]);
+          }}
+        >
+          Remove Favorite
+        </button>
+      )}
+    </div>
+    {linkedPlayers[0] && (
+      <div style={{ marginTop: 8, color: "#B71C1C", fontWeight: 600, fontSize: 15 }}>
+        Favorite: {linkedPlayerNames[0]}
+      </div>
+    )}
+  </div>
+)}
+
+      </div>
+      {profile && profile.role === "parent" && (
+  <div
+  className="mb-4"
+  style={{
+    background: "#fff",
+    borderRadius: 20,
+    padding: "22px 26px 18px 26px",
+    border: "2.5px solid #f5d7dc",
+    marginTop: 4,
+    boxShadow: "0 4px 24px #ffd6e133, 0 1.5px 8px #ffd6e150",
+    maxWidth: 500,
+    marginLeft: "auto",
+    marginRight: "auto",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    position: "relative"
+  }}
+>
+    <div
+      style={{
+        fontWeight: 700,
+        color: "#DF2E38",
+        letterSpacing: 1,
+        fontSize: 17,
+        marginBottom: 7,
+      }}
+    >
+      Linked Players
+    </div>
+    <div className="d-flex flex-wrap gap-2 mb-2">
+      {linkedPlayerNames.length
+        ? linkedPlayerNames.map((n, i) => (
+            <span
+              key={i}
+              className="badge"
               style={{
-                fontWeight: 700,
-                color: "#DF2E38",
-                letterSpacing: 1,
-                fontSize: 17,
-                marginBottom: 7,
+                background: "#ffebee",
+                color: "#B71C1C",
+                border: "1.2px solid #DF2E3830",
+                borderRadius: 16,
+                padding: "7px 16px",
+                fontWeight: 600,
               }}
             >
-              Linked Players
-            </div>
-            <div className="d-flex flex-wrap gap-2 mb-2">
-              {linkedPlayerNames.length
-                ? linkedPlayerNames.map((n, i) => (
-                    <span
-                      key={i}
-                      className="badge"
-                      style={{
-                        background: "#ffebee",
-                        color: "#B71C1C",
-                        border: "1.2px solid #DF2E3830",
-                        borderRadius: 16,
-                        padding: "7px 16px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {n}
-                      <button
-                        className="btn btn-link btn-sm"
-                        style={{
-                          color: "#DF2E38",
-                          marginLeft: 8,
-                          fontWeight: 900,
-                          fontSize: 16,
-                          padding: 0,
-                        }}
-                        onClick={async () => {
-                          const playerUid = linkedPlayers[i];
-                          await updateDocumentFields("users", firebaseUser.uid, {
-                            linkedPlayers: linkedPlayers.filter(uid => uid !== playerUid)
-                          });
-                          setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
-                          await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))
-                : (
-                  <span className="text-muted" style={{ fontSize: 15 }}>
-                    No linked players yet.
-                  </span>
-                )}
-            </div>
-            <button
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => setShowEditLinked((v) => !v)}
-            >
-              {showEditLinked ? "Cancel" : "Edit Linked Players"}
-            </button>
-            {/* Edit Linked Players Section */}
-            {showEditLinked && profile && profile.role !== "player" && (
-  <div className="card card-body mb-3"
-  style={{ background: "#f1f7ff", borderRadius: 16, boxShadow: "0 3px 12px #c8dfff22", border: "1.5px solid #e3e6ff" }}>
-<div className="d-flex align-items-end gap-2">
- <div style={{ flex: 1 }}>
-   <label style={{ fontWeight: 500, color: "#2949B8", marginBottom: 5 }}>Select a player to link:</label>
-   <select
-     className="form-select"
-     value={selectedPlayerUid}
-     style={{
-       border: "1.5px solid #d0e4ff",
-       borderRadius: 10,
-       padding: "8px 12px",
-       fontSize: 15,
-       background: "#fff",
-       marginBottom: 0,
-     }}
-     onChange={e => setSelectedPlayerUid(e.target.value)}
-   >
-     <option value="">-- Select a player --</option>
-     {allPlayers
-       .filter(p => !linkedPlayers.includes(p.id))
-       .map(p => (
-         <option key={p.id} value={p.id}>
-           {p.firstName} {p.lastName} ({p.id})
-         </option>
-       ))}
-   </select>
- </div>
- <button
-   className="btn btn-danger"
-   style={{
-     minWidth: 130,
-     borderRadius: 10,
-     marginLeft: 16,
-     fontWeight: 600,
-     padding: "9px 0"
-   }}
-   disabled={!selectedPlayerUid}
-   onClick={async () => {
-     if (!selectedPlayerUid) return;
-     await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
-     setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
-     setSelectedPlayerUid("");
-     await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
-   }}
- >
-   <span style={{ fontSize: 16 }}>➕</span> Add Player
- </button>
-</div>
-</div>
-)}
-          </div>
+              {n}
+              <button
+                className="btn btn-link btn-sm"
+                style={{
+                  color: "#DF2E38",
+                  marginLeft: 8,
+                  fontWeight: 900,
+                  fontSize: 16,
+                  padding: 0,
+                }}
+                onClick={async () => {
+                  const playerUid = linkedPlayers[i];
+                  await updateDocumentFields("users", firebaseUser.uid, {
+                    linkedPlayers: linkedPlayers.filter(uid => uid !== playerUid)
+                  });
+                  setLinkedPlayers(linkedPlayers.filter(uid => uid !== playerUid));
+                  await removeFromArrayInDocument("players", playerUid, "linkedUsers", firebaseUser.uid);
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ))
+        : (
+          <span className="text-muted" style={{ fontSize: 15 }}>
+            No linked players yet.
+          </span>
         )}
+    </div>
+    <button
+      className="btn btn-outline-danger btn-sm"
+      onClick={() => setShowEditLinked((v) => !v)}
+    >
+      {showEditLinked ? "Cancel" : "Edit Linked Players"}
+    </button>
+    {/* Edit Linked Players Section */}
+    {showEditLinked && profile && profile.role === "parent" && (
+      <div className="card card-body mb-3"
+        style={{ background: "#f1f7ff", borderRadius: 16, boxShadow: "0 3px 12px #c8dfff22", border: "1.5px solid #e3e6ff" }}>
+        <div className="d-flex align-items-end gap-2">
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: 500, color: "#2949B8", marginBottom: 5 }}>Select a player to link:</label>
+            <select
+              className="form-select"
+              value={selectedPlayerUid}
+              style={{
+                border: "1.5px solid #d0e4ff",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: 15,
+                background: "#fff",
+                marginBottom: 0,
+              }}
+              onChange={e => setSelectedPlayerUid(e.target.value)}
+            >
+              <option value="">-- Select a player --</option>
+              {allPlayers
+                .filter(p => !linkedPlayers.includes(p.id))
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.lastName} ({p.id})
+                  </option>
+                ))}
+            </select>
+          </div>
+          <button
+            className="btn btn-danger"
+            style={{
+              minWidth: 130,
+              borderRadius: 10,
+              marginLeft: 16,
+              fontWeight: 600,
+              padding: "9px 0"
+            }}
+            disabled={!selectedPlayerUid}
+            onClick={async () => {
+              if (!selectedPlayerUid) return;
+              await addToArrayInDocument("users", firebaseUser.uid, "linkedPlayers", selectedPlayerUid);
+              setLinkedPlayers([...linkedPlayers, selectedPlayerUid]);
+              setSelectedPlayerUid("");
+              await addToArrayInDocument("players", selectedPlayerUid, "linkedUsers", firebaseUser.uid);
+            }}
+          >
+            <span style={{ fontSize: 16 }}>➕</span> Add Player
+          </button>
+        </div>
       </div>
+    )}
+  </div>
+)}
+
 
       {/* Main Right Section: Tournament Signups */}
       <div className="col-12 col-lg-7">
@@ -772,6 +854,7 @@ useEffect(() => {
             padding: 0,
           }}
         >
+          
           <div className="p-4">
             <h4 style={{ color: "#DF2E38", fontWeight: 700, marginBottom: 18 }}>
               My Tournament Signups
@@ -781,73 +864,73 @@ useEffect(() => {
 ) : (
   <div style={{ maxHeight: 340, overflowY: "auto" }}>
     {/* If no player is linked (for non-players), show message */}
-    {profile.role !== "player" && linkedPlayers.length === 0 ? (
-      <div style={{ color: "#B71C1C", fontSize: 16, fontWeight: 600 }}>
-        No player linked.
-      </div>
-    ) : tournaments.length === 0 ? (
-      <div style={{ color: "#B71C1C", fontSize: 16 }}>
-        No upcoming tournaments found.
-      </div>
-    ) : (
-      tournaments.map((t) => {
-        const signupStatus = mySignups[t.id];
-        const label = signupStatus?.signedUp
-          ? availabilityLabel(signupStatus?.availability)
-          : "Not Signed Up";
-        return (
-          <div
-            key={t.id}
-            className="d-flex align-items-center justify-content-between mb-3 pb-2"
+    {profile && profile.role !== "player" && effectiveLinkedPlayers.length === 0 ? (
+  <div style={{ color: "#B71C1C", fontSize: 16, fontWeight: 600 }}>
+    No player linked.
+  </div>
+) : tournaments.length === 0 ? (
+  <div style={{ color: "#B71C1C", fontSize: 16 }}>
+    No upcoming tournaments found.
+  </div>
+) : (
+  tournaments.map((t) => {
+    const signupStatus = mySignups[t.id];
+    const label = signupStatus?.signedUp
+      ? availabilityLabel(signupStatus?.availability)
+      : "Not Signed Up";
+    return (
+      <div
+        key={t.id}
+        className="d-flex align-items-center justify-content-between mb-3 pb-2"
+        style={{
+          borderBottom: "1px solid #f3d2d9",
+        }}
+      >
+        <div>
+          <Link
+            to={`/tournament/${t.id}`}
             style={{
-              borderBottom: "1px solid #f3d2d9",
+              textDecoration: "none",
+              fontWeight: 600,
+              color: "#232323",
+              fontSize: 17,
             }}
           >
-            <div>
-              <Link
-                to={`/tournament/${t.id}`}
-                style={{
-                  textDecoration: "none",
-                  fontWeight: 600,
-                  color: "#232323",
-                  fontSize: 17,
-                }}
-              >
-                <span
-                  role="img"
-                  aria-label="calendar"
-                  style={{
-                    fontSize: 18,
-                    marginRight: 8,
-                    color: "#DF2E38",
-                  }}
-                >
-                  📅
-                </span>
-                {t.eventName}
-              </Link>
-              <div style={{ fontSize: 13, color: "#888" }}>
-                {t.date}
-              </div>
-            </div>
             <span
-              className="badge badge-pill"
+              role="img"
+              aria-label="calendar"
               style={{
-                background: statusColor(label),
-                color: "#fff",
-                fontSize: 15,
-                padding: "8px 22px",
-                fontWeight: 600,
-                borderRadius: 13,
-                letterSpacing: 1,
+                fontSize: 18,
+                marginRight: 8,
+                color: "#DF2E38",
               }}
             >
-              {label}
+              📅
             </span>
+            {t.eventName}
+          </Link>
+          <div style={{ fontSize: 13, color: "#888" }}>
+            {t.date}
           </div>
-        );
-      })
-    )}
+        </div>
+        <span
+          className="badge badge-pill"
+          style={{
+            background: statusColor(label),
+            color: "#fff",
+            fontSize: 15,
+            padding: "8px 22px",
+            fontWeight: 600,
+            borderRadius: 13,
+            letterSpacing: 1,
+          }}
+        >
+          {label}
+        </span>
+      </div>
+    );
+  })
+)}
   </div>
 )}
 

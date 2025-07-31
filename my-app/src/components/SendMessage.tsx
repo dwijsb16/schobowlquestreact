@@ -260,9 +260,9 @@ const ManageTournaments: React.FC = () => {
                     <label className="fw-semibold mb-2">Announcement Type:</label>
                     <select className="form-select mb-3" value={announcementType} onChange={e => setAnnouncementType(e.target.value)}>
                       <option value="">Select Type</option>
-                      <option value="tournament-day">Announcements for Tournament Day</option>
-                      <option value="news">News</option>
-                      <option value="tournament-teams">Announcements for Tournament Teams</option>
+                      <option value="announcements">Announcements</option>
+                      <option value="reminders">Reminders</option>
+                      <option value="celebration">Celebration Corner</option>
                     </select>
                     <input className="form-control mb-3" placeholder="Title"
                       value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)} />

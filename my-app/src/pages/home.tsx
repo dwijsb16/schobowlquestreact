@@ -23,9 +23,9 @@ const Home: React.FC = () => {
   return (
     <div>
       <Navbar />
-      <Carousel />
-      <Cards />
       <Accordion />
+      <Cards />
+      <Carousel />      
       <Footer />
     </div>
   );
