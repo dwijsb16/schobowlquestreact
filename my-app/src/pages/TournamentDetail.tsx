@@ -298,7 +298,6 @@ const TournamentPage: React.FC= () => {
     });
     return () => unsubscribe();
   }, []);
-  
   // 🧠 Get the favorite player (the only one in linkedPlayers array)
 const favoritePlayer = linkedPlayers?.[0] || "";
 useEffect(() => {
