@@ -32,6 +32,7 @@ const TournamentForm: React.FC = () => {
   const [shirtColor, setShirtColor] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [needsModerators, setNeedsModerators] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success", message: string } | null>(null);
 
   // --- OAuth ---
@@ -167,6 +168,7 @@ const TournamentForm: React.FC = () => {
           location,
           shirtColor,
           additionalInfo,
+          needsModerators,
           googleEventID,
         };
         await addDocument("tournaments", tournamentData);
@@ -416,6 +418,20 @@ const TournamentForm: React.FC = () => {
               style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
               value={shirtColor} onChange={e => setShirtColor(e.target.value)} placeholder="e.g., Red/Black" disabled={loading}/>
           </div>
+          <div className="form-group mb-3">
+        <label htmlFor="needs_mods" style={{ fontWeight: 600, color: BLACK }}>Needs Moderators?</label>
+        <select
+          id="needs_mods"
+          className="form-control"
+          value={needsModerators ? "yes" : "no"}
+          onChange={(e) => setNeedsModerators(e.target.value === "yes")}
+          disabled={loading}
+          style={{ borderRadius: 14, background: LIGHT_GREY, border: `1.5px solid #f3dadf`, color: BLACK }}
+        >
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
           {/* Additional Info */}
           <div className="form-group mb-3">
             <label htmlFor="additional_info" style={{ fontWeight: 600, color: BLACK }}>Additional Information</label>

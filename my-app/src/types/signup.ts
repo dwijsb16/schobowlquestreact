@@ -13,5 +13,6 @@ export interface Signup {
   timestamp: FieldValue | Timestamp; // <-- serverTimestamp on write, Timestamp on read
   startTime?: string;
   endTime?: string;
+  parentName?: string;
   driveCapacity?: string;
 }

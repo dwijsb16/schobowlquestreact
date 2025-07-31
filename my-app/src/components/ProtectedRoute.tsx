@@ -6,24 +6,31 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiresCoach?: bool
   children,
   requiresCoach = false,
 }) => {
-  const { isAuthenticated, isCoach, loading } = useAuth();
+  const { isAuthenticated, user, isCoach, loading } = useAuth();
   const location = useLocation();
 
-  // Wait for AuthContext to load
   if (loading) {
-    // You can return a spinner here!
     return <div style={{ textAlign: "center", marginTop: 80 }}>Loading...</div>;
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
+
+  // COACH-ONLY routes
   if (requiresCoach && !isCoach) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // Shared access routes: allow player, parent, or alumni
+  const allowedRoles = ["player", "parent", "alumni", "assistant coach", "coach"];
+  if (!requiresCoach && !allowedRoles.includes(user?.role || "")) {
     return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;
 };
+
 
 export default ProtectedRoute;
 

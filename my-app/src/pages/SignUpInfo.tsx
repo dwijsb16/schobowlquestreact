@@ -67,6 +67,7 @@ const SignupPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [pwMatch, setPwMatch] = useState<boolean>(true);
+  const [suburb, setSuburb] = useState<string>("");
 
   // Verification
   const [showVerification, setShowVerification] = useState<boolean>(false);
@@ -201,6 +202,7 @@ const SignupPage: React.FC = () => {
         lastName,
         role,
         ...(role === "player" && { grade }),
+        ...(suburb && { suburb }),
         linkedPlayers: [],
       };
 
@@ -490,6 +492,7 @@ const SignupPage: React.FC = () => {
                   >
                     <option value="player">Player</option>
                     <option value="parent">Parent</option>
+                    <option value="alumni">Alumni</option>
                   </select>
                 </div>
                 {/* GRADE */}
@@ -511,6 +514,23 @@ const SignupPage: React.FC = () => {
                     </select>
                   </div>
                 )}
+                <div className="form-group mb-3">
+  <label style={{ fontWeight: 500, color: BLACK }}>Suburb</label>
+  <input
+    type="text"
+    className="form-control"
+    value={suburb}
+    required={true}
+    onChange={(e: ChangeEvent<HTMLInputElement>) => setSuburb(e.target.value)}
+    placeholder="Enter your suburb (optional)"
+    style={{
+      borderRadius: 12,
+      border: `1.3px solid ${LIGHT_GREY}`,
+      background: WHITE,
+      color: BLACK
+    }}
+  />
+</div>
                 {/* ERRORS */}
                 {error && <div className="alert alert-danger mt-2" style={{
                   background: "#ffeef0", color: RED, border: `1px solid #ffd3db`

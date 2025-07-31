@@ -171,6 +171,31 @@ const TournamentPage: React.FC= () => {
   const showStartTime = availability === "late" || availability === "late_early";
   const showEndTime = availability === "early" || availability === "late_early";
 
+useEffect(() => {
+  const loadSignups = async () => {
+    if (!tournamentId) throw new Error("Tournament ID is required");
+    const playerSnap = await getDocs(collection(db, "signups", tournamentId, "entries"));
+    const coachSnap = await getDocs(collection(db, "coach_signups", tournamentId, "entries"));
+
+    const playerEntries = playerSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as SignupDoc));
+    const coachEntries = coachSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as SignupDoc));
+
+    // Optional: prevent duplicates based on userId/playerId
+    const seen = new Set();
+    const allEntries = [...playerEntries, ...coachEntries].filter((entry) => {
+      const key = entry.playerId;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    setSignups(allEntries);
+  };
+
+  if (tournamentId) loadSignups();
+}, [tournamentId]);
+
+
   useEffect(() => {
     const fetchProfile = async () => {
       if (!currentUser) return;
@@ -546,7 +571,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
     } else {
       // CREATE MODE: add new doc, NO EMAIL
       await addDoc(
-        collection(db, "signups", tournamentId as string, "entries"),
+        collection(db, signupMode === "coach" ? "coach_signups" : "signups", tournamentId as string, "entries"),
         signup
       );
       alert("Signup submitted!");
@@ -717,7 +742,6 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   </label>
   {userRole === "coach" && signupMode === "player" && (
   <div className="form-group mb-3">
-    <label style={{ fontWeight: 500 }}>Select Player*</label>
     <select
       className="form-control"
       value={selectedPlayer}
@@ -841,8 +865,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   <label style={{ fontWeight: 500 }}>Carpool Options: <span style={{ color: "red" }}>*</span> </label>
   <div style={{ display: "flex", gap: "14px" }}>
   <div className="form-group mb-3">
-  <label style={{ fontWeight: 500 }}>Carpool Option:</label>
-  <div style={{ display: "flex", gap: "14px" }}>
+      <div style={{ display: "flex", gap: "14px" }}>
     <button
       type="button"
       className={`btn ${carpool === "can-drive" ? "btn-success" : "btn-outline-secondary"}`}
@@ -884,7 +907,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
 {carpool === "can-drive" && (
   <div className="form-group mb-3">
     <label htmlFor="driveCapacity" style={{ fontWeight: 500 }}>
-      How many seats available? <span style={{ color: "red" }}>*</span>
+       Can drive how many additional people? <span style={{ color: "red" }}>*</span>
     </label>
     <input
       type="number"
@@ -906,9 +929,11 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
         checked={canModerate}
         onChange={() => setCanModerate(!canModerate)}
       />
+      {tournament.needsModerators && (
       <label className="form-check-label" htmlFor="canModerate">
         Can Moderate
       </label>
+      )}
     </div>
     <div className="form-check">
       <input
@@ -970,12 +995,14 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                             checked={canModerate}
                             onChange={() => setCanModerate(!canModerate)}
                           />
+                          {tournament.needsModerators && (
                           <label
                             className="form-check-label"
                             htmlFor="canModerate"
                           >
                             Can Moderate
                           </label>
+                          )}
                         </div>
                         <div className="form-check">
                           <input
@@ -1164,18 +1191,21 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                 .filter((s) => s.carpool === "can-drive")
                 .map((s, idx) => {
                   const player = playerMap[s.playerId];
-const name =
-  player ? `${player.firstName} ${player.lastName}` :
-  s.playerId === currentUser?.uid ? currentUser.displayName || "Coach" :
-  "Unknown";
+                  const name =
+  s.parentName?.trim()
+    ? s.parentName
+    : player
+      ? `${player.firstName} ${player.lastName}`
+      : s.playerId === currentUser?.uid
+        ? currentUser.displayName || "Coach"
+        : "Unknown";
 
-                  return (
-                    <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                      {player
-                        ? `${player.firstName} ${player.lastName}`
-                        : s.playerId}{" "}
-                      — <b>{s.driveCapacity !== undefined ? s.driveCapacity : 0}</b> seat(s)
-                    </li>
+                
+                return (
+                  <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
+                    {name} — <b>{s.driveCapacity ?? 0}</b> seat(s)
+                  </li>
+                
                   );
                 })
             )}
@@ -1199,15 +1229,21 @@ const name =
                 .filter((s) => s.carpool === "needs-ride")
                 .map((s, idx) => {
                   const player = playerMap[s.playerId];
+                  const name =
+  player
+    ? `${player.firstName} ${player.lastName}`
+    : s.playerId === currentUser?.uid
+      ? currentUser.displayName || "Coach"
+      : "Unknown";
+
+                
                   return (
                     <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                      {player
-                        ? `${player.firstName} ${player.lastName}`
-                        : s.playerId}
+                      {name}
                     </li>
                   );
-                })
-            )}
+                }))
+                }
           </ul>
         </div>
       </div>

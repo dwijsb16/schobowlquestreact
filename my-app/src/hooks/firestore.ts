@@ -62,6 +62,7 @@ export async function updateDocumentFields(
   }
 }
 export async function getDocumentById<T>(collectionName: string, docId: string): Promise<T & {
+  suburb: string;
   role: string;
   firstName: string;
   lastName: string;
@@ -72,6 +73,7 @@ export async function getDocumentById<T>(collectionName: string, docId: string):
     const snap = await getDoc(ref);
     if (snap.exists()) return { 
       id: snap.id, 
+      suburb: '', // default value for suburb
       role: '', // default value
       firstName: '', // default value
       lastName: '', // default value

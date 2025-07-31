@@ -8,4 +8,5 @@ export interface User {
   role: UserRole;
   // For non-players: which player(s) are they linked to?
   linkedPlayers?: string[]; // array of Player ID
+  suburb?: string;
 }

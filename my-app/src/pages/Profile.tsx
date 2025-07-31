@@ -104,6 +104,7 @@ const ProfileScreen: React.FC = () => {
     const [linkedPlayerNames, setLinkedPlayerNames] = useState<string[]>([]);
     const [showPassword, setShowPassword] = useState(false);
     const [pwMatch, setPwMatch] = useState(true);
+    const [suburb, setSuburb] = useState("");
   
     const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
     const [mySignups, setMySignups] = useState<{
@@ -133,6 +134,7 @@ useEffect(() => {
           setLastName(userDoc.lastName || "");
           setRole(userDoc.role || "player");
           setLinkedPlayers(userDoc.linkedPlayers || []);
+          setSuburb(userDoc.suburb || "");
         } else {
           setNeedsProfile(true);
         }
@@ -170,7 +172,10 @@ useEffect(() => {
     };
     fetchNames();
   }, [linkedPlayers]);
-
+  const effectiveLinkedPlayers =
+  profile?.role === "coach"
+    ? (linkedPlayers[0] ? [linkedPlayers[0]] : [])
+    : linkedPlayers;
   // ===== MY SIGNUPS SECTION =====
   useEffect(() => {
     const load = async () => {
@@ -226,6 +231,38 @@ useEffect(() => {
       setEditError(null);
     }
   }, [editProfile, profile]);
+  if (!profile?.suburb) {
+    return (
+      <div className="container mt-5">
+        <div className="card p-4 shadow-sm mx-auto" style={{ maxWidth: 500, background: "#f7fafd" }}>
+          <h2 style={{ color: "#4285f4" }}>Complete Your Profile</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!suburb.trim()) return setError("Please enter your suburb.");
+            try {
+              await updateDocumentFields("users", firebaseUser.uid, { suburb });
+              setProfile({ ...profile, suburb });
+            } catch (err) {
+              setError("Error saving suburb.");
+            }
+          }}>
+            <div className="form-group">
+              <label>Suburb:</label>
+              <input
+                className="form-control"
+                value={suburb}
+                onChange={e => setSuburb(e.target.value)}
+                required
+              />
+            </div>
+            {error && <div className="alert alert-danger mt-2">{error}</div>}
+            <button className="btn btn-success mt-3 w-100" type="submit">Save</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+  
   if (!profile) {
     return (
       <div style={{textAlign:"center", marginTop:40, color:"#DF2E38", fontWeight:600, fontSize:22}}>
@@ -234,10 +271,7 @@ useEffect(() => {
     );
   }
   // Now profile is guaranteed non-null
-  const effectiveLinkedPlayers =
-    profile.role === "coach"
-      ? (linkedPlayers[0] ? [linkedPlayers[0]] : [])
-      : linkedPlayers;
+
 
 
   // PROFILE CREATION FORM
@@ -259,6 +293,7 @@ useEffect(() => {
                 firstName,
                 lastName,
                 role,
+                suburb,
                 linkedPlayers: [],
               };
               await setDoc(doc(db, "users", firebaseUser.uid), userDoc);
@@ -287,6 +322,15 @@ useEffect(() => {
                 required
               />
             </div>
+            <div className="form-group">
+  <label>Suburb:</label>
+  <input
+    className="form-control"
+    value={suburb}
+    onChange={e => setSuburb(e.target.value)}
+    required
+  />
+</div>
             <div className="form-group">
               <label>Role:</label>
               <select
@@ -479,9 +523,11 @@ useEffect(() => {
                     await updateDocumentFields("users", firebaseUser.uid, {
                       firstName: editValues.firstName,
                       lastName: editValues.lastName,
+                      suburb,
                       role: editValues.role
+
                     });
-                    setProfile({ ...profile, ...editValues, password: undefined, confirmPassword: undefined });
+                    setProfile({ ...profile, ...editValues, suburb, password: undefined, confirmPassword: undefined });
                     setEditProfile(false);
                   } catch (err: any) {
                     setEditError("Error saving changes. Try again.");
@@ -522,6 +568,17 @@ useEffect(() => {
                     />
                   </div>
                 </div>
+                <div className="mb-2">
+  <input
+    type="text"
+    className="form-control"
+    placeholder="Suburb"
+    value={suburb}
+    onChange={(e) => setSuburb(e.target.value)}
+    required
+  />
+</div>
+
                 <div className="mb-2">
                   <select
                     className="form-select"
