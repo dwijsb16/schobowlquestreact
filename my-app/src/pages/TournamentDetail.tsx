@@ -584,10 +584,9 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   if (!tournament) return <div className="text-center mt-5">Loading tournament...</div>;
   if (loadingPlayers) return <div className="text-center mt-5">Loading players...</div>;
   const shouldShowForm =
-  (userRole === "player") ||
-  (userRole === "parent" && selectedPlayer) ||
-  (userRole === "coach" && signupMode === "player" && selectedPlayer) ||
-  (userRole === "coach" && signupMode === "coach");
+  userRole === "player" ||
+  userRole === "coach" ||  // coach should always see the form to choose mode
+  (userRole === "parent" && linkedPlayers.length > 0);
 
   return (
       <div
@@ -816,7 +815,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                   </div>
                 )}
 
-                {(signupMode === "coach" || selectedPlayer) && !fetchingSignup && selectedPlayer && (
+                {(signupMode === "coach" || (signupMode === "player" && selectedPlayer)) && !fetchingSignup &&(
                   <>
                     <div className="form-group mb-3">
                       <label htmlFor="availability" style={{ fontWeight: 500 }}>
