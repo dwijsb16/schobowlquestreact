@@ -490,15 +490,10 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       if (carpool === "can-drive" && !driveCapacity)
         return alert("Please enter the number of available seats.");
     
-      if (signupMode === "player" && parentAttending) {
+      if (signupMode === "player" && (parentAttending || carpool === "can-drive")) {
         if (!parentName) return alert("Please enter the parent’s name.");
-        if (!canModerate && !canScorekeep)
-          return alert("Please select at least one parent volunteer option.");
       }
     
-      if (signupMode === "coach" && !canModerate && !canScorekeep) {
-        return alert("Please select at least one coach volunteer option.");
-      }
     setSubmitting(true);
     const existingDocId = signupMode === "coach" ? coachSignupDocId : playerSignupDocId;
 
@@ -506,7 +501,9 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
     const signup: Signup = {
       tournamentId: tournamentId as string,
       userId: currentUser.uid,
-      playerId: signupMode === "player" ? selectedPlayer : currentUser.uid,
+      playerId: signupMode === "coach"
+      ? selectedPlayer || currentUser.uid
+      : selectedPlayer,
       availability,
       carpool,
       parentAttending,
@@ -517,8 +514,10 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       ...(showStartTime && startTime ? { startTime } : {}),
       ...(showEndTime && endTime ? { endTime } : {}),
       ...(carpool.includes("can-drive") && driveCapacity ? { driveCapacity } : {}),
-      ...(parentAttending && parentName ? { parentName } : {})
+      ...(parentName ? { parentName } : {})
     };
+    const playerId = signupMode === "coach" ? selectedPlayer || currentUser.uid : selectedPlayer;
+    console.log("🚀 selected player id:", playerId);
   
     // Always check Firestore for this player/tournament signup
     const entriesRef = collection(
@@ -729,6 +728,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       return;
     }
     setSignupMode(selected as "player" | "coach");
+    setSelectedPlayer(""); // 💥 This ensures dropdown shows "Select a player"
   }}
 >
   <option value="player">Sign up as Player</option>
@@ -743,28 +743,35 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   {userRole === "coach" && signupMode === "player" && (
   <div className="form-group mb-3">
     <select
-      className="form-control"
-      value={selectedPlayer}
-      onChange={(e) => setSelectedPlayer(e.target.value)}
-      required
-    >
-      {favoritePlayer && (
-        <optgroup label="⭐ Favorite Player">
-          <option value={favoritePlayer.uid}>
-            {favoritePlayer.firstName} {favoritePlayer.lastName}
-          </option>
-        </optgroup>
-      )}
-      <optgroup label="All Players">
-        {allPlayers
-          .filter((p) => p.uid !== favoritePlayer?.uid)
-          .map((p) => (
-            <option key={p.uid} value={p.uid}>
-              {p.firstName} {p.lastName}
-            </option>
-          ))}
-      </optgroup>
-    </select>
+  className="form-control"
+  value={selectedPlayer}
+  onChange={(e) => setSelectedPlayer(e.target.value)}
+  required
+>
+  <option value="" disabled>
+    Select a player
+  </option>
+
+  {favoritePlayer && (
+    <optgroup label="⭐ Favorite Player">
+      <option value={favoritePlayer.uid}>
+        {favoritePlayer.firstName} {favoritePlayer.lastName}
+      </option>
+    </optgroup>
+  )}
+
+  <optgroup label="All Players">
+    {allPlayers
+      .filter((p) => p.uid !== favoritePlayer?.uid)
+      .map((p) => (
+        <option key={p.uid} value={p.uid}>
+          {p.firstName} {p.lastName}
+        </option>
+      ))}
+  </optgroup>
+</select>
+
+
   </div>
 )}
 
@@ -809,7 +816,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                   </div>
                 )}
 
-                {(signupMode === "coach" || selectedPlayer) && !fetchingSignup && (
+                {(signupMode === "coach" || selectedPlayer) && !fetchingSignup && selectedPlayer && (
                   <>
                     <div className="form-group mb-3">
                       <label htmlFor="availability" style={{ fontWeight: 500 }}>
@@ -967,7 +974,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                         <option value="yes">Yes</option>
                       </select>
                     </div>
-                    {parentAttending && (
+                    {(parentAttending ||carpool === "can-drive")&& (
                       <div className="form-group mb-3">
                         <div className="form-group mb-3">
     <label htmlFor="parentName" style={{ fontWeight: 500 }}>
@@ -1174,81 +1181,86 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
           {/* Drivers & Seats Card */}
           </div>
   {/* Row with drivers/riders */}
-  <div className="row">
-    {/* Drivers & Seats */}
-    <div className="col-md-6 mb-4">
-      <div
-        className="card shadow mb-3"
-        style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
-      >
-        <div className="card-body">
-          <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Drivers & Seats</h4>
-          <ul style={{ fontSize: 17 }}>
-            {signups.filter((s) => s.carpool === "can-drive").length === 0 ? (
-              <li className="text-muted">No drivers yet!</li>
-            ) : (
-              signups
-                .filter((s) => s.carpool === "can-drive")
-                .map((s, idx) => {
-                  const player = playerMap[s.playerId];
-                  const name =
-  s.parentName?.trim()
-    ? s.parentName
-    : player
-      ? `${player.firstName} ${player.lastName}`
-      : s.playerId === currentUser?.uid
-        ? currentUser.displayName || "Coach"
-        : "Unknown";
+  {/* Drivers & Seats Card */}
+<div className="row">
+  {/* Drivers & Seats */}
+  <div className="col-md-6 mb-4">
+    <div
+      className="card shadow mb-3"
+      style={{
+        borderRadius: 16,
+        border: "1.5px solid #DF2E38",
+        background: "#FFF7F7",
+      }}
+    >
+      <div className="card-body">
+        <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Drivers & Seats</h4>
+        <ul style={{ fontSize: 17 }}>
+          {signups.filter((s) => s.carpool === "can-drive").length === 0 ? (
+            <li className="text-muted">No drivers yet!</li>
+          ) : (
+            signups
+              .filter((s) => s.carpool === "can-drive")
+              .map((s, idx) => {
+                const isCoach = s.playerId === currentUser?.uid;
+                const name = s.parentName?.trim()
+                  ? s.parentName
+                  : isCoach
+                  ? currentUser?.displayName || "Coach"
+                  : "Unknown";
 
-                
                 return (
                   <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
                     {name} — <b>{s.driveCapacity ?? 0}</b> seat(s)
                   </li>
-                
-                  );
-                })
-            )}
-          </ul>
-        </div>
+                );
+              })
+          )}
+        </ul>
       </div>
     </div>
-    {/* Needs Ride */}
-    <div className="col-md-6 mb-4">
-      <div
-        className="card shadow mb-3"
-        style={{ borderRadius: 16, border: "1.5px solid #DF2E38", background: "#FFF7F7" }}
-      >
-        <div className="card-body">
-          <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Needs A Ride</h4>
-          <ul style={{ fontSize: 17 }}>
-            {signups.filter((s) => s.carpool === "needs-ride").length === 0 ? (
-              <li className="text-muted">No riders yet!</li>
-            ) : (
-              signups
-                .filter((s) => s.carpool === "needs-ride")
-                .map((s, idx) => {
-                  const player = playerMap[s.playerId];
-                  const name =
-  player
-    ? `${player.firstName} ${player.lastName}`
-    : s.playerId === currentUser?.uid
-      ? currentUser.displayName || "Coach"
-      : "Unknown";
+  </div>
 
-                
-                  return (
-                    <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                      {name}
-                    </li>
-                  );
-                }))
-                }
-          </ul>
-        </div>
+  {/* Needs A Ride */}
+  <div className="col-md-6 mb-4">
+    <div
+      className="card shadow mb-3"
+      style={{
+        borderRadius: 16,
+        border: "1.5px solid #DF2E38",
+        background: "#FFF7F7",
+      }}
+    >
+      <div className="card-body">
+        <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Needs A Ride</h4>
+        <ul style={{ fontSize: 17 }}>
+          {signups.filter((s) => s.carpool === "needs-ride").length === 0 ? (
+            <li className="text-muted">No riders yet!</li>
+          ) : (
+            signups
+              .filter((s) => s.carpool === "needs-ride")
+              .map((s, idx) => {
+                const player = playerMap[s.playerId];
+                const isCoach = s.playerId === currentUser?.uid;
+                const name = playerMap[s.playerId]
+  ? `${playerMap[s.playerId].firstName} ${playerMap[s.playerId].lastName}`
+  : "Unknown";
+  console.log("Checking for playerId", s.playerId, "=>", playerMap[s.playerId]);
+
+
+                return (
+                  <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
+                    {name}
+                  </li>
+                );
+              })
+          )}
+        </ul>
       </div>
     </div>
-      </div>
+  </div>
+</div>
+
     </div>
   </div>
 

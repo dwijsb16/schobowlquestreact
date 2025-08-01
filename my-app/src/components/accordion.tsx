@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, startAfter } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
@@ -15,20 +15,14 @@ const CATEGORY_LABELS = {
   reminders: "Reminders"
 };
 
-type Announcement = {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  timestamp?: any;
-};
+const PAGE_SIZE = 5;
 
 const AnnouncementsGrid: React.FC = () => {
-  const [grouped, setGrouped] = useState<{ [cat: string]: Announcement[] }>({});
+  const [grouped, setGrouped] = useState<{ [cat: string]: any[] }>({});
+  const [lastDocs, setLastDocs] = useState<{ [cat: string]: any }>({});
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
 
-  // Listen for auth state changes
   useEffect(() => {
     const auth = getAuth();
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -37,47 +31,72 @@ const AnnouncementsGrid: React.FC = () => {
     return () => unsub();
   }, []);
 
-  // Fetch and group announcements
-  useEffect(() => {
-    async function fetchAnnouncements() {
-      setLoading(true);
-      try {
-        const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"));
-        const snapshot = await getDocs(q);
-        const announcements: Announcement[] = [];
-        snapshot.forEach(doc => {
-          announcements.push({ id: doc.id, ...(doc.data() as Omit<Announcement, "id">) });
-        });
-        const groupedByType: { [cat: string]: Announcement[] } = {};
-        Object.keys(CATEGORY_LABELS).forEach(type => (groupedByType[type] = []));
-        for (const a of announcements) {
-          if (a.type in CATEGORY_LABELS) {
-            groupedByType[a.type].push(a);
-          }
-        }
-        setGrouped(groupedByType);
-      } finally {
-        setLoading(false);
-      }
+  const loadAnnouncements = async (category: string, startAfterDoc?: any) => {
+    const baseQuery = query(
+      collection(db, "announcements"),
+      orderBy("timestamp", "desc"),
+      limit(PAGE_SIZE)
+    );
+    let q = baseQuery;
+    if (startAfterDoc) {
+      q = query(baseQuery, startAfter(startAfterDoc));
     }
-    fetchAnnouncements();
+  
+    const snapshot = await getDocs(q);
+    const newAnns = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((doc: any) => doc.type === category);
+  
+    setGrouped((prev) => {
+      const existingIds = new Set((prev[category] || []).map((a: any) => a.id));
+      const uniqueNewAnns = newAnns.filter((a) => !existingIds.has(a.id));
+      return {
+        ...prev,
+        [category]: [...(prev[category] || []), ...uniqueNewAnns]
+      };
+    });
+  
+    if (snapshot.docs.length > 0) {
+      setLastDocs((prev) => ({
+        ...prev,
+        [category]: snapshot.docs[snapshot.docs.length - 1]
+      }));
+    }
+  };
+  
+
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true);
+      const cats = Object.keys(CATEGORY_LABELS);
+      for (const cat of cats) {
+        await loadAnnouncements(cat);
+      }
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
-  // Only show these categories if logged in
   const colConfigs = [
     loggedIn ? "announcements" : null,
     "celebration",
     loggedIn ? "reminders" : null
   ].filter(Boolean) as ("announcements" | "celebration" | "reminders")[];
 
-  // Responsive grid with up to 3 columns, always center "celebration"
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>, type: string) => {
+    const target = e.currentTarget;
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 10) {
+      if (lastDocs[type]) loadAnnouncements(type, lastDocs[type]);
+    }
+  };
+
   return (
     <div
       style={{
         width: "100%",
         maxWidth: 1150,
         margin: "0 auto",
-        padding: "30px 0",
+        padding: "30px 0"
       }}
     >
       {loading ? (
@@ -88,10 +107,10 @@ const AnnouncementsGrid: React.FC = () => {
             display: "flex",
             flexWrap: "wrap",
             gap: 28,
-            justifyContent: "center",
+            justifyContent: "center"
           }}
         >
-          {colConfigs.map(type => (
+          {colConfigs.map((type) => (
             <div
               key={type}
               style={{
@@ -106,7 +125,7 @@ const AnnouncementsGrid: React.FC = () => {
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 340,
-                transition: "box-shadow .18s",
+                transition: "box-shadow .18s"
               }}
             >
               <div
@@ -117,12 +136,20 @@ const AnnouncementsGrid: React.FC = () => {
                   marginBottom: 12,
                   letterSpacing: 0.7,
                   borderBottom: `2.2px solid ${RED}22`,
-                  paddingBottom: 7,
+                  paddingBottom: 7
                 }}
               >
                 {CATEGORY_LABELS[type]}
               </div>
-              <div style={{ flex: 1 }}>
+              <div
+                onScroll={(e) => handleScroll(e, type)}
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  maxHeight: 260,
+                  paddingRight: 4
+                }}
+              >
                 {grouped[type] && grouped[type].length > 0 ? (
                   grouped[type].map((ann) => (
                     <div
@@ -130,7 +157,7 @@ const AnnouncementsGrid: React.FC = () => {
                       style={{
                         marginBottom: 15,
                         paddingBottom: 11,
-                        borderBottom: `1px solid #eeeeee`,
+                        borderBottom: `1px solid #eeeeee`
                       }}
                     >
                       <div style={{ fontWeight: 700, color: RED, fontSize: 16 }}>
@@ -142,7 +169,7 @@ const AnnouncementsGrid: React.FC = () => {
                           fontSize: 15,
                           whiteSpace: "pre-line",
                           marginBottom: 3,
-                          marginTop: 2,
+                          marginTop: 2
                         }}
                       >
                         {ann.body}
@@ -152,7 +179,7 @@ const AnnouncementsGrid: React.FC = () => {
                           style={{
                             fontSize: 12.2,
                             color: "#b3b3b3",
-                            marginTop: 2,
+                            marginTop: 2
                           }}
                         >
                           {ann.timestamp.toDate().toLocaleString()}
@@ -167,7 +194,7 @@ const AnnouncementsGrid: React.FC = () => {
                       fontSize: 15.5,
                       marginTop: 25,
                       textAlign: "center",
-                      color: "#ababab",
+                      color: "#ababab"
                     }}
                   >
                     No {CATEGORY_LABELS[type].toLowerCase()} yet.
@@ -178,20 +205,6 @@ const AnnouncementsGrid: React.FC = () => {
           ))}
         </div>
       )}
-
-      {/* Responsive styles */}
-      <style>
-        {`
-          @media (max-width: 900px) {
-            div[style*="flex-wrap: wrap"] > div {
-              min-width: 85vw !important;
-              max-width: 100vw !important;
-              margin-left: auto !important;
-              margin-right: auto !important;
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };
