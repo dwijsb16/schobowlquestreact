@@ -589,119 +589,98 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   (userRole === "parent" && linkedPlayers.length > 0);
 
   return (
-      <div
-        style={{
-          background: "linear-gradient(90deg, #fff6f6 0%, #ffeaea 100%)",
-          minHeight: "100vh",
-          paddingTop: 60,
-        }}
-      >
-        <div className="container py-5">
-          <div className="row justify-content-center">
-            <div className="col-lg-8">
-              {/* Tournament Card */}
-              <div
-                className="card shadow mb-5"
-                style={{
-                  background: "#fff",
-                  border: "2px solid #DF2E38",
-                  borderRadius: 20,
-                }}
-              >
-                <div className="card-body text-center px-5 py-4">
-                <>
-  <h1
-    className="display-5 mb-3"
-    style={{ color: "#DF2E38", fontWeight: 900 }}
+    <div
+    style={{
+      background: "linear-gradient(90deg, #fff6f6 0%, #ffeaea 100%)",
+      minHeight: "100vh",
+      paddingTop: 60,
+    }}
   >
-    {tournament.eventName}
-  </h1>
-  <div style={{
-    fontSize: 18,
-    color: "#B71C1C",
-    fontWeight: 600,
-    marginBottom: 8
-  }}>
-    {formatDateWithDay(tournament.date)}
-  </div>
+    <div className="container py-5">
+      <div className="row justify-content-center">
+        <div className="col-lg-8">
+          {/* Tournament Card */}
+          <div
+            className="card shadow mb-5"
+            style={{ background: "#fff", border: "2px solid #DF2E38", borderRadius: 20 }}
+          >
+            <div className="card-body px-5 py-4">
+              <h1
+                className="mb-3"
+                style={{ color: "#DF2E38", fontWeight: 900, fontSize: "2.5rem", textAlign: "left" }}
+              >
+                {tournament.eventName}
+              </h1>
+              <p style={{ fontSize: 16, color: "#B71C1C", fontWeight: 600, textAlign: "left" }}>
+                {formatDateWithDay(tournament.date)}
+              </p>
 
-  <InfoRow label="Location" value={tournament.location} />
-
-  <InfoRow
-    label="Time"
-    value={
-      tournament.startTime && tournament.endTime
-        ? `${formatTime12hr(tournament.startTime)} — ${formatTime12hr(tournament.endTime)}`
-        : tournament.startTime
-        ? `${formatTime12hr(tournament.startTime)}`
-        : tournament.endTime
-        ? `${formatTime12hr(tournament.endTime)}`
-        : "—"
-    }
-  />
-
-  <InfoRow
-    label="RSVP By"
-    value={
-      tournament.rsvpDate
-        ? tournament.rsvpTime
-          ? `${formatDateWithDay(tournament.rsvpDate)} at ${formatTime12hr(tournament.rsvpTime)}`
-          : formatDateWithDay(tournament.rsvpDate)
-        : null
-    }
-  />
-
-  <InfoRow label="Rules" value={tournament.rules} />
-  <InfoRow label="Shirt Color" value={tournament.shirtColor} />
-  <InfoRow label="Notes" value={tournament.additionalInfo} />
-
-  {/* Event Type & Status as badges */}
-  <div className="mt-3 mb-1 d-flex justify-content-center flex-wrap gap-2">
-    {tournament.eventType && (
-      <span
-        className="badge"
-        style={{
-          fontSize: 15,
-          background: "#fff0f0",
-          color: "#B71C1C",
-          border: "1px solid #DF2E38",
-          fontWeight: 700,
-        }}
-      >
-        {tournament.eventType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-      </span>
-    )}
-    {tournament.status && (
-      <span
-        className="badge"
-        style={{
-          background:
-            tournament.status === "confirmed"
-              ? "#6BCB77"
-              : tournament.status === "cancelled"
-              ? "#F96D6D"
-              : "#FFD166",
-          color:
-            tournament.status === "tentative"
-              ? "#8A6D00"
-              : "#fff",
-          fontSize: 15,
-          fontWeight: 700,
-          padding: "9px 14px",
-          borderRadius: 12,
-        }}
-      >
-        {tournament.status === "confirmed"
-          ? "Confirmed"
-          : tournament.status === "tentative"
-          ? "Tentative"
-          : "Cancelled"}
-      </span>
-    )}
-  </div>
-</>
-                </div>
+              <div className="mb-3" style={{ lineHeight: 1.6, fontSize: 16, textAlign: "left", color: "#2e3a59" }}>
+                <p><strong>Location:</strong> {tournament.location}</p>
+                {tournament.startTime || tournament.endTime ? (
+                  <p>
+                    <strong>Time:</strong> {tournament.startTime && tournament.endTime
+                      ? `${formatTime12hr(tournament.startTime)} — ${formatTime12hr(tournament.endTime)}`
+                      : tournament.startTime
+                      ? formatTime12hr(tournament.startTime)
+                      : formatTime12hr(tournament.endTime || '')}
+                  </p>
+                ) : null}
+                {tournament.rsvpDate && (
+                  <p>
+                    <strong>RSVP By:</strong> {tournament.rsvpTime
+                      ? `${formatDateWithDay(tournament.rsvpDate)} at ${formatTime12hr(tournament.rsvpTime)}`
+                      : formatDateWithDay(tournament.rsvpDate)}
+                  </p>
+                )}
+                {tournament.rules && <p><strong> Rules:</strong> {tournament.rules}</p>}
+                {tournament.shirtColor && <p><strong> Shirt Color:</strong> {tournament.shirtColor}</p>}
+                {tournament.additionalInfo && <p><strong>Notes:</strong> {tournament.additionalInfo}</p>}
               </div>
+
+              {/* Event Type & Status as badges */}
+              <div className="mt-3 mb-1 d-flex justify-content-start flex-wrap gap-2">
+                {tournament.eventType && (
+                  <span
+                    className="badge"
+                    style={{
+                      fontSize: 15,
+                      background: "#fff0f0",
+                      color: "#B71C1C",
+                      border: "1px solid #DF2E38",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tournament.eventType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                  </span>
+                )}
+                {tournament.status && (
+                  <span
+                    className="badge"
+                    style={{
+                      background:
+                        tournament.status === "confirmed"
+                          ? "#6BCB77"
+                          : tournament.status === "cancelled"
+                          ? "#F96D6D"
+                          : "#FFD166",
+                      color: tournament.status === "tentative" ? "#8A6D00" : "#fff",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      padding: "9px 14px",
+                      borderRadius: 12,
+                    }}
+                  >
+                    {tournament.status === "confirmed"
+                      ? "Confirmed"
+                      : tournament.status === "tentative"
+                      ? "Tentative"
+                      : "Cancelled"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
             {/* Registration Form */}
             {shouldShowForm && (
             <div
