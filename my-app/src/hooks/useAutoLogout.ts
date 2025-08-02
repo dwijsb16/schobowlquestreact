@@ -12,16 +12,21 @@ export function useAutoLogout() {
   const timer = useRef<NodeJS.Timeout | null>(null);
 
   // Reset timer whenever user is active
+
   const resetTimer = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
         await signOut(auth);
       } catch {}
-      toast.info("Session expired. Please log in again.", { autoClose: 2500 });
-      navigate("/login");
+  
+      const toastId = toast.info("Session expired. Please log in again.", {
+        autoClose: 2500,
+        onClose: () => navigate("/login")  // ✅ only after toast finishes
+      });
     }, INACTIVITY_LIMIT);
   };
+  
 
   useEffect(() => {
     // Activity events

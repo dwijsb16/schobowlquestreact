@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { JSX, useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
@@ -39,6 +39,57 @@ function formatDateString(date: string) {
     weekday: d.toLocaleString("en-US", { weekday: "short" }),
   };
 }
+function getRsvpBadge(rsvpDate?: string): JSX.Element | null {
+  if (!rsvpDate) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rsvp = new Date(rsvpDate + "T00:00:00");
+
+  const diffDays = Math.ceil((rsvp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const formatted = `${rsvp.toLocaleString("en-US", {
+    month: "short",
+  })} ${rsvp.getDate()}, ${rsvp.getFullYear()}`;
+
+  if (diffDays < 0) {
+    return (
+      <div className="text-danger mb-2" style={{ fontWeight: 600 }}>
+        ❌ RSVP Deadline Passed ({formatted})
+      </div>
+    );
+  }
+
+  if (diffDays === 0) {
+    return (
+      <div className="text-danger mb-2" style={{ fontWeight: 600 }}>
+        ⚠️ RSVP by TODAY ({formatted})
+      </div>
+    );
+  }
+
+  if (diffDays === 1) {
+    return (
+      <div className="text-warning mb-2" style={{ fontWeight: 600 }}>
+        ⚠️ RSVP by TOMORROW ({formatted})
+      </div>
+    );
+  }
+
+  if (diffDays <= 3) {
+    return (
+      <div className="text-danger mb-2" style={{ fontWeight: 600 }}>
+        🔴 RSVP by {formatted}
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-muted mb-2" style={{ fontWeight: 500 }}>
+      RSVP by: {formatted}
+    </div>
+  );
+}
+
 
 const Cards: React.FC = () => {
   const [tournaments, setTournaments] = useState<TournamentCard[]>([]);
@@ -176,18 +227,14 @@ const [signupStatus, setSignupStatus] = useState<Record<string, string>>({}); //
                     </span>
                   )}
                 </div>
-                <div className="mb-2 text-muted" style={{ fontSize: 15 }}>
-                  {tourn.location && (
-                    <span>
-                      {tourn.location}
-                    </span>
-                  )}
-                </div>
-                {tourn.rsvpDate && (
-  <div className="mb-2 text-warning" style={{ fontWeight: 500, fontSize: 15 }}>
-    RSVP by: {formatRsvpString(tourn.rsvpDate)}
+                {tourn.location && (
+  <div className="mb-2 text-muted" style={{ fontSize: 15 }}>
+    {tourn.location}
   </div>
 )}
+
+{getRsvpBadge(tourn.rsvpDate)}
+
 {/* Registration status badge (only if player or parent logged in) */}
 {currentUser && (
   <div style={{ marginTop: 6, marginBottom: 5 }}>

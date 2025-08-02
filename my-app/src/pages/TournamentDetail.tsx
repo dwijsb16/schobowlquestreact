@@ -229,56 +229,58 @@ useEffect(() => {
   
 
   useEffect(() => {
-  if (!tournamentId || !currentUser) return;
-
-  const fetchSignup = async () => {
-    resetFormFields();
-
-    const collectionName = signupMode === "coach" ? "coach_signups" : "signups";
-    const entriesRef = collection(db, collectionName, tournamentId, "entries");
-
-    const queryField = signupMode === "coach" ? "userId" : "playerId";
-    const queryValue = signupMode === "coach" ? currentUser.uid : selectedPlayer;
-
-    // Only run if playerId or userId exists
-    if (!queryValue) return;
-
-    const q = query(entriesRef, where(queryField, "==", queryValue));
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const existing = snap.docs[0];
-      const data = existing.data();
-
-      if (signupMode === "coach") {
-        setCoachSignupDocId(existing.id);
+    if (!tournamentId || !currentUser) return;
+  
+    // Guard: prevent fetch if signupMode is "player" but no player selected
+    if (signupMode === "player" && !selectedPlayer) return;
+  
+    const fetchSignup = async () => {
+      resetFormFields(); // Clear previous data
+  
+      const collectionName = signupMode === "coach" ? "coach_signups" : "signups";
+      const entriesRef = collection(db, collectionName, tournamentId, "entries");
+  
+      const queryField = signupMode === "coach" ? "userId" : "playerId";
+      const queryValue = signupMode === "coach" ? currentUser.uid : selectedPlayer;
+  
+      // If no ID to query, skip fetch
+      if (!queryValue) return;
+  
+      const q = query(entriesRef, where(queryField, "==", queryValue));
+      const snap = await getDocs(q);
+  
+      if (!snap.empty) {
+        const existing = snap.docs[0];
+        const data = existing.data();
+  
+        if (signupMode === "coach") {
+          setCoachSignupDocId(existing.id);
+        } else {
+          setPlayerSignupDocId(existing.id);
+        }
+  
+        // Fill form
+        setAvailability(data.availability || "");
+        setStartTime(data.startTime || "");
+        setEndTime(data.endTime || "");
+        setCarpool(data.carpool || "");
+        setDriveCapacity(data.driveCapacity || "");
+        setParentAttending(data.parentAttending ?? false);
+        setParentName(data.parentName || "");
+        setCanModerate(data.canModerate || false);
+        setCanScorekeep(data.canScorekeep || false);
+        setAdditionalInfo(data.additionalInfo || "");
       } else {
-        setPlayerSignupDocId(existing.id);
+        if (signupMode === "coach") {
+          setCoachSignupDocId(null);
+        } else {
+          setPlayerSignupDocId(null);
+        }
       }
-
-      // Autofill the form
-      setAvailability(data.availability || "");
-      setStartTime(data.startTime || "");
-      setEndTime(data.endTime || "");
-      setCarpool(data.carpool || "");
-      setDriveCapacity(data.driveCapacity || "");
-      setParentAttending(data.parentAttending ?? false);
-      setParentName(data.parentName || "");
-      setCanModerate(data.canModerate || false);
-      setCanScorekeep(data.canScorekeep || false);
-      setAdditionalInfo(data.additionalInfo || "");
-    } else {
-      // Clear existingSignupDocId to ensure button says "Sign Up"
-      if (signupMode === "coach") {
-        setCoachSignupDocId(null);
-      } else {
-        setPlayerSignupDocId(null);
-      }
-    }
-  };
-
-  fetchSignup();
-}, [signupMode, selectedPlayer, tournamentId]);
+    };
+  
+    fetchSignup();
+  }, [signupMode, selectedPlayer, tournamentId, currentUser]);  
 
   useEffect(() => {
     const auth = getAuth();
@@ -287,40 +289,45 @@ useEffect(() => {
       setLinkedPlayers([]);
       setLoadingPlayers(true);
   
-      if (user) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          if (data.role === "player") {
-            // They're a player, just use themselves
-            const playerDoc = await getDoc(doc(db, "players", user.uid));
-            if (playerDoc.exists()) {
-              setLinkedPlayers([{ ...(playerDoc.data() as Player), uid: user.uid }]);
-              setSelectedPlayer(user.uid); // autofill!
-            }
-          } else {
-            // Otherwise, use linkedPlayers as before (parent flow)
-            const linkedPlayersUids: string[] = data.linkedPlayers || [];
-            if (linkedPlayersUids.length) {
-              const playerSnaps = await Promise.all(
-                linkedPlayersUids.map((pid) => getDoc(doc(db, "players", pid)))
-              );
-              setLinkedPlayers(
-                playerSnaps
+      try {
+        if (user) {
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+  
+            if (data.role === "player") {
+              const playerDoc = await getDoc(doc(db, "players", user.uid));
+              if (playerDoc.exists()) {
+                const player = { ...(playerDoc.data() as Player), uid: user.uid };
+                setLinkedPlayers([player]);
+                setSelectedPlayer(player.uid); // Autofill for player
+              }
+            } else {
+              const linkedPlayersUids: string[] = data.linkedPlayers || [];
+              if (linkedPlayersUids.length) {
+                const playerSnaps = await Promise.all(
+                  linkedPlayersUids.map((pid) => getDoc(doc(db, "players", pid)))
+                );
+                const players = playerSnaps
                   .filter((snap) => snap.exists())
                   .map((snap) => ({
                     ...(snap.data() as Player),
                     uid: snap.id,
-                  }))
-              );
-              
+                  }));
+                setLinkedPlayers(players);
+                setSelectedPlayer(""); // Require manual selection
+              }
             }
           }
         }
+      } catch (err) {
+        console.error("Error during auth/player fetch:", err);
+      } finally {
+        setLoadingPlayers(false); // ✅ Always clear loading
       }
-      setLoadingPlayers(false);
     });
+  
     return () => unsubscribe();
   }, []);
   // 🧠 Get the favorite player (the only one in linkedPlayers array)
