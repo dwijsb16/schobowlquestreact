@@ -515,14 +515,14 @@ const SignupPage: React.FC = () => {
                   </div>
                 )}
                 <div className="form-group mb-3">
-  <label style={{ fontWeight: 500, color: BLACK }}>Suburb</label>
+  <label style={{ fontWeight: 500, color: BLACK }}>Suburb or Town</label>
   <input
     type="text"
     className="form-control"
     value={suburb}
     required={true}
     onChange={(e: ChangeEvent<HTMLInputElement>) => setSuburb(e.target.value)}
-    placeholder="Enter your suburb"
+    placeholder="Enter here (e.g. Palatine)"
     style={{
       borderRadius: 12,
       border: `1.3px solid ${LIGHT_GREY}`,

@@ -736,7 +736,7 @@ useEffect(() => {
         <option value="">-- Select favorite player --</option>
         {allPlayers.map(p => (
           <option key={p.id} value={p.id}>
-            {p.firstName} {p.lastName} ({p.id})
+            {p.firstName} {p.lastName} 
           </option>
         ))}
       </select>
@@ -866,7 +866,7 @@ useEffect(() => {
                 .filter(p => !linkedPlayers.includes(p.id))
                 .map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.firstName} {p.lastName} ({p.id})
+                    {p.firstName} {p.lastName} 
                   </option>
                 ))}
             </select>
