@@ -522,7 +522,7 @@ const SignupPage: React.FC = () => {
     value={suburb}
     required={true}
     onChange={(e: ChangeEvent<HTMLInputElement>) => setSuburb(e.target.value)}
-    placeholder="Enter your suburb (optional)"
+    placeholder="Enter your suburb"
     style={{
       borderRadius: 12,
       border: `1.3px solid ${LIGHT_GREY}`,
