@@ -738,7 +738,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   </option>
 
   {favoritePlayer && (
-    <optgroup label="⭐ Favorite Player">
+    <optgroup label="⭐ My Player">
       <option value={favoritePlayer.uid}>
         {favoritePlayer.firstName} {favoritePlayer.lastName}
       </option>
@@ -914,6 +914,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   <div className="form-group mb-3">
     <label style={{ fontWeight: 500 }}>Coach Volunteer Options:</label>
     <div className="form-check">
+    {tournament.needsModerators && (
       <input
         className="form-check-input"
         type="checkbox"
@@ -921,6 +922,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
         checked={canModerate}
         onChange={() => setCanModerate(!canModerate)}
       />
+    )}
       {tournament.needsModerators && (
       <label className="form-check-label" htmlFor="canModerate">
         Can Moderate
@@ -980,6 +982,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                           Parent Volunteer Options: <span style={{ color: "red" }}>*</span>
                         </label>
                         <div className="form-check">
+                        {tournament.needsModerators && (
                           <input
                             className="form-check-input"
                             type="checkbox"
@@ -987,6 +990,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                             checked={canModerate}
                             onChange={() => setCanModerate(!canModerate)}
                           />
+                        )}
                           {tournament.needsModerators && (
                           <label
                             className="form-check-label"

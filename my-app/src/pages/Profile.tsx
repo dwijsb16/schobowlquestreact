@@ -716,11 +716,11 @@ useEffect(() => {
         marginBottom: 7,
       }}
     >
-      Favorite Player
+      My Player
     </div>
     <div style={{ color: "#888", fontSize: 15, marginBottom: 10 }}>
       Coaches are automatically linked to all players for registration,<br />
-      but you may select a <b>favorite player</b> below. Their signup status will show up in your dashboard.
+      but you may select a <b> player</b> below. Their signup status will show up in your dashboard.
     </div>
     <div className="d-flex align-items-center gap-2">
       <select
@@ -733,7 +733,7 @@ useEffect(() => {
           setLinkedPlayers(favUid ? [favUid] : []);
         }}
       >
-        <option value="">-- Select favorite player --</option>
+        <option value="">-- Select my player --</option>
         {allPlayers.map(p => (
           <option key={p.id} value={p.id}>
             {p.firstName} {p.lastName} 
@@ -748,13 +748,13 @@ useEffect(() => {
             setLinkedPlayers([]);
           }}
         >
-          Remove Favorite
+          Remove My Player
         </button>
       )}
     </div>
     {linkedPlayers[0] && (
       <div style={{ marginTop: 8, color: "#B71C1C", fontWeight: 600, fontSize: 15 }}>
-        Favorite: {linkedPlayerNames[0]}
+        My Player: {linkedPlayerNames[0]}
       </div>
     )}
   </div>

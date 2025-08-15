@@ -16,7 +16,9 @@ const CalendarPage: React.FC = () => {
             <AtAGlance />
           </div>
         </div>
-        <Footer />
+        <div className="mt-5">
+          <Footer />
+        </div>
       </div>
     </div>
   );
