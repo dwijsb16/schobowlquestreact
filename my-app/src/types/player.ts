@@ -5,4 +5,5 @@ export interface Player {
   grade: string;
   // Which user accounts are associated with this player?
   linkedUsers: string[]; // array of User UIDs (parents, self, etc)
+  suburb: string;
 }

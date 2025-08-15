@@ -813,7 +813,9 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                         value={availability}
                         onChange={(e) => setAvailability(e.target.value)}
                       >
-                        <option value="">Select Availability</option>
+                        <option value="" disabled hidden>
+                          Select Availability
+                        </option>
                         <option value="yes">Can Attend</option>
                         <option value="no">Cannot Attend</option>
                         <option value="early">
@@ -853,6 +855,7 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                         />
                       </div>
                     )}
+                    {availability !== "no" && availability !== "" && (<>
                     <div className="form-group mb-3">
   <label style={{ fontWeight: 500 }}>Carpool Options: <span style={{ color: "red" }}>*</span> </label>
   <div style={{ display: "flex", gap: "14px" }}>
@@ -1035,6 +1038,8 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
                         style={{ borderRadius: 10, fontSize: 15 }}
                       />
                     </div>
+                    </>
+                    )}
                     <div className="text-center mt-4">
                 <button
                   className="btn"
@@ -1185,27 +1190,39 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       <div className="card-body">
         <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Drivers & Seats</h4>
         <ul style={{ fontSize: 17 }}>
-          {signups.filter((s) => s.carpool === "can-drive").length === 0 ? (
-            <li className="text-muted">No drivers yet!</li>
-          ) : (
-            signups
-              .filter((s) => s.carpool === "can-drive")
-              .map((s, idx) => {
-                const isCoach = s.playerId === currentUser?.uid;
-                const name = s.parentName?.trim()
-                  ? s.parentName
-                  : isCoach
-                  ? currentUser?.displayName || "Coach"
-                  : "Unknown";
+  {(() => {
+    const drivers = signups.filter(s => s.carpool === "can-drive");
+    if (drivers.length === 0) {
+      return <li className="text-muted">No drivers yet!</li>;
+    }
 
-                return (
-                  <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                    {name} — <b>{s.driveCapacity ?? 0}</b> seat(s)
-                  </li>
-                );
-              })
-          )}
-        </ul>
+    return drivers.map((s, idx) => {
+      const isCoach = s.playerId === currentUser?.uid;
+
+      // display name (keep your existing preference order)
+      let name =
+        s.parentName?.trim()
+          ? s.parentName.trim()
+          : isCoach
+          ? (currentUser?.displayName || "Coach")
+          : "Unknown";
+
+      // suburb strictly from playerMap (playerId may be the coach uid if coach)
+      const suburb = (playerMap[s.playerId]?.suburb ?? "").toString().trim();
+      console.log("suburb: " + suburb);
+      if (suburb) name += ` (${suburb})`;
+
+      const seats = Number.isFinite(Number(s.driveCapacity)) ? Number(s.driveCapacity) : 0;
+
+      return (
+        <li key={`${s.playerId}-${idx}`} style={{ color: "#B71C1C", fontWeight: 600 }}>
+          {name} — <b>{seats}</b> seat(s)
+        </li>
+      );
+    });
+  })()}
+</ul>
+
       </div>
     </div>
   </div>
@@ -1223,28 +1240,28 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       <div className="card-body">
         <h4 style={{ color: "#DF2E38", fontWeight: 700 }}>Needs A Ride</h4>
         <ul style={{ fontSize: 17 }}>
-          {signups.filter((s) => s.carpool === "needs-ride").length === 0 ? (
-            <li className="text-muted">No riders yet!</li>
-          ) : (
-            signups
-              .filter((s) => s.carpool === "needs-ride")
-              .map((s, idx) => {
-                const player = playerMap[s.playerId];
-                const isCoach = s.playerId === currentUser?.uid;
-                const name = playerMap[s.playerId]
-  ? `${playerMap[s.playerId].firstName} ${playerMap[s.playerId].lastName}`
-  : "Unknown";
-  console.log("Checking for playerId", s.playerId, "=>", playerMap[s.playerId]);
+  {(() => {
+    const riders = signups.filter(s => s.carpool === "needs-ride");
+    if (riders.length === 0) {
+      return <li className="text-muted">No riders yet!</li>;
+    }
 
+    return riders.map((s, idx) => {
+      const p = playerMap[s.playerId];
+      let name = p ? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() : "Unknown";
 
-                return (
-                  <li key={s.playerId + idx} style={{ color: "#B71C1C", fontWeight: 600 }}>
-                    {name}
-                  </li>
-                );
-              })
-          )}
-        </ul>
+      const suburb = (p?.suburb ?? "").toString().trim();
+      console.log("suburb: " + s.playerId);
+      if (suburb) name += ` (${suburb})`;
+
+      return (
+        <li key={`${s.playerId}-${idx}`} style={{ color: "#B71C1C", fontWeight: 600 }}>
+          {name}
+        </li>
+      );
+    });
+  })()}
+</ul>
       </div>
     </div>
   </div>

@@ -214,6 +214,7 @@ const SignupPage: React.FC = () => {
           firstName,
           lastName,
           grade,
+          suburb,
           linkedUsers: [],
         };
       }
