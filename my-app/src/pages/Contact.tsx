@@ -93,7 +93,7 @@ const Contact: React.FC = () => {
             margin: "0 auto"
           }}
         >
-          Have a question for the Quest Scholastic Bowl Club? Want to get in touch with a coach?  
+          Have a question for the Quest Scholastic Bowl Team? Want to get in touch with a coach?  
           <br />
           <b>Fill out the form below and our team will get back to you as soon as possible!</b>
         </p>

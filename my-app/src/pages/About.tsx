@@ -36,7 +36,7 @@ const About: React.FC = () => {
                 lineHeight: 1.11,
               }}
             >
-              About Our Scholastic Bowl Club
+              About Our Scholastic Bowl Team
             </h1>
           </Col>
         </Row>
