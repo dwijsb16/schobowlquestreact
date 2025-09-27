@@ -66,49 +66,6 @@ const About: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Dr. Phelps Message */}
-        <Row className="justify-content-center mb-4">
-          <Col xs={12} md={10} lg={9}>
-            <Card
-              className="shadow-sm border-0"
-              style={{
-                borderRadius: 26,
-                background: "#f7f7f7",
-                minHeight: 120,
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 0,
-              }}
-            >
-              {/* Placeholder image/box */}
-              <div style={{
-                width: 108, height: 108,
-                background: "#e3e3e3",
-                borderRadius: 18,
-                margin: "24px 24px 24px 24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                color: "#999",
-                fontSize: 22,
-                letterSpacing: 0.5
-              }}>
-                <span>Image</span>
-              </div>
-              <div style={{ padding: "24px 0", flex: 1 }}>
-                <div style={{ fontWeight: 900, color: RED, fontSize: 21, marginBottom: 4 }}>
-                  Message from Dr. Phelps
-                </div>
-                <div style={{ color: "#232323", fontSize: 16, fontWeight: 500 }}>
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec imperdiet augue, nec volutpat mi. Etiam ultricies, justo eu lobortis tempus, felis dui dictum purus, id placerat eros risus nec libero.
-                </div>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-
         {/* What is Scholastic Bowl */}
         <Row className="justify-content-center mb-4">
           <Col xs={12} md={10} lg={8}>
@@ -127,7 +84,7 @@ const About: React.FC = () => {
                   What is Scholastic Bowl?
                 </h2>
                 <p style={{ color: "#232323", fontWeight: 500, fontSize: 16, marginBottom: 0 }}>
-                  Scholastic Bowl is a fast-paced academic quiz competition where teams of students answer questions on a variety of subjects—science, history, literature, math, pop culture, and more! Players buzz in, collaborate, and compete with other schools at both local and national levels.
+                Scholastic Bowl is a fast-paced academic quiz competition where teams of 4-5 students answer questions on a variety of subjects; science, history, geography, literature, math, fine arts, mythology, pop culture, technology, sports, home economics, the bible and more!  Players buzz in for toss-up questions, collaborate with teammates on bonus parts, and compete with other middle schools at both local and national levels.
                 </p>
               </Card.Body>
             </Card>
@@ -154,13 +111,13 @@ const About: React.FC = () => {
                 <div style={{ marginLeft: 10 }}>
                   <ul style={{ fontSize: 15.5, fontWeight: 500, color: "#232323", marginBottom: 0 }}>
                     <li>
-                      <b>NAQT</b> — National Academic Quiz Tournaments. Our main format! Tossup/bonus questions, fast buzzing, and pyramidal clues.
+                      <b>NAQT</b> — National Academic Quiz Tournaments. Tossup/bonus questions, fast buzzing, and pyramidal clues.
                     </li>
                     <li>
                       <b>IESA</b> — Illinois Elementary School Association. Our official state format, played with local schools across Illinois.
                     </li>
                     <li>
-                      <b>NAC</b> — National Academic Championship. (More info coming soon!)
+                      <b>NAC</b> — Quiz Bowl National Championship (More info coming soon!)
                     </li>
                   </ul>
                 </div>

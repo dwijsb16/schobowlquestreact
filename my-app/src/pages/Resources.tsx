@@ -24,8 +24,7 @@ interface Stat {
 
 const usefulLinks = [
   { id: 'ul1', title: 'NAQT Website', description: 'National Academic Quiz Tournaments official website', link: 'https://www.naqt.com' },
-  { id: 'ul2', title: 'IESA Scholastic Bowl', description: 'Illinois Elementary School Association Scholastic Bowl', link: 'https://www.iesa.org/activities/sb/' },
-  { id: 'ul3', title: 'SCOP study sheets', description: 'Study sheets in certain topics curated by SCOP', link: 'https://scop-qb.org/study-sheets/' },
+  { id: 'ul2', title: 'IESA Scholastic Bowl', description: 'Illinois Elementary School Association Scholastic Bowl', link: 'https://www.iesa.org/activities/scb/' },
   { id: 'ul4', title: 'QBreader', description: 'Online question database for practice and study', link: 'https://qbreader.org' }
 ];
 
