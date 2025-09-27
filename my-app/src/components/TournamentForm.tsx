@@ -123,8 +123,10 @@ const TournamentForm: React.FC = () => {
     }
     setLoading(true);
 
-    const startDateTime = `${date}T${to24Hour(startTime)}${getTimezoneOffset()}`;
-    const endDateTime = endTime ? `${date}T${to24Hour(endTime)}${getTimezoneOffset()}` : startDateTime;
+    const startDateTime = `${date}T${to24Hour(startTime)}`; // no offset
+const endDateTime = endTime
+  ? `${date}T${to24Hour(endTime)}`
+  : startDateTime;
     const description = [
       additionalInfo && `Notes: ${additionalInfo}`,
       rules && `Rules: ${rules}`,
@@ -170,6 +172,7 @@ const TournamentForm: React.FC = () => {
           additionalInfo,
           needsModerators,
           googleEventID,
+          teamsPublished: false
         };
         await addDocument("tournaments", tournamentData);
 

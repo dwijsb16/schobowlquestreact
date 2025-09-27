@@ -1,4 +1,5 @@
 export interface Tournament {
+    teamsPublished: boolean;
     eventName: string;
     eventType: "extra_practice" | "match_play" | "tournament";
     status: "tentative" | "confirmed" | "cancelled";
