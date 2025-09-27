@@ -152,10 +152,10 @@ const EditTournamentForm: React.FC = () => {
         return;
       }
       // Google Calendar update
-      const startDateTime = `${formData.date}T${startTime}${getTimezoneOffset()}`;
-      const endDateTime = formData.endTime
-        ? `${formData.date}T${endTime}${getTimezoneOffset()}`
-        : startDateTime;
+      // keep to24Hour() and padTimeWithSeconds() helpers
+      const startDateTime = `${formData.date}T${startTime}`;            // no offset
+      const endDateTime   = formData.endTime ? `${formData.date}T${endTime}` : startDateTime;
+      
       const description = [
         formData.additionalInfo && `Notes: ${formData.additionalInfo}`,
         formData.rules && `Rules: ${formData.rules}`,
