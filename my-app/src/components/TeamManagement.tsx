@@ -215,39 +215,48 @@ const TeamManagement: React.FC = () => {
   );
 
   // Save teams (WIPES existing and re-creates all for this tournament)
-  const handleSaveTeams = async () => {
-    if (!selectedTournament || teams.length === 0) return;
-    setSaving(true);
-    try {
-      const teamsColRef = collection(db, "tournaments", selectedTournament, "teams");
+  // replace your current handleSaveTeams with this
+const handleSaveTeams = async () => {
+  if (!selectedTournament) return;           // ⬅️ allow zero teams
+  setSaving(true);
+  try {
+    const teamsColRef = collection(db, "tournaments", selectedTournament, "teams");
 
-      // Wipe existing teams
-      const existing = await getDocs(teamsColRef);
-      for (const docu of existing.docs) await deleteDoc(docu.ref);
+    // Wipe existing teams in Firestore
+    const existing = await getDocs(teamsColRef);
+    for (const docu of existing.docs) await deleteDoc(docu.ref);
 
-      // Re-create teams with published flag
-      for (const team of teams) {
-        await addDoc(teamsColRef, {
-          name: team.name,
-          published: publishTeams, // persisted flag
-          players: team.players.map((p) => ({
-            signupId: p.signupId,
-            isCaptain: p.isCaptain,
-          })),
-        });
-      }
-
-      // Also store a tournament-level flag for convenience
-      await updateDoc(doc(db, "tournaments", selectedTournament), {
-        teamsPublished: publishTeams,
+    // Re-create teams (if any)
+    for (const team of teams) {
+      await addDoc(teamsColRef, {
+        name: team.name,
+        published: publishTeams, // keep per-team flag if you want it
+        players: team.players.map((p) => ({
+          signupId: p.signupId,
+          isCaptain: p.isCaptain,
+        })),
       });
-
-      alert("Teams saved to Firestore!");
-    } catch (err: any) {
-      alert("Error saving teams: " + (err?.message || err));
     }
+
+    // If there are no teams, ensures the tournament-level flag is false
+    const publishFlag = teams.length > 0 && publishTeams;
+    await updateDoc(doc(db, "tournaments", selectedTournament), {
+      teamsPublished: publishFlag,
+    });
+
+    if (teams.length === 0) {
+      // Optional: also reflect UI state
+      setPublishTeams(false);
+    }
+
+    alert(teams.length === 0 ? "All teams cleared!" : "Teams saved to Firestore!");
+  } catch (err: any) {
+    alert("Error saving teams: " + (err?.message || err));
+  } finally {
     setSaving(false);
-  };
+  }
+};
+
 
   // For display: join team player signupId with eligiblePlayers to get names
   const expandedTeams = teams.map((team) => ({
@@ -342,27 +351,19 @@ const TeamManagement: React.FC = () => {
                 disabled={!selectedTournament || loading || saving}
               />
               <label className="form-check-label" htmlFor="publishTeams" style={{ fontWeight: 700 }}>
-                Publish teams
+                Publish Teams
               </label>
             </div>
 
             <button
-              className="btn btn-primary ms-auto"
-              style={{
-                borderRadius: 13,
-                fontWeight: 700,
-                background: "#2155CD",
-                border: "none",
-              }}
-              onClick={handleSaveTeams}
-              disabled={!selectedTournament || teams.length === 0 || saving}
-            >
-              {saving ? "Saving..." : (
-                <>
-                  <i className="bi bi-save2"></i> Save Teams
-                </>
-              )}
-            </button>
+  className="btn btn-primary ms-auto"
+  style={{ borderRadius: 13, fontWeight: 700, background: "#2155CD", border: "none" }}
+  onClick={handleSaveTeams}
+  disabled={!selectedTournament || saving}   // ⬅️ removed "teams.length === 0"
+>
+  {saving ? "Saving..." : (<><i className="bi bi-save2"></i> Save Teams</>)}
+</button>
+
           </div>
 
           {loading && <div className="text-center mt-4 mb-4">Loading eligible players & teams...</div>}

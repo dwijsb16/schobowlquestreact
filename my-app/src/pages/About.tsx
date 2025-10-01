@@ -6,7 +6,7 @@ const RED = "#DF2E38";
 const SOFT_BG = "#fff";
 
 const teamMembers = [
-  { name: 'Lisa Groh', role: 'Head Coach', description: 'Leading our team since 2007' },
+  { name: 'Lisa Groh', role: 'Head Coach', description: 'Leading our team since 2009' },
   { name: 'Satish Bhatt', role: 'Assistant Coach', description: 'Specializing in history and literature' },
   { name: 'Amy Byrne', role: 'Assistant Coach', description: 'Specializing in science and arts' },
   { name: 'Vikram Manivasagam', role: 'Assistant Coach', description: 'Math and pop culture enthusiast' }

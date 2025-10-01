@@ -22,10 +22,12 @@ const statusColor = (status: string) => {
 const AtAGlanceCalendar: React.FC = () => {
   interface Tournament {
     id: string;
-    date: string;
+    date: string;        // "YYYY-MM-DD"
     eventName: string;
     location?: string;
     status?: string;
+    startTime?: string;  // "HH:MM" or "HH:MM:SS"
+    endTime?: string;
   }
 
   const [events, setEvents] = useState<Tournament[]>([]);
@@ -34,74 +36,105 @@ const AtAGlanceCalendar: React.FC = () => {
   const [linkedPlayers, setLinkedPlayers] = useState<string[]>([]);
   const [signupStatus, setSignupStatus] = useState<Record<string, string>>({});
 
+  // --- Helpers ---
+  const toLocalYYYYMMDD = (d: Date) =>
+    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  const timeOrMidnight = (t?: string) => (t ?? "00:00").padEnd(8, ":00");
+
+  const formatDate = (dateStr: string) => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const [y, m, d] = dateStr.split("-");
+    return `${months[parseInt(m, 10) - 1]} ${parseInt(d, 10)}`;
+  };
+
+  // --- Fetch upcoming events in strict chronological order (date, then startTime) ---
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tournQuery = query(collection(db, "tournaments"), orderBy("date"));
-        const tournSnap = await getDocs(tournQuery);
-        const upcoming = tournSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Tournament))
-          .filter(t => t.date && new Date(t.date + "T00:00:00") >= today);
-        setEvents(upcoming);
+        const todayStr = toLocalYYYYMMDD(new Date()); // only upcoming (today or later)
+
+        // Firestore: filter to upcoming and order by date
+        const tournQuery = query(
+          collection(db, "tournaments"),
+          where("date", ">=", todayStr),
+          orderBy("date")
+        );
+
+        const snap = await getDocs(tournQuery);
+        const rows = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Tournament[];
+
+        // Secondary client-side sort by startTime for same-day events
+        rows.sort((a, b) => {
+          if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+          const A = Date.parse(`${a.date}T${timeOrMidnight(a.startTime)}`);
+          const B = Date.parse(`${b.date}T${timeOrMidnight(b.startTime)}`);
+          return A - B;
+        });
+
+        setEvents(rows);
       } catch {
         setEvents([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchEvents();
   }, []);
 
+  // --- Auth: figure out who is logged in and which players are linked ---
   useEffect(() => {
     const auth = getAuth();
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setLinkedPlayers([]);
-      if (user) {
-        const usersQuery = query(collection(db, "users"), where("uid", "==", user.uid));
-        const userSnap = await getDocs(usersQuery);
-        const data = userSnap.docs[0]?.data();
-        if (!data) return;
-        if (data.role === "player") setLinkedPlayers([user.uid]);
-        else if (data.linkedPlayers) setLinkedPlayers(data.linkedPlayers);
-      }
+      if (!user) return;
+
+      // Users collection record for role/links
+      // If your "users" doc id is already the uid, this could be a direct getDoc.
+      const usersSnap = await getDocs(
+        query(collection(db, "users"), where("uid", "==", user.uid))
+      );
+      const data = usersSnap.docs[0]?.data() as any | undefined;
+      if (!data) return;
+
+      if (data.role === "player") setLinkedPlayers([user.uid]);
+      else if (Array.isArray(data.linkedPlayers)) setLinkedPlayers(data.linkedPlayers);
     });
     return () => unsub();
   }, []);
 
+  // --- For each event, compute this user's/linked players' signup status ---
   useEffect(() => {
-    async function fetchSignupStatuses() {
+    const run = async () => {
       if (!events.length || !linkedPlayers.length) return;
-      const statuses: Record<string, string> = {};
-      await Promise.all(events.map(async (ev) => {
-        const entriesRef = collection(db, "signups", ev.id, "entries");
-        const snap = await getDocs(entriesRef);
-        const statusForPlayers = linkedPlayers.map(pid => {
-          const entry = snap.docs.find(doc => doc.data().playerId === pid);
-          if (!entry) return "Not Registered";
-          const d = entry.data();
-          return ({
-            yes: "Registered",
-            early: "Leaving Early",
-            late: "Arriving Late",
-            late_early: "Late & Early",
-            no: "Not Attending"
-          } as any)[d.availability] || "Registered";
-        });
-        statuses[ev.id] = statusForPlayers.join(" / ");
-      }));
-      setSignupStatus(statuses);
-    }
-    fetchSignupStatuses();
-  }, [events, linkedPlayers]);
 
-  const formatDate = (dateStr: string) => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const [year, month, day] = dateStr.split("-");
-    return `${months[parseInt(month) - 1]} ${parseInt(day)}`;
-  };
+      const statuses: Record<string, string> = {};
+      await Promise.all(
+        events.map(async (ev) => {
+          const snap = await getDocs(collection(db, "signups", ev.id, "entries"));
+          const labelFor = (avail?: string) =>
+            ({
+              yes: "Registered",
+              early: "Leaving Early",
+              late: "Arriving Late",
+              late_early: "Late & Early",
+              no: "Not Attending",
+            } as Record<string, string>)[avail ?? "yes"] ?? "Registered";
+
+          const perPlayer = linkedPlayers.map((pid) => {
+            const entry = snap.docs.find((d) => d.data().playerId === pid);
+            return entry ? labelFor(entry.data().availability) : "Not Registered";
+          });
+
+          statuses[ev.id] = perPlayer.join(" / ");
+        })
+      );
+      setSignupStatus(statuses);
+    };
+    run();
+  }, [events, linkedPlayers]);
 
   return (
     <div className="col-md-4">
@@ -128,6 +161,7 @@ const AtAGlanceCalendar: React.FC = () => {
         >
           Upcoming Events
         </div>
+
         <div
           style={{
             maxHeight: 330,
@@ -139,9 +173,11 @@ const AtAGlanceCalendar: React.FC = () => {
           }}
         >
           {loading && <div className="text-center text-secondary py-3">Loading...</div>}
+
           {!loading && events.length === 0 && (
             <div className="text-center text-muted py-4">No upcoming events.</div>
           )}
+
           {events.map((ev) => (
             <div
               key={ev.id}
@@ -174,6 +210,7 @@ const AtAGlanceCalendar: React.FC = () => {
                   {ev.location || <span style={{ color: "#d3c4c5" }}>No location</span>}
                 </div>
               </div>
+
               <div className="text-end" style={{ minWidth: 120 }}>
                 <div
                   style={{
@@ -191,15 +228,17 @@ const AtAGlanceCalendar: React.FC = () => {
                 >
                   {ev.status ? ev.status.charAt(0).toUpperCase() + ev.status.slice(1) : "TBA"}
                 </div>
+
                 {currentUser && (
                   <div
                     style={{
                       background:
-                        signupStatus[ev.id]?.includes("Registered") && !signupStatus[ev.id].includes("Not Registered")
+                        signupStatus[ev.id]?.includes("Registered") &&
+                        !signupStatus[ev.id].includes("Not Registered")
                           ? "#6BCB77"
-                          : signupStatus[ev.id]?.match(/Late|Early/)
+                          : /Late|Early/.test(signupStatus[ev.id] ?? "")
                           ? "#FFD93D"
-                          : signupStatus[ev.id]?.includes("Not")
+                          : (signupStatus[ev.id] ?? "").includes("Not")
                           ? "#FF6B6B"
                           : "#dedede",
                       color: "#232323",

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Container, Row, Col, Card, ListGroup, Spinner } from 'react-bootstrap';
 import Footer from '../components/footer';
 import { FaLink } from 'react-icons/fa';
-import { db } from '../.firebase/utils/firebase';
+import { db } from '..//.firebase/utils/firebase';
 import { collection, query, orderBy, getDocs, startAfter, limit, QueryDocumentSnapshot } from "firebase/firestore";
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 
@@ -25,12 +25,13 @@ interface Stat {
 const usefulLinks = [
   { id: 'ul1', title: 'NAQT Website', description: 'National Academic Quiz Tournaments official website', link: 'https://www.naqt.com' },
   { id: 'ul2', title: 'IESA Scholastic Bowl', description: 'Illinois Elementary School Association Scholastic Bowl', link: 'https://www.iesa.org/activities/scb/' },
-  { id: 'ul4', title: 'QBreader', description: 'Online question database for practice and study', link: 'https://qbreader.org' }
+  { id: 'ul4', title: 'QBReader', description: 'Online question database for practice and study', link: 'https://qbreader.org' }
 ];
 
 // ✅ Hardcoded, private list – shown only if user is logged in
 const questOnlyLinks = [
-  { id: 'q1', title: 'Quest SB Google Drive', description: 'Folder of compiled study resources', link: 'https://drive.google.com/drive/u/0/folders/0BxFsUiIUeXFvalBQVHdpSXZtTkU' }];
+  { id: 'q1', title: 'Quest SB Google Drive', description: 'Folder of compiled study resources', link: 'https://drive.google.com/drive/u/0/folders/0BxFsUiIUeXFvalBQVHdpSXZtTkU' }
+];
 
 // --- Custom Link Styles ---
 const linkStyle: React.CSSProperties = {
@@ -54,7 +55,7 @@ const StatsSection: React.FC<{
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <Card className="mb-3 shadow-sm border-0" style={{ background: WHITE, borderRadius: 16, minHeight: 120, overflowY: "auto", boxShadow: "0 2px 16px #f4c3c6" }}>
+    <Card className="mb-3 shadow-sm border-0" style={{ background: WHITE, borderRadius: 16, minHeight: 120, boxShadow: "0 2px 16px #f4c3c6" }}>
       <Card.Header as="h2" className="h6" style={{ background: RED, color: WHITE, borderTopLeftRadius: 16, borderTopRightRadius: 16, fontWeight: 700, fontSize: "1em", letterSpacing: 1 }}>
         Stats (Most Recent First)
       </Card.Header>
@@ -147,7 +148,7 @@ const QuestOnlyLinksSection: React.FC = () => {
   return (
     <Card className="mb-3 shadow-sm border-0" style={{ background: WHITE, borderRadius: 16, boxShadow: "0 2px 16px #f4c3c6" }}>
       <Card.Header as="h2" className="h6" style={{ background: RED, color: WHITE, borderTopLeftRadius: 16, borderTopRightRadius: 16, fontWeight: 700, fontSize: "1em", letterSpacing: 1 }}>
-        Quest‑Only Resources
+        Quest-Only Resources
       </Card.Header>
       <ListGroup variant="flush" style={{ background: WHITE }}>
         {questOnlyLinks.map(link => (
@@ -210,11 +211,11 @@ const Resources: React.FC = () => {
   // Load stats with Firestore pagination
   const loadStats = async (reset = false) => {
     setLoading(true);
-    let q = query(collection(db, "stats"), orderBy("date", "desc"), limit(PAGE_SIZE));
+    let qRef = query(collection(db, "stats"), orderBy("date", "desc"), limit(PAGE_SIZE));
     if (!reset && lastDoc) {
-      q = query(collection(db, "stats"), orderBy("date", "desc"), startAfter(lastDoc), limit(PAGE_SIZE));
+      qRef = query(collection(db, "stats"), orderBy("date", "desc"), startAfter(lastDoc), limit(PAGE_SIZE));
     }
-    const querySnap = await getDocs(q);
+    const querySnap = await getDocs(qRef);
     const newStats = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stat[];
     setStats(prev => reset ? newStats : [...prev, ...newStats]);
     setLastDoc(querySnap.docs[querySnap.docs.length - 1] || null);
@@ -223,34 +224,52 @@ const Resources: React.FC = () => {
   };
 
   return (
-    <div style={{ background: LIGHT_GREY, minHeight: "100vh", width: "100vw", padding: 0 }}>
-      <Container fluid className="py-3 px-0" style={{ maxWidth: "100vw" }}>
-        <Container style={{ maxWidth: 900 }}>
-          <Row className="mb-3">
-            <Col>
-              <h1 className="text-center mb-2" style={{ color: RED, fontWeight: 800, letterSpacing: 1 }}>
-                Resources
-              </h1>
-              <p className="lead text-center" style={{ color: DARK_GREY, fontSize: 17 }}>
-                Access stats and useful links to help you prepare for competitions.
-              </p>
-            </Col>
-          </Row>
-          <Row>
-            <Col lg={10} className="mx-auto" style={{ padding: 0 }}>
-              <StatsSection stats={stats} loading={loading} onLoadMore={() => loadStats(false)} hasMore={hasMore} />
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: LIGHT_GREY
+      }}
+    >
+      {/* Main content */}
+      <main style={{ flex: 1 }}>
+        <Container fluid className="py-3 px-0">
+          <Container style={{ maxWidth: 900 }}>
+            <Row className="mb-3">
+              <Col>
+                <h1 className="text-center mb-2" style={{ color: RED, fontWeight: 800, letterSpacing: 1 }}>
+                  Resources
+                </h1>
+                <p className="lead text-center" style={{ color: DARK_GREY, fontSize: 17 }}>
+                  Access stats and useful links to help you prepare for competitions.
+                </p>
+              </Col>
+            </Row>
 
-              {/* ✅ Only render if logged in */}
-              {user && <QuestOnlyLinksSection />}
+            <Row>
+              <Col lg={10} className="mx-auto" style={{ padding: 0 }}>
+                <StatsSection
+                  stats={stats}
+                  loading={loading}
+                  onLoadMore={() => loadStats(false)}
+                  hasMore={hasMore}
+                />
 
-              <UsefulLinksSection />
-            </Col>
-          </Row>
+                {/* ✅ Only render if logged in */}
+                {user && <QuestOnlyLinksSection />}
+
+                <UsefulLinksSection />
+              </Col>
+            </Row>
+          </Container>
         </Container>
-      </Container>
-      <div style={{ marginTop: 32, background: WHITE, borderTop: `2px solid ${RED}`, width: "100vw", position: "relative", left: "50%", right: "50%", marginLeft: "-50vw", marginRight: "-50vw", boxShadow: "none" }}>
+      </main>
+
+      {/* Footer pinned to the bottom without extra scroll */}
+      <footer style={{ background: WHITE, borderTop: `2px solid ${RED}` }}>
         <Footer />
-      </div>
+      </footer>
     </div>
   );
 };
