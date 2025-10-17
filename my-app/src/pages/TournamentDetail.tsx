@@ -500,6 +500,19 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       if (signupMode === "player" && (parentAttending || carpool === "can-drive")) {
         if (!parentName) return alert("Please enter the parent’s name.");
       }
+
+// Only require carpool (and parent details) if attending
+const isAttending = availability !== "no";
+if (isAttending) {
+  if (!carpool) return alert("Please choose a carpool option.");
+
+  if (carpool === "can-drive" && !driveCapacity)
+    return alert("Please enter the number of available seats.");
+
+  if (signupMode === "player" && (parentAttending || carpool === "can-drive")) {
+    if (!parentName) return alert("Please enter the parent’s name.");
+  }
+}
     
     setSubmitting(true);
     const existingDocId = signupMode === "coach" ? coachSignupDocId : playerSignupDocId;
@@ -893,6 +906,23 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
     >
       Needs A Ride
     </button>
+    <button
+  type="button"
+  className={`btn ${carpool === "unsure" ? "btn-selected" : "btn-outline-secondary"}`}
+  style={{
+    borderRadius: 12,
+    fontWeight: 600,
+    background: carpool === "unsure" ? "#8E7CF3" : "#fff",              // indigo
+    color: carpool === "unsure" ? "#fff" : "#2e3a59",
+    border: carpool === "unsure" ? "2px solid #8E7CF3" : "2px solid #dadada",
+    boxShadow: carpool === "unsure" ? "0 2px 8px rgba(142,124,243,0.25)" : "none",
+    transition: "all 0.12s"
+  }}
+  onClick={() => setCarpool("unsure")}
+>
+  Unsure
+</button>
+
   </div>
 </div>
 
