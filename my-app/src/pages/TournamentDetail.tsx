@@ -493,17 +493,10 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
         return alert("Please enter your arrival time.");
       if ((availability === "early" || availability === "late_early") && !endTime)
         return alert("Please enter your departure time.");
-      if (!carpool) return alert("Please choose a carpool option.");
-      if (carpool === "can-drive" && !driveCapacity)
-        return alert("Please enter the number of available seats.");
-    
-      if (signupMode === "player" && (parentAttending || carpool === "can-drive")) {
-        if (!parentName) return alert("Please enter the parent’s name.");
-      }
 
 // Only require carpool (and parent details) if attending
-const isntAttending = availability === "no";
-if (!isntAttending) {
+const isAttending = availability !== "" && availability !== "no";
+if (isAttending) {
   if (!carpool) return alert("Please choose a carpool option.");
 
   if (carpool === "can-drive" && !driveCapacity)
