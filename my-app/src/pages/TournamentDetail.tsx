@@ -502,8 +502,8 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
       }
 
 // Only require carpool (and parent details) if attending
-const isAttending = availability !== "no";
-if (isAttending) {
+const isntAttending = availability === "no";
+if (!isntAttending) {
   if (!carpool) return alert("Please choose a carpool option.");
 
   if (carpool === "can-drive" && !driveCapacity)
