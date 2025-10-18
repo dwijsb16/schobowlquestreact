@@ -158,7 +158,31 @@ const TeamManagement: React.FC = () => {
     syncPublish();
   }, [selectedTournament]);
   
-
+  type Chip = { text: string; bg: string; color: string };
+  const chip = (text: string, bg: string, color: string): Chip => ({ text, bg, color });
+  
+  function chipsForSignup(s: { availability?: string; startTime?: string; endTime?: string }): Chip[] {
+    const avail = (s.availability || "").toLowerCase();
+    const time = (t?: string) => (t ? t.slice(0, 5) : ""); // "HH:MM"
+    switch (avail) {
+      case "yes":
+        return [chip("Attending", "#e6fff4", "#047857")];                 // green
+      case "no":
+        return [chip("Not Attending", "#fde8e8", "#991b1b")];             // red
+      case "early":
+        return [chip(`Leaving early @ ${time(s.endTime)}`, "#fff7e6", "#92400e")]; // orange
+      case "late":
+        return [chip(`Arriving late @ ${time(s.startTime)}`, "#f0f9ff", "#075985")]; // blue
+      case "late_early":
+        return [
+          chip(`Arriving @ ${time(s.startTime)}`, "#f0f9ff", "#075985"),   // blue
+          chip(`Leaving @ ${time(s.endTime)}`, "#fff7e6", "#92400e"),      // orange
+        ];
+      default:
+        return [chip("No response", "#eef2f7", "#334155")];                // gray
+    }
+  }
+  
   // Add new team (A, B, ...)
   const handleAddTeam = () => {
     if (teams.length >= alphabet.length) return;
@@ -668,22 +692,56 @@ const handleSaveTeams = async () => {
           )}
 
           {/* Unassigned players */}
-          {!loading &&
-            selectedTournament &&
-            teams.length > 0 &&
-            unassignedPlayers.length > 0 && (
-              <div className="mt-4">
-                <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
-                <ul>
-                  {unassignedPlayers.map((p) => (
-                    <li key={p.playerId}>
-                      <i className="bi bi-person me-2" style={{ color: "#2155CD" }}></i>
-                      {p.firstName} {p.lastName}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          {/* Unassigned players */}
+{!loading &&
+  selectedTournament &&
+  teams.length > 0 &&
+  unassignedPlayers.length > 0 && (
+    <div className="mt-4">
+      <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
+      <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
+        {unassignedPlayers.map((p) => (
+          <li
+            key={p.playerId}
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "8px 12px",
+              marginBottom: 6,
+              boxShadow: "0 1px 6px #0000000d",
+              display: "flex",
+              alignItems: "center",
+              gap: 8
+            }}
+          >
+            <i className="bi bi-person" style={{ color: "#2155CD" }} />
+            <span style={{ fontWeight: 700 }}>{p.firstName} {p.lastName}</span>
+
+            {/* status chips */}
+            <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
+              {chipsForSignup(p).map((c, i) => (
+                <span
+                  key={i}
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: c.bg,
+                    color: c.color,
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {c.text}
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+)}
+
         </div>
       </div>
     </div>
