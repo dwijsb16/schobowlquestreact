@@ -19,6 +19,24 @@ const SERVICE_ID = "service_cfows1h";
 const EMAIL_API_KEY = "GRAfhbyKXL9qsCDKk";
 
 
+function getRsvpDeadline(t: Tournament): Date | null {
+  if (!t?.rsvpDate) return null;                 // no RSVP date set
+  const d = parseISO(t.rsvpDate);                // e.g. "2025-07-20"
+  if (t.rsvpTime) {                              // e.g. "17:00"
+    const [hh, mm] = t.rsvpTime.split(":").map(Number);
+    d.setHours(hh || 0, mm || 0, 0, 0);
+  } else {
+    // if no time, default to end-of-day local
+    d.setHours(23, 59, 59, 999);
+  }
+  return d;
+}
+
+function isPastRsvp(t: Tournament): boolean {
+  const deadline = getRsvpDeadline(t);
+  if (!deadline) return false;                   // treat as "no restriction"
+  return new Date().getTime() >= deadline.getTime();
+}
 // Helper to format date with day of week
 function formatDateWithDay(dateString: string) {
   if (!dateString) return "";
@@ -555,37 +573,92 @@ if (isAttending) {
       alert("Signup updated!");
   
       // --- Send email ONLY on EDIT
-      const coachEmailsArr = await getAllCoachEmails();
-      const coachEmails = coachEmailsArr.join(",");
-      const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
+      // const coachEmailsArr = await getAllCoachEmails();
+      // const coachEmails = coachEmailsArr.join(",");
+      // const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
   
-      await sendSignupNotification({
-        playerName: playerObj
-          ? `${playerObj.firstName} ${playerObj.lastName}`
-          : "N/A",
-        tournamentName: tournament?.eventName || "N/A",
-        editorEmail: currentUser.email || "",
-        timestamp: new Date().toLocaleString(),
-        actionType: "Edit",
-        bccList: coachEmails,
-        toEmail: "questsbclub@gmail.com",
-        availability,
-        startTime,
-        endTime,
-        carpool,
-        driveCapacity,
-        parentAttending: parentAttending ? "Yes" : "No",
-        canModerate: canModerate ? "Yes" : "No",
-        canScorekeep: canScorekeep ? "Yes" : "No",
-        additionalInfo,
-        allInfo: JSON.stringify(signup, null, 2),
-      });
+      // await sendSignupNotification({
+      //   playerName: playerObj
+      //     ? `${playerObj.firstName} ${playerObj.lastName}`
+      //     : "N/A",
+      //   tournamentName: tournament?.eventName || "N/A",
+      //   editorEmail: currentUser.email || "",
+      //   timestamp: new Date().toLocaleString(),
+      //   actionType: "Edit",
+      //   bccList: coachEmails,
+      //   toEmail: "questsbclub@gmail.com",
+      //   availability,
+      //   startTime,
+      //   endTime,
+      //   carpool,
+      //   driveCapacity,
+      //   parentAttending: parentAttending ? "Yes" : "No",
+      //   canModerate: canModerate ? "Yes" : "No",
+      //   canScorekeep: canScorekeep ? "Yes" : "No",
+      //   additionalInfo,
+      //   allInfo: JSON.stringify(signup, null, 2),
+      // });
+      // --- Send email ONLY on EDIT and ONLY after RSVP deadline
+if (tournament && isPastRsvp(tournament)) {
+  const coachEmailsArr = await getAllCoachEmails();
+  const coachEmails = coachEmailsArr.join(",");
+  const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
+
+  await sendSignupNotification({
+    playerName: playerObj ? `${playerObj.firstName} ${playerObj.lastName}` : "N/A",
+    tournamentName: tournament?.eventName || "N/A",
+    editorEmail: currentUser.email || "",
+    timestamp: new Date().toLocaleString(),
+    actionType: "Edit",
+    bccList: coachEmails,
+    toEmail: "questsbclub@gmail.com",
+    availability,
+    startTime,
+    endTime,
+    carpool,
+    driveCapacity,
+    parentAttending: parentAttending ? "Yes" : "No",
+    canModerate: canModerate ? "Yes" : "No",
+    canScorekeep: canScorekeep ? "Yes" : "No",
+    additionalInfo,
+    allInfo: JSON.stringify(signup, null, 2),
+  });
+} else {
+  console.log("Skipping email: RSVP deadline not reached yet.");
+}
+
     } else {
       // CREATE MODE: add new doc, NO EMAIL
       await addDoc(
         collection(db, signupMode === "coach" ? "coach_signups" : "signups", tournamentId as string, "entries"),
         signup
       );
+      // 🔔 Optional: email coaches on first submission IF we're past the RSVP
+if (tournament && isPastRsvp(tournament)) {
+  const coachEmailsArr = await getAllCoachEmails();
+  const coachEmails = coachEmailsArr.join(",");
+  const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
+
+  await sendSignupNotification({
+    playerName: playerObj ? `${playerObj.firstName} ${playerObj.lastName}` : "N/A",
+    tournamentName: tournament?.eventName || "N/A",
+    editorEmail: currentUser.email || "",
+    timestamp: new Date().toLocaleString(),
+    actionType: "New Signup (After RSVP Deadline)",
+    bccList: coachEmails,
+    toEmail: "questsbclub@gmail.com",
+    availability,
+    startTime,
+    endTime,
+    carpool,
+    driveCapacity,
+    parentAttending: parentAttending ? "Yes" : "No",
+    canModerate: canModerate ? "Yes" : "No",
+    canScorekeep: canScorekeep ? "Yes" : "No",
+    additionalInfo,
+    allInfo: JSON.stringify(signup, null, 2),
+  });
+}
       alert("Signup submitted!");
       // You can optionally redirect here (navigate("/")) or stay on page
     }
