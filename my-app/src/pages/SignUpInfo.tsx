@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, UserCredential, User } from "firebase/a
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, db } from "../.firebase/utils/firebase";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Eye, EyeOff } from "lucide-react";
 import emailjs from "emailjs-com";
 
@@ -43,12 +43,29 @@ function checkPasswordStrength(password: string): PasswordStrength {
     hasSpecial: /[!@#$%^&*()[\]{};:'",.<>/?\\|`~_\-+=]/.test(password),
   };
 }
+// put near the top of the file
+const userBase = (p: {
+  uid: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  provider: "google" | "password";
+}) => ({
+  uid: p.uid,
+  email: p.email,
+  firstName: p.firstName || "",
+  lastName: p.lastName || "",
+  provider: p.provider,
+  linkedPlayers: [],             // ✅ default
+});
+
 
 const SERVICE_ID = "service_9marpbs";
 const TEMPLATE_ID = "template_3psu4d8";
 const PUBLIC_KEY = "1F-ljhM3B95nu3_4i";
 
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
 
 const SignupPage: React.FC = () => {
   // Types
@@ -82,6 +99,27 @@ const SignupPage: React.FC = () => {
   // For Firestore after verification
   const [pendingFirestoreUser, setPendingFirestoreUser] = useState<any>(null);
   const [pendingPlayerDoc, setPendingPlayerDoc] = useState<any>(null);
+  // Add these to your component state:
+const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+const [gpUid, setGpUid] = useState<string>("");
+const [gpEmail, setGpEmail] = useState<string>("");
+const [gpFirst, setGpFirst] = useState<string>("");
+const [gpLast, setGpLast] = useState<string>("");
+
+// This is the profile form state that will be saved to Firestore
+const [cpRole, setCpRole] = useState<"player" | "parent" | "alumni" | "">("");
+const [cpGrade, setCpGrade] = useState<string>("");
+const [cpSuburb, setCpSuburb] = useState<string>("");
+const [cpSaving, setCpSaving] = useState(false);
+const [cpError, setCpError] = useState<string | null>(null);
+// tiny helper
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+// global finishing overlay state (used for both Google modal + email verify flows)
+const [isFinishing, setIsFinishing] = useState(false);
+const [finishMsg, setFinishMsg] = useState<string>(""); // e.g. "Setting up your account…"
+
+
 
   const navigate = useNavigate();
 
@@ -127,22 +165,124 @@ const SignupPage: React.FC = () => {
   }
 
   // GOOGLE SIGNUP
-  const handleGoogleSignup = async () => {
-    setError(null);
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      setSignupMethod("google");
-      setCurrentUser(user);
-      setEmail(user.email || "");
-      setFirstName(user.displayName?.split(" ")[0] || "");
-      setLastName(user.displayName?.split(" ").slice(1).join(" ") || "");
-      setRole("player");
-      setGrade("");
-    } catch (err: any) {
-      setError("Google sign-in failed. Try again.");
+  // const handleGoogleSignup = async () => {
+  //   setError(null);
+  //   try {
+  //     const result = await signInWithPopup(auth, provider);
+  //     const user = result.user;
+  //     setSignupMethod("google");
+  //     setCurrentUser(user);
+  //     setEmail(user.email || "");
+  //     setFirstName(user.displayName?.split(" ")[0] || "");
+  //     setLastName(user.displayName?.split(" ").slice(1).join(" ") || "");
+  //     setRole("player");
+  //     setGrade("");
+  //   } catch (err: any) {
+  //     setError("Google sign-in failed. Try again.");
+  //   }
+  // };
+  // 
+
+async function handleGoogleSignupSimple() {
+  try {
+    const { user } = await signInWithPopup(auth, provider);
+    const uid = user.uid;
+    const email = user.email ?? "";
+    const display = user.displayName ?? "";
+    const first = display.split(" ")[0] || "";
+    const last  = display.split(" ").slice(1).join(" ") || "";
+
+    // Pre-fill and show the Complete Profile dialog
+    setGpUid(uid);
+    setGpEmail(email);
+    setGpFirst(first);
+    setGpLast(last);
+
+    // Optionally try to load an existing profile; if it exists, skip the dialog.
+    const snap = await getDoc(doc(db, "users", uid));
+    if (snap.exists()) {
+      // Already has a profile -> go straight to /profile
+      navigate("/profile");
+      return;
     }
-  };
+
+    setShowCompleteProfile(true);
+  } catch (err) {
+    console.error("Google signup failed:", err);
+    alert("Google sign-in failed. Please try again.");
+  }
+}
+async function saveCompletedProfile() {
+  setCpError(null);
+
+  if (!cpRole) return setCpError("Please select a role.");
+  if (!cpSuburb) return setCpError("Please enter your suburb/town.");
+  if (cpRole === "player" && !cpGrade) return setCpError("Please select a grade.");
+
+  setCpSaving(true);
+  try {
+    // fill in profile
+    await setDoc(
+      doc(db, "users", gpUid),
+      {
+        ...userBase({ uid: gpUid, email: gpEmail, firstName: gpFirst, lastName: gpLast, provider: "google" }),
+        role: cpRole,
+        suburb: cpSuburb,
+        ...(cpRole === "player" ? { grade: cpGrade } : { grade: null }),
+        onboardingRequired: false,     // ✅ finished
+        updatedAt: serverTimestamp(),
+        // createdAt left as-is (merge won't overwrite if already present)
+      },
+      { merge: true }
+    );
+    ;
+    
+
+    if (cpRole === "player") {
+      await setDoc(
+        doc(db, "players", gpUid),
+        {
+          uid: gpUid,
+          email: gpEmail,
+          firstName: gpFirst,
+          lastName: gpLast,
+          grade: cpGrade,
+          suburb: cpSuburb,
+          linkedUsers: [],
+          provider: "google",
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+
+    // optional: read-back to be extra safe
+    // const confirm = await getDoc(doc(db, "users", gpUid));
+    // if (!confirm.exists()) { setCpError("Could not verify save, try again."); setCpSaving(false); return; }
+
+    setShowCompleteProfile(false);
+    // 3) Done
+// show a brief finishing overlay and give Firestore/guards a beat
+setFinishMsg("Setting up your account…");
+setIsFinishing(true);
+await sleep(650);
+
+navigate("/profile", { replace: true });
+setIsFinishing(false);
+setFinishMsg("");
+
+    navigate("/profile");
+  } catch (e) {
+    console.error(e);
+    setCpError("Could not save your profile. Please try again.");
+  } finally {
+    setCpSaving(false);
+  }
+}
+
+
+
+  
 
   // EMAIL SIGNUP
   const handleShowEmailSignup = () => {
@@ -158,127 +298,302 @@ const SignupPage: React.FC = () => {
   };
 
   // MAIN SIGNUP
+  // const handleSignup = async (e: FormEvent) => {
+  //   e.preventDefault();
+  //   setError(null);
+
+  //   if (!emailValid) return setError("Please enter a valid email address.");
+  //   if (!firstName) return setError("First name is required.");
+  //   if (!lastName) return setError("Last name is required.");
+  //   if (!role) return setError("Please select a role.");
+  //   if (role === "player" && !grade) return setError("Please select a grade.");
+
+  //   let uid: string, signupEmail: string;
+  //   try {
+  //     if (signupMethod === "email") {
+  //       if (
+  //         !pwStrength.length ||
+  //         !pwStrength.upper ||
+  //         !pwStrength.lower ||
+  //         !pwStrength.digit ||
+  //         !pwStrength.hasSpecial
+  //       ) {
+  //         return setError(
+  //           "Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character."
+  //         );
+  //       }
+  //       if (!pwMatch) return setError("Passwords do not match.");
+  //       if (!password) return setError("Password is required.");
+
+  //       //const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
+  //       //uid = userCredential.user.uid;
+  //       //signupEmail = userCredential.user.email!;
+  //     } else if (signupMethod === "google" && currentUser) {
+  //       uid = currentUser.uid;
+  //       signupEmail = currentUser.email!;
+  //     } else {
+  //       return setError("Please choose a signup method.");
+  //     }
+
+  //     const newUser = {
+  //       uid,
+  //       email: signupEmail,
+  //       firstName,
+  //       lastName,
+  //       role,
+  //       ...(role === "player" && { grade }),
+  //       ...(suburb && { suburb }),
+  //       linkedPlayers: [],
+  //     };
+
+  //     let playerDoc = null;
+  //     if (role === "player") {
+  //       playerDoc = {
+  //         uid,
+  //         email: signupEmail,
+  //         firstName,
+  //         lastName,
+  //         grade,
+  //         suburb,
+  //         linkedUsers: [],
+  //       };
+  //     }
+
+  //     setPendingFirestoreUser({ newUser, uid });
+  //     setPendingPlayerDoc(playerDoc);
+
+  //     const code = generateCode();
+  //     await sendVerificationEmail(signupEmail, firstName, code);
+
+  //     setSentCode(code);
+  //     setShowVerification(true);
+  //     setVerifStatus("pending");
+  //     setCodeSentAt(Date.now());
+  //     setTimer(VERIFICATION_TIMEOUT);
+  //     setVerifError(null);
+  //   } catch (err: any) {
+  //     if (err.code === "auth/email-already-in-use") {
+  //       setError("This email is already in use with another account.");
+  //     } else if (err.code === "auth/invalid-email") {
+  //       setError("Please enter a valid email address.");
+  //     } else if (err.code === "auth/weak-password") {
+  //       setError("Password should be at least 6 characters.");
+  //     } else {
+  //       setError("An unexpected error occurred. Please try again.");
+  //     }
+  //   }
+  // };
   const handleSignup = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-
+  
+    // Basic validation
     if (!emailValid) return setError("Please enter a valid email address.");
     if (!firstName) return setError("First name is required.");
     if (!lastName) return setError("Last name is required.");
     if (!role) return setError("Please select a role.");
     if (role === "player" && !grade) return setError("Please select a grade.");
-
-    let uid: string, signupEmail: string;
+  
+    if (signupMethod === "email") {
+      // Password rules (email method only)
+      if (
+        !pwStrength.length ||
+        !pwStrength.upper ||
+        !pwStrength.lower ||
+        !pwStrength.digit ||
+        !pwStrength.hasSpecial
+      ) {
+        return setError(
+          "Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character."
+        );
+      }
+      if (!pwMatch) return setError("Passwords do not match.");
+      if (!password) return setError("Password is required.");
+    } else if (signupMethod === "google") {
+      // For Google, you already called signInWithPopup elsewhere.
+    } else {
+      return setError("Please choose a signup method.");
+    }
+  
+    // Stash everything needed to finalize the account AFTER verification
+    setPendingFirestoreUser({
+      email,
+      // Only needed for email/password flow. Keep empty string for Google.
+      password: signupMethod === "email" ? password : "",
+      signupMethod,
+      role,
+      firstName,
+      lastName,
+      suburb,
+      grade: role === "player" ? grade : "",
+    });
+  
+    setPendingPlayerDoc(
+      role === "player"
+        ? { email, firstName, lastName, grade, suburb, linkedUsers: [] }
+        : null
+    );
+  
     try {
-      if (signupMethod === "email") {
-        if (
-          !pwStrength.length ||
-          !pwStrength.upper ||
-          !pwStrength.lower ||
-          !pwStrength.digit ||
-          !pwStrength.hasSpecial
-        ) {
-          return setError(
-            "Password must have at least 6 characters, one uppercase, one lowercase, one digit, and one special character."
-          );
-        }
-        if (!pwMatch) return setError("Passwords do not match.");
-        if (!password) return setError("Password is required.");
-
-        const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
-        uid = userCredential.user.uid;
-        signupEmail = userCredential.user.email!;
-      } else if (signupMethod === "google" && currentUser) {
-        uid = currentUser.uid;
-        signupEmail = currentUser.email!;
-      } else {
-        return setError("Please choose a signup method.");
-      }
-
-      const newUser = {
-        uid,
-        email: signupEmail,
-        firstName,
-        lastName,
-        role,
-        ...(role === "player" && { grade }),
-        ...(suburb && { suburb }),
-        linkedPlayers: [],
-      };
-
-      let playerDoc = null;
-      if (role === "player") {
-        playerDoc = {
-          uid,
-          email: signupEmail,
-          firstName,
-          lastName,
-          grade,
-          suburb,
-          linkedUsers: [],
-        };
-      }
-
-      setPendingFirestoreUser({ newUser, uid });
-      setPendingPlayerDoc(playerDoc);
-
+      // Send verification code via EmailJS
       const code = generateCode();
-      await sendVerificationEmail(signupEmail, firstName, code);
-
+      await sendVerificationEmail(email, firstName, code);
+  
       setSentCode(code);
       setShowVerification(true);
       setVerifStatus("pending");
       setCodeSentAt(Date.now());
       setTimer(VERIFICATION_TIMEOUT);
       setVerifError(null);
-    } catch (err: any) {
-      if (err.code === "auth/email-already-in-use") {
-        setError("This email is already in use with another account.");
-      } else if (err.code === "auth/invalid-email") {
-        setError("Please enter a valid email address.");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters.");
-      } else {
-        setError("An unexpected error occurred. Please try again.");
-      }
+    } catch (err) {
+      setError("Could not send verification email. Please try again.");
     }
   };
+  
+  
 
   // VERIFICATION HANDLER
+  // const handleVerify = async (e: FormEvent) => {
+  //   e.preventDefault();
+  //   if (!sentCode) return;
+  //   if (verifStatus === "expired") {
+  //     setVerifError("Code expired. Please resend email.");
+  //     return;
+  //   }
+  //   if (verificationCode === sentCode) {
+  //     setVerifStatus("success");
+  //     setVerifError(null);
+  //     try {
+  //       const { newUser, uid } = pendingFirestoreUser;
+  //       const userDocRef = doc(db, "users", uid);
+  //       const userDocSnap = await getDoc(userDocRef);
+  //       if (userDocSnap.exists()) {
+  //         setVerifError("A profile already exists for this account.");
+  //         setTimeout(() => (window.location.href = "/profile"), 2000);
+  //         return;
+  //       }
+  //       await setDoc(userDocRef, newUser);
+  //       if (pendingPlayerDoc) {
+  //         const playerDocRef = doc(db, "players", uid);
+  //         await setDoc(playerDocRef, pendingPlayerDoc);
+  //       }
+  //       setTimeout(() => (window.location.href = "/profile"), 1200);
+  //     } catch (err) {
+  //       setVerifError("Error saving profile. Try again.");
+  //     }
+  //   } else {
+  //     setVerifStatus("failed");
+  //     setVerifError("Incorrect code. Please try again.");
+  //   }
+  // };
   const handleVerify = async (e: FormEvent) => {
     e.preventDefault();
     if (!sentCode) return;
+  
     if (verifStatus === "expired") {
       setVerifError("Code expired. Please resend email.");
       return;
     }
-    if (verificationCode === sentCode) {
-      setVerifStatus("success");
-      setVerifError(null);
-      try {
-        const { newUser, uid } = pendingFirestoreUser;
-        const userDocRef = doc(db, "users", uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setVerifError("A profile already exists for this account.");
-          setTimeout(() => (window.location.href = "/profile"), 2000);
-          return;
-        }
-        await setDoc(userDocRef, newUser);
-        if (pendingPlayerDoc) {
-          const playerDocRef = doc(db, "players", uid);
-          await setDoc(playerDocRef, pendingPlayerDoc);
-        }
-        setTimeout(() => (window.location.href = "/profile"), 1200);
-      } catch (err) {
-        setVerifError("Error saving profile. Try again.");
-      }
-    } else {
+  
+    if (verificationCode !== sentCode) {
       setVerifStatus("failed");
       setVerifError("Incorrect code. Please try again.");
+      return;
+    }
+  
+    // Code OK — proceed
+    setVerifStatus("success");
+    setVerifError(null);
+  
+    try {
+      if (!pendingFirestoreUser) {
+        setVerifError("Missing pending signup data. Please restart signup.");
+        return;
+      }
+  
+      const {
+        email: pendingEmail,
+        password: pendingPassword,
+        signupMethod,
+        role: pendingRole,
+        firstName: pendingFirst,
+        lastName: pendingLast,
+        suburb: pendingSuburb,
+        grade: pendingGrade,
+      } = pendingFirestoreUser as {
+        email: string;
+        password: string;      // "" for Google
+        signupMethod: "email" | "google";
+        role: string;
+        firstName: string;
+        lastName: string;
+        suburb?: string;
+        grade?: string;
+      };
+  
+      // 1) Create the Auth user *now* (email flow) OR use existing Google user
+      // with this:
+const cred = await createUserWithEmailAndPassword(auth, pendingEmail, pendingPassword);
+const uid = cred.user.uid;
+  
+      // 2) Build Firestore user document
+      const newUserDoc = {
+        ...userBase({
+          uid,
+          email: pendingEmail,
+          firstName: pendingFirst,
+          lastName: pendingLast,
+          provider: "password",
+        }),
+        role: pendingRole,
+        ...(pendingRole === "player" && { grade: pendingGrade }),
+        ...(pendingSuburb ? { suburb: pendingSuburb } : {}),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        onboardingRequired: false,   // email flow is done after verification
+      };
+      
+  
+      // Safety: avoid duplicate profiles if user retries
+      const userDocRef = doc(db, "users", uid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        // Already has a profile — just continue
+      } else {
+        await setDoc(userDocRef, newUserDoc);
+      }
+  
+      // 3) Write players/{uid} if role=player
+      if (pendingRole === "player" && pendingPlayerDoc) {
+        const playerDocRef = doc(db, "players", uid);
+        const playerSnap = await getDoc(playerDocRef);
+        if (!playerSnap.exists()) {
+          await setDoc(playerDocRef, { uid, ...pendingPlayerDoc });
+        }
+      }
+  
+      // 4) Go to profile
+      setFinishMsg("Creating your account…");
+setIsFinishing(true);
+await sleep(650);
+
+navigate("/profile", { replace: true });
+setIsFinishing(false);
+setFinishMsg("");
+    } catch (err: any) {
+      // Common auth errors surfaced here
+      if (err.code === "auth/email-already-in-use") {
+        setVerifError("This email is already in use with another account.");
+      } else if (err.code === "auth/invalid-email") {
+        setVerifError("Please enter a valid email address.");
+      } else if (err.code === "auth/weak-password") {
+        setVerifError("Password should be at least 6 characters.");
+      } else {
+        setVerifError("Error creating account after verification. Please try again.");
+      }
     }
   };
-
+  
   const handleResend = async () => {
     setResending(true);
     try {
@@ -338,7 +653,7 @@ const SignupPage: React.FC = () => {
                     border: `2px solid ${RED}`,
                     boxShadow: "0 2px 8px #f2b8bb2d"
                   }}
-                  onClick={handleGoogleSignup}
+                  onClick={() => handleGoogleSignupSimple()}
                 >
                   Sign Up with Google
                 </button>
@@ -630,6 +945,115 @@ const SignupPage: React.FC = () => {
             )}
           </div>
         </div>
+        {showCompleteProfile && (
+  <div className="modal-backdrop" style={{
+    position: "fixed", inset: 0, background: "#0006",
+    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999
+  }}>
+    <div className="card p-4" style={{ width: 520, borderRadius: 16 }}>
+      <h4 style={{ color: "#DF2E38", fontWeight: 800, marginBottom: 12 }}>
+        Complete your profile
+      </h4>
+
+      <div className="mb-3">
+        <label>Email</label>
+        <input className="form-control" value={gpEmail} disabled />
+      </div>
+      <div className="mb-3 d-flex gap-2">
+        <div style={{ flex: 1 }}>
+          <label>First Name</label>
+          <input className="form-control" value={gpFirst} disabled />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label>Last Name</label>
+          <input className="form-control" value={gpLast} disabled />
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <label>Role</label>
+        <select
+          className="form-control"
+          value={cpRole}
+          onChange={(e) => setCpRole(e.target.value as any)}
+        >
+          <option value="">Select role</option>
+          <option value="player">Player</option>
+          <option value="parent">Parent</option>
+          <option value="alumni">Alumni</option>
+        </select>
+      </div>
+
+      {cpRole === "player" && (
+        <div className="mb-3">
+          <label>Grade</label>
+          <select
+            className="form-control"
+            value={cpGrade}
+            onChange={(e) => setCpGrade(e.target.value)}
+          >
+            <option value="">Select grade</option>
+            {GRADE_OPTIONS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="mb-3">
+        <label>Suburb or Town</label>
+        <input
+          className="form-control"
+          value={cpSuburb}
+          onChange={(e) => setCpSuburb(e.target.value)}
+          placeholder="e.g. Palatine"
+        />
+      </div>
+
+      {cpError && (
+        <div className="alert alert-danger">{cpError}</div>
+      )}
+
+      <div className="d-flex justify-content-end gap-2">
+        <button className="btn btn-secondary" onClick={() => setShowCompleteProfile(false)} disabled={cpSaving}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={saveCompletedProfile} disabled={cpSaving}>
+          {cpSaving ? "Saving..." : "Save & Continue"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{(cpSaving || isFinishing) && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "#0007",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10000
+    }}
+  >
+    <div
+      className="card p-4 text-center"
+      style={{ width: 340, borderRadius: 16, background: WHITE }}
+    >
+      <div className="mb-3">
+        <div className="spinner-border" role="status" aria-hidden="true" />
+      </div>
+      <div style={{ color: BLACK, fontWeight: 600 }}>
+        {finishMsg || "Saving…"}
+      </div>
+      <div style={{ color: GREY, fontSize: 13, marginTop: 6 }}>
+        This will only take a moment.
+      </div>
+    </div>
+  </div>
+)}
+
       </div>
     </div>
   );
