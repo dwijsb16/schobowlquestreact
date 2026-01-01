@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
@@ -15,7 +15,13 @@ import { db } from "../.firebase/utils/firebase";
 // --- SVG Crown for Captain Badge ---
 const Crown = () => (
   <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path d="M2 6l3.5 6 3.5-8 3.5 8 3.5-6" stroke="#DF2E38" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path
+      d="M2 6l3.5 6 3.5-8 3.5 8 3.5-6"
+      stroke="#DF2E38"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
     <rect x="3" y="13.7" width="12" height="2.1" rx="1" fill="#DF2E38" />
   </svg>
 );
@@ -23,7 +29,7 @@ const Crown = () => (
 // --- Inline red X icon (no external CSS needed) ---
 const XIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#DF2E38" aria-hidden="true">
-    <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm-3.54 5.46 2.54 2.54 2.54-2.54 1.42 1.42L12.42 10.9l2.54 2.54-1.42 1.42-2.54-2.54-2.54 2.54-1.42-1.42 2.54-2.54-2.54-2.54 1.42-1.42z"/>
+    <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm-3.54 5.46 2.54 2.54 2.54-2.54 1.42 1.42L12.42 10.9l2.54 2.54-1.42 1.42-2.54-2.54-2.54 2.54-1.42-1.42 2.54-2.54-2.54-2.54 1.42-1.42z" />
   </svg>
 );
 
@@ -34,6 +40,7 @@ type Tournament = {
   eventName: string;
   date: string;
 };
+
 type Signup = {
   id: string;
   playerId: string;
@@ -43,12 +50,13 @@ type Signup = {
   startTime?: string;
   endTime?: string;
 };
+
 type Team = {
   id?: string;
   name: string;
   players: {
     signupId: string;
-    isCaptain: boolean;
+    isCaptain: boolean; // stays the same in DB even if we display "Co-Captain"
   }[];
 };
 
@@ -62,10 +70,38 @@ const TeamManagement: React.FC = () => {
   const [activeAddTeamIdx, setActiveAddTeamIdx] = useState<number | null>(null);
   const [publishTeams, setPublishTeams] = useState(false);
 
-  // NEW: captains management modal (index of team or null)
+  // captains management modal (index of team or null)
   const [captainsModalIdx, setCaptainsModalIdx] = useState<number | null>(null);
 
+  // ---- helpers for chips in unassigned list ----
+  type Chip = { text: string; bg: string; color: string };
+  const chip = (text: string, bg: string, color: string): Chip => ({ text, bg, color });
+
+  function chipsForSignup(s: { availability?: string; startTime?: string; endTime?: string }): Chip[] {
+    const avail = (s.availability || "").toLowerCase();
+    const time = (t?: string) => (t ? t.slice(0, 5) : ""); // "HH:MM"
+    switch (avail) {
+      case "yes":
+        return [chip("Attending", "#e6fff4", "#047857")]; // green
+      case "no":
+        return [chip("Not Attending", "#fde8e8", "#991b1b")]; // red
+      case "early":
+        return [chip(`Leaving early @ ${time(s.endTime)}`, "#fff7e6", "#92400e")]; // orange
+      case "late":
+        return [chip(`Arriving late @ ${time(s.startTime)}`, "#f0f9ff", "#075985")]; // blue
+      case "late_early":
+        return [
+          chip(`Arriving @ ${time(s.startTime)}`, "#f0f9ff", "#075985"), // blue
+          chip(`Leaving @ ${time(s.endTime)}`, "#fff7e6", "#92400e"), // orange
+        ];
+      default:
+        return [chip("No response", "#eef2f7", "#334155")]; // gray
+    }
+  }
+
+  // =========================
   // Load tournaments
+  // =========================
   useEffect(() => {
     const fetchTournaments = async () => {
       const qTourn = query(collection(db, "tournaments"), orderBy("date"));
@@ -74,18 +110,22 @@ const TeamManagement: React.FC = () => {
       const allTourns: Tournament[] = tournSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
         .filter((t) => t.date && new Date(t.date) >= today);
+
       setTournaments(allTourns);
+
       if (allTourns.length > 0) {
         setSelectedTournament(allTourns[0].id);
-        // Seed the checkbox from Firestore data on first select
+        // seed checkbox from Firestore tournament-level flag
         setPublishTeams(!!(allTourns[0] as any).teamsPublished);
       }
-      
     };
+
     fetchTournaments();
   }, []);
 
-  // Load eligible players and autofill teams
+  // =========================
+  // Load eligible players + teams for selected tournament
+  // =========================
   useEffect(() => {
     const fetchEligiblePlayersAndTeams = async () => {
       if (!selectedTournament) {
@@ -93,10 +133,13 @@ const TeamManagement: React.FC = () => {
         setTeams([]);
         return;
       }
+
       setLoading(true);
+
       // Eligible players
       const entriesRef = collection(db, "signups", selectedTournament, "entries");
       const entriesSnap = await getDocs(entriesRef);
+
       const signups: Signup[] = [];
       for (const docSnap of entriesSnap.docs) {
         const data = docSnap.data();
@@ -116,12 +159,14 @@ const TeamManagement: React.FC = () => {
           }
         }
       }
+
       signups.sort((a, b) => a.lastName.localeCompare(b.lastName));
       setEligiblePlayers(signups);
 
-      // Fetch teams from subcollection
+      // Teams from subcollection
       const teamsCol = collection(db, "tournaments", selectedTournament, "teams");
       const teamsSnap = await getDocs(teamsCol);
+
       if (!teamsSnap.empty) {
         setTeams(
           teamsSnap.docs.map((docu) => ({
@@ -135,8 +180,14 @@ const TeamManagement: React.FC = () => {
 
       setLoading(false);
     };
+
     fetchEligiblePlayersAndTeams();
   }, [selectedTournament]);
+
+  // =========================
+  // Keep publishTeams in sync with tournament doc when switching tournaments
+  // (Publishing should NOT lock editing; this only reflects visibility state.)
+  // =========================
   useEffect(() => {
     const syncPublish = async () => {
       if (!selectedTournament) {
@@ -155,49 +206,22 @@ const TeamManagement: React.FC = () => {
         // if it fails, leave whatever is currently shown
       }
     };
+
     syncPublish();
   }, [selectedTournament]);
-  
-  type Chip = { text: string; bg: string; color: string };
-  const chip = (text: string, bg: string, color: string): Chip => ({ text, bg, color });
-  
-  function chipsForSignup(s: { availability?: string; startTime?: string; endTime?: string }): Chip[] {
-    const avail = (s.availability || "").toLowerCase();
-    const time = (t?: string) => (t ? t.slice(0, 5) : ""); // "HH:MM"
-    switch (avail) {
-      case "yes":
-        return [chip("Attending", "#e6fff4", "#047857")];                 // green
-      case "no":
-        return [chip("Not Attending", "#fde8e8", "#991b1b")];             // red
-      case "early":
-        return [chip(`Leaving early @ ${time(s.endTime)}`, "#fff7e6", "#92400e")]; // orange
-      case "late":
-        return [chip(`Arriving late @ ${time(s.startTime)}`, "#f0f9ff", "#075985")]; // blue
-      case "late_early":
-        return [
-          chip(`Arriving @ ${time(s.startTime)}`, "#f0f9ff", "#075985"),   // blue
-          chip(`Leaving @ ${time(s.endTime)}`, "#fff7e6", "#92400e"),      // orange
-        ];
-      default:
-        return [chip("No response", "#eef2f7", "#334155")];                // gray
-    }
-  }
-  
-  // Add new team (A, B, ...)
+
+  // =========================
+  // Team operations
+  // =========================
   const handleAddTeam = () => {
     if (teams.length >= alphabet.length) return;
-    setTeams((prev) => [
-      ...prev,
-      { name: `Team ${alphabet[prev.length]}`, players: [] },
-    ]);
+    setTeams((prev) => [...prev, { name: `Team ${alphabet[prev.length]}`, players: [] }]);
   };
 
-  // Remove last team (not from Firestore until save)
   const handleDeleteTeam = () => {
     setTeams((prev) => prev.slice(0, -1));
   };
 
-  // Toggle captain (used by modal switches)
   const setCaptainChecked = (teamIdx: number, signupId: string, checked: boolean) => {
     setTeams((prev) => {
       const copy = [...prev];
@@ -208,23 +232,20 @@ const TeamManagement: React.FC = () => {
     });
   };
 
-  // Add player to a team
   const handleAddPlayer = (teamIdx: number, player: Signup) => {
     if (teams.some((team) => team.players.some((p) => p.signupId === player.id))) return;
+
     setTeams((prev) =>
       prev.map((team, idx) =>
         idx === teamIdx
-          ? {
-              ...team,
-              players: [...team.players, { signupId: player.id, isCaptain: false }],
-            }
+          ? { ...team, players: [...team.players, { signupId: player.id, isCaptain: false }] }
           : team
       )
     );
+
     setActiveAddTeamIdx(null);
   };
 
-  // Remove player from a team
   const handleRemovePlayer = (teamIdx: number, signupId: string) => {
     setTeams((prev) => {
       const updated = [...prev];
@@ -234,72 +255,81 @@ const TeamManagement: React.FC = () => {
   };
 
   // List of players not yet assigned to any team
-  const unassignedPlayers = eligiblePlayers.filter(
-    (ep) => !teams.some((team) => team.players.some((tp) => tp.signupId === ep.id))
+  const unassignedPlayers = useMemo(
+    () =>
+      eligiblePlayers.filter(
+        (ep) => !teams.some((team) => team.players.some((tp) => tp.signupId === ep.id))
+      ),
+    [eligiblePlayers, teams]
   );
 
   // Save teams (WIPES existing and re-creates all for this tournament)
-  // replace your current handleSaveTeams with this
-const handleSaveTeams = async () => {
-  if (!selectedTournament) return;           // ⬅️ allow zero teams
-  setSaving(true);
-  try {
-    const teamsColRef = collection(db, "tournaments", selectedTournament, "teams");
+  // IMPORTANT: publish should NOT lock editing; this just sets visibility flags in Firestore.
+  const handleSaveTeams = async () => {
+    if (!selectedTournament) return;
+    setSaving(true);
 
-    // Wipe existing teams in Firestore
-    const existing = await getDocs(teamsColRef);
-    for (const docu of existing.docs) await deleteDoc(docu.ref);
+    try {
+      const teamsColRef = collection(db, "tournaments", selectedTournament, "teams");
 
-    // Re-create teams (if any)
-    for (const team of teams) {
-      await addDoc(teamsColRef, {
-        name: team.name,
-        published: publishTeams, // keep per-team flag if you want it
-        players: team.players.map((p) => ({
-          signupId: p.signupId,
-          isCaptain: p.isCaptain,
-        })),
+      // Wipe existing teams in Firestore
+      const existing = await getDocs(teamsColRef);
+      for (const docu of existing.docs) await deleteDoc(docu.ref);
+
+      // Re-create teams (if any)
+      for (const team of teams) {
+        await addDoc(teamsColRef, {
+          name: team.name,
+          published: publishTeams, // keep per-team flag if you want it
+          players: team.players.map((p) => ({
+            signupId: p.signupId,
+            isCaptain: p.isCaptain, // ✅ DB stays the same
+          })),
+        });
+      }
+
+      // Tournament-level publish flag: only true if checkbox true AND there is at least 1 team
+      const publishFlag = publishTeams && teams.length > 0;
+      await updateDoc(doc(db, "tournaments", selectedTournament), {
+        teamsPublished: publishFlag,
       });
+
+      alert(teams.length === 0 ? "All teams cleared!" : "Teams saved to Firestore!");
+    } catch (err: any) {
+      alert("Error saving teams: " + (err?.message || err));
+    } finally {
+      setSaving(false);
     }
+  };
 
-    // If there are no teams, ensures the tournament-level flag is false
-    const publishFlag = teams.length > 0 && publishTeams;
-    await updateDoc(doc(db, "tournaments", selectedTournament), {
-      teamsPublished: publishFlag,
-    });
+  // Expanded display teams: join team player signupId with eligiblePlayers to get names
+  const expandedTeams = useMemo(
+    () =>
+      teams.map((team) => ({
+        id: team.id || "",
+        name: team.name,
+        players: team.players.map((member) => {
+          const found = eligiblePlayers.find((ep) => ep.id === member.signupId);
+          return {
+            signupId: member.signupId,
+            isCaptain: member.isCaptain,
+            firstName: found?.firstName || "Unknown",
+            lastName: found?.lastName || "",
+            playerId: found?.playerId || "",
+            availability: found?.availability,
+            startTime: found?.startTime,
+            endTime: found?.endTime,
+          };
+        }),
+      })),
+    [teams, eligiblePlayers]
+  );
 
-    if (teams.length === 0) {
-      // Optional: also reflect UI state
-      setPublishTeams(false);
-    }
-
-    alert(teams.length === 0 ? "All teams cleared!" : "Teams saved to Firestore!");
-  } catch (err: any) {
-    alert("Error saving teams: " + (err?.message || err));
-  } finally {
-    setSaving(false);
-  }
-};
-
-
-  // For display: join team player signupId with eligiblePlayers to get names
-  const expandedTeams = teams.map((team) => ({
-    id: team.id || "",
-    name: team.name,
-    players: team.players.map((member) => {
-      const found = eligiblePlayers.find((ep) => ep.id === member.signupId);
-      return {
-        signupId: member.signupId,
-        isCaptain: member.isCaptain,
-        firstName: found?.firstName || "Unknown",
-        lastName: found?.lastName || "",
-        playerId: found?.playerId || "",
-        availability: found?.availability,
-        startTime: found?.startTime,
-        endTime: found?.endTime,
-      };
-    }),
-  }));
+  // Count captains per team for UI labeling ("Captain" vs "Co-Captain")
+  const captainCountsByTeamIdx = useMemo(
+    () => teams.map((t) => t.players.filter((p) => p.isCaptain).length),
+    [teams]
+  );
 
   return (
     <div
@@ -328,24 +358,24 @@ const handleSaveTeams = async () => {
 
           {/* Tournament Selection */}
           <div className="mb-4 d-flex align-items-center gap-2 flex-wrap justify-content-center">
-          <select
-  className="form-select"
-  style={{ maxWidth: 370, minWidth: 200, borderRadius: 13, fontWeight: 600 }}
-  value={selectedTournament}
-  onChange={(e) => {
-    const id = e.target.value;
-    setSelectedTournament(id);
-    const t = tournaments.find((tt) => tt.id === id);
-    setPublishTeams(!!(t as any)?.teamsPublished);
-  }}
->
-  <option value="">Select Tournament...</option>
-  {tournaments.map((t) => (
-    <option value={t.id} key={t.id}>
-      {t.eventName} {t.date ? `(${t.date})` : ""}
-    </option>
-  ))}
-</select>
+            <select
+              className="form-select"
+              style={{ maxWidth: 370, minWidth: 200, borderRadius: 13, fontWeight: 600 }}
+              value={selectedTournament}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSelectedTournament(id);
+                const t = tournaments.find((tt) => tt.id === id);
+                setPublishTeams(!!(t as any)?.teamsPublished);
+              }}
+            >
+              <option value="">Select Tournament...</option>
+              {tournaments.map((t) => (
+                <option value={t.id} key={t.id}>
+                  {t.eventName} {t.date ? `(${t.date})` : ""}
+                </option>
+              ))}
+            </select>
 
             <button
               className="btn btn-success"
@@ -380,14 +410,13 @@ const handleSaveTeams = async () => {
             </div>
 
             <button
-  className="btn btn-primary ms-auto"
-  style={{ borderRadius: 13, fontWeight: 700, background: "#2155CD", border: "none" }}
-  onClick={handleSaveTeams}
-  disabled={!selectedTournament || saving}   // ⬅️ removed "teams.length === 0"
->
-  {saving ? "Saving..." : (<><i className="bi bi-save2"></i> Save Teams</>)}
-</button>
-
+              className="btn btn-primary ms-auto"
+              style={{ borderRadius: 13, fontWeight: 700, background: "#2155CD", border: "none" }}
+              onClick={handleSaveTeams}
+              disabled={!selectedTournament || saving}
+            >
+              {saving ? "Saving..." : <><i className="bi bi-save2"></i> Save Teams</>}
+            </button>
           </div>
 
           {loading && <div className="text-center mt-4 mb-4">Loading eligible players & teams...</div>}
@@ -396,139 +425,160 @@ const handleSaveTeams = async () => {
           <div className="row g-4 justify-content-center">
             {!loading &&
               selectedTournament &&
-              expandedTeams.map((team, tIdx) => (
-                <div className="col-md-6 col-lg-4" key={team.name}>
-                  <div
-                    className="card shadow"
-                    style={{
-                      borderRadius: 18,
-                      border: "none",
-                      background: "#fff",
-                      boxShadow: "0 4px 26px #df2e380f",
-                    }}
-                  >
+              expandedTeams.map((team, tIdx) => {
+                const captainCount = captainCountsByTeamIdx[tIdx] || 0;
+
+                return (
+                  <div className="col-md-6 col-lg-4" key={team.name}>
                     <div
-                      className="card-header d-flex justify-content-between align-items-center bg-white"
-                      style={{ borderTopLeftRadius: 18, borderTopRightRadius: 18, border: "none" }}
+                      className="card shadow"
+                      style={{
+                        borderRadius: 18,
+                        border: "none",
+                        background: "#fff",
+                        boxShadow: "0 4px 26px #df2e380f",
+                      }}
                     >
-                      <span style={{ fontWeight: 700, fontSize: 19, color: "#2155CD", letterSpacing: 0.5 }}>
-                        <i className="bi bi-people-fill me-2"></i>
-                        {team.name}
-                      </span>
-                      <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-outline-secondary btn-sm px-2"
-                          style={{ borderRadius: 13, fontWeight: 600 }}
-                          onClick={() => setCaptainsModalIdx(tIdx)}
-                          disabled={team.players.length === 0}
-                          title="Manage captains"
+                      <div
+                        className="card-header d-flex justify-content-between align-items-center bg-white"
+                        style={{
+                          borderTopLeftRadius: 18,
+                          borderTopRightRadius: 18,
+                          border: "none",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 19,
+                            color: "#2155CD",
+                            letterSpacing: 0.5,
+                          }}
                         >
-                          Manage Captains
-                        </button>
-                        <button
-                          className="btn btn-outline-success btn-sm px-2"
-                          style={{ borderRadius: 13, fontWeight: 600 }}
-                          onClick={() => setActiveAddTeamIdx(tIdx)}
-                          disabled={unassignedPlayers.length === 0}
-                        >
-                          <i className="bi bi-person-plus-fill"></i> Add
-                        </button>
-                      </div>
-                    </div>
+                          <i className="bi bi-people-fill me-2"></i>
+                          {team.name}
+                        </span>
 
-                    <ul className="list-group list-group-flush">
-                      {team.players.length === 0 && (
-                        <li className="list-group-item text-center text-secondary py-4">
-                          <em>No players yet!</em>
-                        </li>
-                      )}
-                      {team.players.map(({ signupId, isCaptain }) => {
-                        const full = eligiblePlayers.find((ep) => ep.id === signupId);
-                        return (
-                          <li
-                            key={signupId}
-                            className="list-group-item d-flex justify-content-between align-items-center"
-                            style={{
-                              background: isCaptain ? "#fef3f4" : "#fafbfc",
-                              border: "none",
-                              borderRadius: 13,
-                              marginBottom: 4,
-                              position: "relative", // ensure local stacking
-                            }}
+                        <div className="d-flex gap-2">
+                          <button
+                            className="btn btn-outline-secondary btn-sm px-2"
+                            style={{ borderRadius: 13, fontWeight: 600 }}
+                            onClick={() => setCaptainsModalIdx(tIdx)}
+                            disabled={team.players.length === 0}
+                            title="Manage captains"
                           >
-                            <div
-                              className="d-flex align-items-center"
-                              // click-shield so list/card parents never eat child clicks
-                              onClick={(e) => e.stopPropagation()}
+                            Manage Captains
+                          </button>
+
+                          <button
+                            className="btn btn-outline-success btn-sm px-2"
+                            style={{ borderRadius: 13, fontWeight: 600 }}
+                            onClick={() => setActiveAddTeamIdx(tIdx)}
+                            disabled={unassignedPlayers.length === 0}
+                          >
+                            <i className="bi bi-person-plus-fill"></i> Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <ul className="list-group list-group-flush">
+                        {team.players.length === 0 && (
+                          <li className="list-group-item text-center text-secondary py-4">
+                            <em>No players yet!</em>
+                          </li>
+                        )}
+
+                        {team.players.map(({ signupId, isCaptain }) => {
+                          const full = eligiblePlayers.find((ep) => ep.id === signupId);
+
+                          return (
+                            <li
+                              key={signupId}
+                              className="list-group-item d-flex justify-content-between align-items-center"
+                              style={{
+                                background: isCaptain ? "#fef3f4" : "#fafbfc",
+                                border: "none",
+                                borderRadius: 13,
+                                marginBottom: 4,
+                                position: "relative",
+                              }}
                             >
-                              {/* Left red X (remove) */}
-                              <button
-                                type="button"
-                                className="btn btn-link p-0 me-2"
-                                onClick={() => handleRemovePlayer(tIdx, signupId)}
-                                title="Remove player"
-                                aria-label="Remove player"
-                                style={{
-                                  color: "#DF2E38",
-                                  textDecoration: "none",
-                                  lineHeight: 0,
-                                  pointerEvents: "auto",
-                                  zIndex: 10,
-                                }}
+                              <div
+                                className="d-flex align-items-center"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <XIcon />
-                              </button>
-
-                              {/* Name + badges */}
-                              <span
-                                className="fw-bold"
-                                style={{ color: "#232323", fontWeight: 700, fontSize: 16 }}
-                              >
-                                {full ? `${full.firstName} ${full.lastName}` : "Unknown"}
-                              </span>
-
-                              {isCaptain && (
-                                <span
-                                  className="badge ms-2"
+                                {/* Left red X (remove) */}
+                                <button
+                                  type="button"
+                                  className="btn btn-link p-0 me-2"
+                                  onClick={() => handleRemovePlayer(tIdx, signupId)}
+                                  title="Remove player"
+                                  aria-label="Remove player"
                                   style={{
-                                    borderRadius: "14px",
-                                    background: "#fff0f0",
                                     color: "#DF2E38",
-                                    fontWeight: 700,
-                                    fontSize: "0.97em",
-                                    display: "flex",
-                                    alignItems: "center",
+                                    textDecoration: "none",
+                                    lineHeight: 0,
+                                    pointerEvents: "auto",
+                                    zIndex: 10,
                                   }}
                                 >
-                                  <Crown />
-                                  <span className="ms-1">Captain</span>
-                                </span>
-                              )}
+                                  <XIcon />
+                                </button>
 
-                              <span
-                                style={{
-                                  fontSize: 13,
-                                  marginLeft: 10,
-                                  color: "#456",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                {full?.availability === "early" &&
-                                  ` (Leaving Early${full.endTime ? `: ${full.endTime}` : ""})`}
-                                {full?.availability === "late" &&
-                                  ` (Arriving Late${full.startTime ? `: ${full.startTime}` : ""})`}
-                                {full?.availability === "late_early" &&
-                                  ` (Late & Early: ${full.startTime || "?"} - ${full.endTime || "?"})`}
-                              </span>
-                            </div>
-                            {/* (Right-side remove button was redundant; left red X handles removal) */}
-                          </li>
-                        );
-                      })}
-                    </ul>
+                                {/* Name + badges */}
+                                <span
+                                  className="fw-bold"
+                                  style={{ color: "#232323", fontWeight: 700, fontSize: 16 }}
+                                >
+                                  {full ? `${full.firstName} ${full.lastName}` : "Unknown"}
+                                </span>
+
+                                {/* ✅ UI label becomes Co-Captain if multiple captains in same team.
+                                    ✅ DB stays isCaptain: true/false (no change). */}
+                                {isCaptain && (
+                                  <span
+                                    className="badge ms-2"
+                                    style={{
+                                      borderRadius: "14px",
+                                      background: "#fff0f0",
+                                      color: "#DF2E38",
+                                      fontWeight: 700,
+                                      fontSize: "0.97em",
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Crown />
+                                    <span className="ms-1">
+                                      {captainCount > 1 ? "Co-Captain" : "Captain"}
+                                    </span>
+                                  </span>
+                                )}
+
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    marginLeft: 10,
+                                    color: "#456",
+                                    fontStyle: "italic",
+                                  }}
+                                >
+                                  {full?.availability === "early" &&
+                                    ` (Leaving Early${full.endTime ? `: ${full.endTime}` : ""})`}
+                                  {full?.availability === "late" &&
+                                    ` (Arriving Late${full.startTime ? `: ${full.startTime}` : ""})`}
+                                  {full?.availability === "late_early" &&
+                                    ` (Late & Early: ${full.startTime || "?"} - ${full.endTime || "?"})`}
+                                </span>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
 
           {/* --- ADD PLAYER MODAL --- */}
@@ -564,7 +614,11 @@ const handleSaveTeams = async () => {
                       aria-label="Close"
                     ></button>
                   </div>
-                  <div className="modal-body" style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}>
+
+                  <div
+                    className="modal-body"
+                    style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}
+                  >
                     {unassignedPlayers.length === 0 ? (
                       <div className="text-secondary">No unassigned players.</div>
                     ) : (
@@ -573,7 +627,12 @@ const handleSaveTeams = async () => {
                           <li
                             className="list-group-item d-flex justify-content-between align-items-center"
                             key={user.playerId}
-                            style={{ background: "#fff", border: "none", borderRadius: 12, marginBottom: 4 }}
+                            style={{
+                              background: "#fff",
+                              border: "none",
+                              borderRadius: 12,
+                              marginBottom: 4,
+                            }}
                           >
                             <span>
                               <i className="bi bi-person me-2" style={{ color: "#2155CD" }}></i>
@@ -588,6 +647,7 @@ const handleSaveTeams = async () => {
                                   `Late & Early (${user.startTime || "?"} - ${user.endTime || "?"})`}
                               </span>
                             </span>
+
                             <button
                               className="btn btn-success btn-sm"
                               style={{ borderRadius: 14, fontWeight: 600 }}
@@ -638,45 +698,65 @@ const handleSaveTeams = async () => {
                       aria-label="Close"
                     ></button>
                   </div>
-                  <div className="modal-body" style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}>
+
+                  <div
+                    className="modal-body"
+                    style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}
+                  >
                     <ul className="list-group">
                       {expandedTeams[captainsModalIdx].players.length === 0 && (
                         <li className="list-group-item text-secondary" style={{ border: "none" }}>
                           No players in this team.
                         </li>
                       )}
-                      {expandedTeams[captainsModalIdx].players.map((member) => (
-                        <li
-                          key={member.signupId}
-                          className="list-group-item d-flex align-items-center justify-content-between"
-                          style={{ border: "none", background: "#fff", borderRadius: 12, marginBottom: 6 }}
-                        >
-                          <span style={{ fontWeight: 600 }}>
-                            {member.firstName} {member.lastName}
-                          </span>
-                          <div className="form-check form-switch m-0">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              role="switch"
-                              id={`capt-${member.signupId}`}
-                              checked={member.isCaptain}
-                              onChange={(e) =>
-                                setCaptainChecked(captainsModalIdx, member.signupId, e.target.checked)
-                              }
-                            />
-                            <label
-                              className="form-check-label ms-2"
-                              htmlFor={`capt-${member.signupId}`}
-                              style={{ fontWeight: 600 }}
-                            >
-                              {member.isCaptain ? "Captain" : "Not Captain"}
-                            </label>
-                          </div>
-                        </li>
-                      ))}
+
+                      {expandedTeams[captainsModalIdx].players.map((member) => {
+                        const modalCaptainCount = captainCountsByTeamIdx[captainsModalIdx] || 0;
+
+                        return (
+                          <li
+                            key={member.signupId}
+                            className="list-group-item d-flex align-items-center justify-content-between"
+                            style={{
+                              border: "none",
+                              background: "#fff",
+                              borderRadius: 12,
+                              marginBottom: 6,
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>
+                              {member.firstName} {member.lastName}
+                            </span>
+
+                            <div className="form-check form-switch m-0">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                id={`capt-${member.signupId}`}
+                                checked={member.isCaptain}
+                                onChange={(e) =>
+                                  setCaptainChecked(captainsModalIdx, member.signupId, e.target.checked)
+                                }
+                              />
+                              <label
+                                className="form-check-label ms-2"
+                                htmlFor={`capt-${member.signupId}`}
+                                style={{ fontWeight: 600 }}
+                              >
+                                {member.isCaptain
+                                  ? modalCaptainCount > 1
+                                    ? "Co-Captain"
+                                    : "Captain"
+                                  : "Not Captain"}
+                              </label>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
+
                   <div className="modal-footer">
                     <button
                       className="btn btn-primary"
@@ -692,56 +772,53 @@ const handleSaveTeams = async () => {
           )}
 
           {/* Unassigned players */}
-          {/* Unassigned players */}
-{!loading &&
-  selectedTournament &&
-  teams.length > 0 &&
-  unassignedPlayers.length > 0 && (
-    <div className="mt-4">
-      <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
-      <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
-        {unassignedPlayers.map((p) => (
-          <li
-            key={p.playerId}
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              padding: "8px 12px",
-              marginBottom: 6,
-              boxShadow: "0 1px 6px #0000000d",
-              display: "flex",
-              alignItems: "center",
-              gap: 8
-            }}
-          >
-            <i className="bi bi-person" style={{ color: "#2155CD" }} />
-            <span style={{ fontWeight: 700 }}>{p.firstName} {p.lastName}</span>
+          {!loading && selectedTournament && teams.length > 0 && unassignedPlayers.length > 0 && (
+            <div className="mt-4">
+              <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
+              <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
+                {unassignedPlayers.map((p) => (
+                  <li
+                    key={p.playerId}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      padding: "8px 12px",
+                      marginBottom: 6,
+                      boxShadow: "0 1px 6px #0000000d",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <i className="bi bi-person" style={{ color: "#2155CD" }} />
+                    <span style={{ fontWeight: 700 }}>
+                      {p.firstName} {p.lastName}
+                    </span>
 
-            {/* status chips */}
-            <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
-              {chipsForSignup(p).map((c, i) => (
-                <span
-                  key={i}
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    background: c.bg,
-                    color: c.color,
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  {c.text}
-                </span>
-              ))}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-)}
-
+                    {/* status chips */}
+                    <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
+                      {chipsForSignup(p).map((c, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: c.bg,
+                            color: c.color,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {c.text}
+                        </span>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
