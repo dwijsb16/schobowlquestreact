@@ -1206,7 +1206,11 @@ if (tournament && isPastRsvp(tournament)) {
             })
             .filter(Boolean);
 
-          const captain = teamPlayers.find((tp) => tp?.isCaptain);
+            const captains = teamPlayers.filter((tp: any) => tp?.isCaptain);
+            const captainCount = captains.length;
+            const captainLabel = captainCount > 1 ? "Co-Captains" : "Captain";
+            const badgeLabel = captainCount > 1 ? "Co-Captain" : "Captain";
+            
 
           return (
             <div className="col-md-4 mb-3" key={team.id}>
@@ -1223,13 +1227,16 @@ if (tournament && isPastRsvp(tournament)) {
                     {team.name}
                   </h5>
                   <div style={{ fontSize: 16 }}>
-                    <b>Captain:</b>{" "}
-                    {captain ? (
-                      <span style={{ color: "#B71C1C" }}>{captain.fullName}</span>
-                    ) : (
-                      <span className="text-muted">None</span>
-                    )}
-                  </div>
+  <b>{captainLabel}:</b>{" "}
+  {captainCount > 0 ? (
+    <span style={{ color: "#B71C1C" }}>
+      {captains.map((c: any) => c.fullName).join(", ")}
+    </span>
+  ) : (
+    <span className="text-muted">None</span>
+  )}
+</div>
+
                   <div className="mt-2">
                     <b>Players:</b>
                     <ul style={{ marginBottom: 0 }}>
@@ -1254,7 +1261,7 @@ if (tournament && isPastRsvp(tournament)) {
                                 fontWeight: 700,
                               }}
                             >
-                              Captain
+                              {badgeLabel}
                             </span>
                           )}
                         </li>
