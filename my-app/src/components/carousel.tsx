@@ -24,7 +24,7 @@ const Carousel: React.FC = () => {
           </div>
           <div className="carousel-item">
             <img
-              src="/images/IESA_State_26.jpg"
+              src="/images/state26.jpg"
               className="d-block w-100"
               alt="Second slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
