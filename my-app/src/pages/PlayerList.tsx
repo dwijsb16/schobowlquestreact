@@ -704,15 +704,21 @@ const AdminUserList: React.FC = () => {
               </div>
 
               <div className="col-md-3">
-                <label className="form-label small text-muted mb-1">
-                  Grade
-                </label>
-                <input
-                  className="form-control form-control-sm"
-                  value={editForm.grade}
-                  onChange={(e) => updateEditField("grade", e.target.value)}
-                />
-              </div>
+  <label className="form-label small text-muted mb-1">
+    Grade
+  </label>
+  <select
+    className="form-select form-select-sm"
+    value={editForm.grade}
+    onChange={(e) => updateEditField("grade", e.target.value)}
+  >
+    <option value="">Select grade</option>
+    <option value="5th">5th</option>
+    <option value="6th">6th</option>
+    <option value="7th">7th</option>
+    <option value="8th">8th</option>
+  </select>
+</div>
 
               <div className="col-md-3">
                 <label className="form-label small text-muted mb-1">
