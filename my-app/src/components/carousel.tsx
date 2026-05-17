@@ -12,7 +12,7 @@ const Carousel: React.FC = () => {
         <div className="carousel-inner">
           <div className="carousel-item active">
             <img
-              src="/images/full_team_26.jpg"
+              src="/images/full_team_26.JPG"
               className="d-block w-100"
               alt="First slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
