@@ -12,41 +12,41 @@ const Carousel: React.FC = () => {
         <div className="carousel-inner">
           <div className="carousel-item active">
             <img
-              src="/images/IMG_8142.png"
+              src="/images/full_team_26.jpg"
               className="d-block w-100"
               alt="First slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>MSNCT 21st Place</h5>
-              <p>2025</p>
+              <h5>Full Team</h5>
+              <p>2026</p>
             </div>
           </div>
           <div className="carousel-item">
             <img
-              src="/images/IMG_8533.png"
+              src="/images/IESA_State_26.jpg"
               className="d-block w-100"
               alt="Second slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
               <h5>IESA Class 1A State Champions</h5>
-              <p>2025</p>
+              <p>2026</p>
             </div>
           </div>
           <div className="carousel-item">
             <img
-              src="/images/imageweuse1.png"
+              src="/images/MSNCT_26.jpg"
               className="d-block w-100"
               alt="Third slide"
               style={{ maxHeight: "500px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block">
-              <h5>NAC Middle School National Champions</h5>
-              <p>2025</p>
+              <h5>MSNCT 13th Place</h5>
+              <p>2026</p>
             </div>
           </div>
-          <div className="carousel-item">
+          {/* <div className="carousel-item">
             <img
               src="/images/IMG_8134.jpeg"
               className="d-block w-100"
@@ -57,7 +57,7 @@ const Carousel: React.FC = () => {
               <h5>MSNCT 21st Place</h5>
               <p>2025</p>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Controls */}
