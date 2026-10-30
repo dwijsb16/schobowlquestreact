@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   getCollection,
   getDocumentById,
@@ -10,6 +10,7 @@ import "react-time-picker/dist/TimePicker.css";
 import "react-clock/dist/Clock.css";
 // @ts-ignore
 import { gapi } from "gapi-script";
+import { seasonForDate, compareSeasonsDesc } from "../utils/season";
 
 const CLIENT_ID = "430877906839-qfj30rff9auh5u9oaqcrasfbo75m1v1r.apps.googleusercontent.com";
 const API_KEY = "AIzaSyCJSOHaAE_EyMED5WgTQ88bZqnGSGFNOdQ";
@@ -19,6 +20,22 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 const EditTournamentForm: React.FC = () => {
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [selectedTournId, setSelectedTournId] = useState("");
+
+  // Events grouped by season (newest season first), sorted by date within each season
+  const tournamentsBySeason = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    tournaments.forEach((t: any) => {
+      const season = seasonForDate(t.date);
+      if (!groups.has(season)) groups.set(season, []);
+      groups.get(season)!.push(t);
+    });
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => compareSeasonsDesc(a, b))
+      .map(([season, items]) => ({
+        season,
+        items: items.sort((a, b) => (a.date || "").localeCompare(b.date || "")),
+      }));
+  }, [tournaments]);
   const [formData, setFormData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success"; message: string } | null>(null);
@@ -291,10 +308,14 @@ const EditTournamentForm: React.FC = () => {
                 }}
               >
                 <option value="">-- Choose an event --</option>
-                {tournaments.map((t: any) => (
-                  <option key={t.id} value={t.id}>
-                    {t.eventName} ({t.date})
-                  </option>
+                {tournamentsBySeason.map(({ season, items }) => (
+                  <optgroup key={season} label={season === "No Date" ? "No Date" : `${season} Season`}>
+                    {items.map((t: any) => (
+                      <option key={t.id} value={t.id}>
+                        {t.eventName} ({t.date})
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>

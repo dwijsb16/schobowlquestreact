@@ -149,6 +149,7 @@ type TeamDoc = {
 
 type SignupDoc = Signup & {
   id: string;
+  isCoachSignup?: boolean;
 };
 
 type PlayerMap = Record<string, Player>;
@@ -183,6 +184,18 @@ const TournamentPage: React.FC= () => {
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [signups, setSignups] = useState<SignupDoc[]>([]);
   const [playerMap, setPlayerMap] = useState<PlayerMap>({});
+  const [coachMap, setCoachMap] = useState<Record<string, any>>({});
+
+  // Display name for a signup: coaches come from users/{uid}, players from players/{id}
+  const signupDisplayName = (s: SignupDoc): string => {
+    if (s.isCoachSignup) {
+      const u = coachMap[s.userId || s.playerId];
+      const full = u ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() : "";
+      return `${full || u?.displayName || u?.email || "Coach"} (Coach)`;
+    }
+    const p = playerMap[s.playerId];
+    return p ? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() || "Unknown" : "Unknown";
+  };
   const [existingSignupDocId, setExistingSignupDocId] = useState<string | null>(null);
   const [fetchingSignup, setFetchingSignup] = useState(false);
   const [signupMode, setSignupMode] = useState<"player" | "coach">("player");
@@ -196,7 +209,7 @@ useEffect(() => {
     const coachSnap = await getDocs(collection(db, "coach_signups", tournamentId, "entries"));
 
     const playerEntries = playerSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as SignupDoc));
-    const coachEntries = coachSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as SignupDoc));
+    const coachEntries = coachSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, isCoachSignup: true } as SignupDoc));
 
     // Optional: prevent duplicates based on userId/playerId
     const seen = new Set();
@@ -393,20 +406,26 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
     fetchTournament();
   }, [tournamentId]);
 
-  // All signups (for teams, drivers, etc)
+  // Coach info lookup (coach signups reference users/{uid}, not players/{id})
   useEffect(() => {
-    if (!tournamentId) return;
-    const fetchSignups = async () => {
-      const entriesRef = collection(db, "signups", tournamentId, "entries");
-      const snap = await getDocs(entriesRef);
-      const all: SignupDoc[] = [];
-      for (const docu of snap.docs) {
-        all.push({ ...(docu.data() as Signup), id: docu.id });
-      }
-      setSignups(all);
-    };
-    fetchSignups();
-  }, [tournamentId]);
+    const coachIds = Array.from(
+      new Set(
+        signups
+          .filter((s) => s.isCoachSignup)
+          .map((s) => s.userId || s.playerId)
+          .filter(Boolean)
+      )
+    );
+    if (coachIds.length === 0) return;
+    (async () => {
+      const userDocs = await Promise.all(coachIds.map((uid) => getDoc(doc(db, "users", uid))));
+      const map: Record<string, any> = {};
+      userDocs.forEach((usnap) => {
+        if (usnap.exists()) map[usnap.id] = usnap.data();
+      });
+      setCoachMap(map);
+    })();
+  }, [signups]);
 
   // All teams for this tournament
   useEffect(() => {
@@ -502,6 +521,16 @@ console.log("🧠 playerMap:", playerMap); // should show ID → Player object m
   }, [selectedPlayer, signupMode, tournamentId]);
 
 
+    // Name shown in signup notification emails: the coach's own name for coach signups
+    const signupNameForEmail = (): string => {
+      if (signupMode === "coach") {
+        const full = `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim();
+        return `${full || currentUser?.displayName || currentUser?.email || "Coach"} (Coach)`;
+      }
+      const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
+      return playerObj ? `${playerObj.firstName} ${playerObj.lastName}` : "Unknown Player";
+    };
+
     const handleSubmit = async () => {
       if (!currentUser || !tournamentId || (signupMode === "player" && !selectedPlayer)) return;
     
@@ -538,8 +567,9 @@ if (isAttending) {
       availability,
       carpool,
       parentAttending,
-      canModerate: parentAttending ? canModerate : false,
-      canScorekeep: parentAttending ? canScorekeep : false,
+      // coaches volunteer themselves; player signups only volunteer through an attending parent
+      canModerate: signupMode === "coach" || parentAttending ? canModerate : false,
+      canScorekeep: signupMode === "coach" || parentAttending ? canScorekeep : false,
       additionalInfo,
       timestamp: serverTimestamp(),
       ...(showStartTime && startTime ? { startTime } : {}),
@@ -602,10 +632,9 @@ if (isAttending) {
 if (tournament && isPastRsvp(tournament)) {
   const coachEmailsArr = await getAllCoachEmails();
   const coachEmails = coachEmailsArr.join(",");
-  const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
 
   await sendSignupNotification({
-    playerName: playerObj ? `${playerObj.firstName} ${playerObj.lastName}` : "N/A",
+    playerName: signupNameForEmail(),
     tournamentName: tournament?.eventName || "N/A",
     editorEmail: currentUser.email || "",
     timestamp: new Date().toLocaleString(),
@@ -637,10 +666,9 @@ if (tournament && isPastRsvp(tournament)) {
 if (tournament && isPastRsvp(tournament)) {
   const coachEmailsArr = await getAllCoachEmails();
   const coachEmails = coachEmailsArr.join(",");
-  const playerObj = linkedPlayers.find((p) => p.uid === selectedPlayer);
 
   await sendSignupNotification({
-    playerName: playerObj ? `${playerObj.firstName} ${playerObj.lastName}` : "N/A",
+    playerName: signupNameForEmail(),
     tournamentName: tournament?.eventName || "N/A",
     editorEmail: currentUser.email || "",
     timestamp: new Date().toLocaleString(),
@@ -1191,20 +1219,21 @@ if (tournament && isPastRsvp(tournament)) {
         )}
         {teams.map((team) => {
           // Map players
-          const teamPlayers = team.players
+          const teamMembers = team.players
             .map((tp) => {
               const signup = signups.find((s) => s.id === tp.signupId);
               if (!signup) return null;
-              const player = playerMap[signup.playerId];
               return {
                 ...tp,
                 ...signup,
-                fullName: player
-                  ? `${player.firstName} ${player.lastName}`
-                  : "Unknown",
+                fullName: signupDisplayName(signup),
               };
             })
             .filter(Boolean);
+
+          // coaches are listed on their own line at the top, separate from players
+          const teamCoaches = teamMembers.filter((tp: any) => tp?.isCoachSignup);
+          const teamPlayers = teamMembers.filter((tp: any) => !tp?.isCoachSignup);
 
             const captains = teamPlayers.filter((tp: any) => tp?.isCaptain);
             const captainCount = captains.length;
@@ -1226,6 +1255,14 @@ if (tournament && isPastRsvp(tournament)) {
                   <h5 className="card-title" style={{ color: "#DF2E38", fontWeight: 700 }}>
                     {team.name}
                   </h5>
+                  {teamCoaches.length > 0 && (
+                    <div style={{ fontSize: 16, marginBottom: 4 }}>
+                      <b>{teamCoaches.length > 1 ? "Coaches" : "Coach"}:</b>{" "}
+                      <span style={{ color: "#1e3a8a", fontWeight: 600 }}>
+                        {teamCoaches.map((c: any) => c.fullName.replace(/ \(Coach\)$/, "")).join(", ")}
+                      </span>
+                    </div>
+                  )}
                   <div style={{ fontSize: 16 }}>
   <b>{captainLabel}:</b>{" "}
   {captainCount > 0 ? (
@@ -1303,19 +1340,15 @@ if (tournament && isPastRsvp(tournament)) {
     }
 
     return drivers.map((s, idx) => {
-      const isCoach = s.playerId === currentUser?.uid;
-
-      // display name (keep your existing preference order)
+      // display name: parent name for player signups, otherwise the resolved player/coach name
       let name =
-        s.parentName?.trim()
+        !s.isCoachSignup && s.parentName?.trim()
           ? s.parentName.trim()
-          : isCoach
-          ? (currentUser?.displayName || "Coach")
-          : "Unknown";
+          : signupDisplayName(s);
 
-      // suburb strictly from playerMap (playerId may be the coach uid if coach)
-      const suburb = (playerMap[s.playerId]?.suburb ?? "").toString().trim();
-      console.log("suburb: " + suburb);
+      const suburb = ((s.isCoachSignup
+        ? coachMap[s.userId || s.playerId]?.suburb
+        : playerMap[s.playerId]?.suburb) ?? "").toString().trim();
       if (suburb) name += ` (${suburb})`;
 
       const seats = Number.isFinite(Number(s.driveCapacity)) ? Number(s.driveCapacity) : 0;
@@ -1353,11 +1386,11 @@ if (tournament && isPastRsvp(tournament)) {
     }
 
     return riders.map((s, idx) => {
-      const p = playerMap[s.playerId];
-      let name = p ? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() : "Unknown";
+      let name = signupDisplayName(s);
 
-      const suburb = (p?.suburb ?? "").toString().trim();
-      console.log("suburb: " + s.playerId);
+      const suburb = ((s.isCoachSignup
+        ? coachMap[s.userId || s.playerId]?.suburb
+        : playerMap[s.playerId]?.suburb) ?? "").toString().trim();
       if (suburb) name += ` (${suburb})`;
 
       return (

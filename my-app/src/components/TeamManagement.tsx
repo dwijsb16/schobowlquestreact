@@ -49,6 +49,7 @@ type Signup = {
   availability: string;
   startTime?: string;
   endTime?: string;
+  isCoach?: boolean;
 };
 
 type Team = {
@@ -57,6 +58,7 @@ type Team = {
   players: {
     signupId: string;
     isCaptain: boolean; // stays the same in DB even if we display "Co-Captain"
+    isCoach?: boolean; // true when the member came from coach_signups
   }[];
 };
 
@@ -68,6 +70,7 @@ const TeamManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeAddTeamIdx, setActiveAddTeamIdx] = useState<number | null>(null);
+  const [addTab, setAddTab] = useState<"player" | "coach">("player");
   const [publishTeams, setPublishTeams] = useState(false);
 
   // captains management modal (index of team or null)
@@ -161,7 +164,31 @@ const TeamManagement: React.FC = () => {
       }
 
       signups.sort((a, b) => a.lastName.localeCompare(b.lastName));
-      setEligiblePlayers(signups);
+
+      // Eligible coaches (coach_signups reference users/{uid})
+      const coachSnap = await getDocs(collection(db, "coach_signups", selectedTournament, "entries"));
+      const coaches: Signup[] = [];
+      for (const docSnap of coachSnap.docs) {
+        const data = docSnap.data();
+        const uid = data.userId || data.playerId;
+        if (data.availability !== "no" && uid) {
+          const userDoc = await getDoc(doc(db, "users", uid));
+          const userData: any = userDoc.exists() ? userDoc.data() : {};
+          coaches.push({
+            id: docSnap.id,
+            playerId: uid,
+            firstName: userData.firstName || userData.displayName || "Coach",
+            lastName: userData.lastName || "",
+            availability: data.availability,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            isCoach: true,
+          });
+        }
+      }
+      coaches.sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+      setEligiblePlayers([...coaches, ...signups]);
 
       // Teams from subcollection
       const teamsCol = collection(db, "tournaments", selectedTournament, "teams");
@@ -238,7 +265,13 @@ const TeamManagement: React.FC = () => {
     setTeams((prev) =>
       prev.map((team, idx) =>
         idx === teamIdx
-          ? { ...team, players: [...team.players, { signupId: player.id, isCaptain: false }] }
+          ? {
+              ...team,
+              players: [
+                ...team.players,
+                { signupId: player.id, isCaptain: false, ...(player.isCoach ? { isCoach: true } : {}) },
+              ],
+            }
           : team
       )
     );
@@ -254,14 +287,19 @@ const TeamManagement: React.FC = () => {
     });
   };
 
-  // List of players not yet assigned to any team
-  const unassignedPlayers = useMemo(
+  // Signups not yet assigned to any team, split into separate player and coach pools
+  const unassigned = useMemo(
     () =>
       eligiblePlayers.filter(
         (ep) => !teams.some((team) => team.players.some((tp) => tp.signupId === ep.id))
       ),
     [eligiblePlayers, teams]
   );
+  const unassignedPlayers = useMemo(() => unassigned.filter((u) => !u.isCoach), [unassigned]);
+  const unassignedCoaches = useMemo(() => unassigned.filter((u) => u.isCoach), [unassigned]);
+
+  const isCoachSignup = (signupId: string) =>
+    !!eligiblePlayers.find((ep) => ep.id === signupId)?.isCoach;
 
   // Save teams (WIPES existing and re-creates all for this tournament)
   // IMPORTANT: publish should NOT lock editing; this just sets visibility flags in Firestore.
@@ -284,6 +322,7 @@ const TeamManagement: React.FC = () => {
           players: team.players.map((p) => ({
             signupId: p.signupId,
             isCaptain: p.isCaptain, // ✅ DB stays the same
+            ...(isCoachSignup(p.signupId) ? { isCoach: true } : {}),
           })),
         });
       }
@@ -316,6 +355,7 @@ const TeamManagement: React.FC = () => {
             firstName: found?.firstName || "Unknown",
             lastName: found?.lastName || "",
             playerId: found?.playerId || "",
+            isCoach: !!found?.isCoach,
             availability: found?.availability,
             startTime: found?.startTime,
             endTime: found?.endTime,
@@ -473,8 +513,11 @@ const TeamManagement: React.FC = () => {
                           <button
                             className="btn btn-outline-success btn-sm px-2"
                             style={{ borderRadius: 13, fontWeight: 600 }}
-                            onClick={() => setActiveAddTeamIdx(tIdx)}
-                            disabled={unassignedPlayers.length === 0}
+                            onClick={() => {
+                              setAddTab(unassignedPlayers.length > 0 ? "player" : "coach");
+                              setActiveAddTeamIdx(tIdx);
+                            }}
+                            disabled={unassigned.length === 0}
                           >
                             <i className="bi bi-person-plus-fill"></i> Add
                           </button>
@@ -484,11 +527,13 @@ const TeamManagement: React.FC = () => {
                       <ul className="list-group list-group-flush">
                         {team.players.length === 0 && (
                           <li className="list-group-item text-center text-secondary py-4">
-                            <em>No players yet!</em>
+                            <em>No players or coaches yet!</em>
                           </li>
                         )}
 
-                        {team.players.map(({ signupId, isCaptain }) => {
+                        {[...team.players]
+                          .sort((a, b) => Number(isCoachSignup(b.signupId)) - Number(isCoachSignup(a.signupId)))
+                          .map(({ signupId, isCaptain }) => {
                           const full = eligiblePlayers.find((ep) => ep.id === signupId);
 
                           return (
@@ -496,7 +541,7 @@ const TeamManagement: React.FC = () => {
                               key={signupId}
                               className="list-group-item d-flex justify-content-between align-items-center"
                               style={{
-                                background: isCaptain ? "#fef3f4" : "#fafbfc",
+                                background: full?.isCoach ? "#eef4ff" : isCaptain ? "#fef3f4" : "#fafbfc",
                                 border: "none",
                                 borderRadius: 13,
                                 marginBottom: 4,
@@ -512,8 +557,8 @@ const TeamManagement: React.FC = () => {
                                   type="button"
                                   className="btn btn-link p-0 me-2"
                                   onClick={() => handleRemovePlayer(tIdx, signupId)}
-                                  title="Remove player"
-                                  aria-label="Remove player"
+                                  title={full?.isCoach ? "Remove coach" : "Remove player"}
+                                  aria-label={full?.isCoach ? "Remove coach" : "Remove player"}
                                   style={{
                                     color: "#DF2E38",
                                     textDecoration: "none",
@@ -532,6 +577,11 @@ const TeamManagement: React.FC = () => {
                                 >
                                   {full ? `${full.firstName} ${full.lastName}` : "Unknown"}
                                 </span>
+                                {full?.isCoach && (
+                                  <span className="badge ms-2" style={{ background: "#2155CD", color: "#fff", borderRadius: 10, fontWeight: 600 }}>
+                                    Coach
+                                  </span>
+                                )}
 
                                 {/* ✅ UI label becomes Co-Captain if multiple captains in same team.
                                     ✅ DB stays isCaptain: true/false (no change). */}
@@ -605,7 +655,7 @@ const TeamManagement: React.FC = () => {
                     }}
                   >
                     <h5 className="modal-title text-white" style={{ fontWeight: 800 }}>
-                      Add Player to {expandedTeams[activeAddTeamIdx].name}
+                      Add to {expandedTeams[activeAddTeamIdx].name}
                     </h5>
                     <button
                       type="button"
@@ -619,11 +669,29 @@ const TeamManagement: React.FC = () => {
                     className="modal-body"
                     style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}
                   >
-                    {unassignedPlayers.length === 0 ? (
-                      <div className="text-secondary">No unassigned players.</div>
+                    {/* Player / Coach tabs */}
+                    <div className="btn-group w-100 mb-3" role="group" aria-label="Add a player or a coach">
+                      {(["player", "coach"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          className={`btn ${addTab === tab ? "btn-primary" : "btn-outline-primary"}`}
+                          style={{ fontWeight: 700 }}
+                          onClick={() => setAddTab(tab)}
+                        >
+                          {tab === "player" ? "Players" : "Coaches"} (
+                          {tab === "player" ? unassignedPlayers.length : unassignedCoaches.length})
+                        </button>
+                      ))}
+                    </div>
+
+                    {(addTab === "coach" ? unassignedCoaches : unassignedPlayers).length === 0 ? (
+                      <div className="text-secondary">
+                        {addTab === "coach" ? "No unassigned coaches." : "No unassigned players."}
+                      </div>
                     ) : (
                       <ul className="list-group">
-                        {unassignedPlayers.map((user) => (
+                        {(addTab === "coach" ? unassignedCoaches : unassignedPlayers).map((user) => (
                           <li
                             className="list-group-item d-flex justify-content-between align-items-center"
                             key={user.playerId}
@@ -637,6 +705,11 @@ const TeamManagement: React.FC = () => {
                             <span>
                               <i className="bi bi-person me-2" style={{ color: "#2155CD" }}></i>
                               {user.firstName} {user.lastName}{" "}
+                              {user.isCoach && (
+                                <span className="badge ms-1" style={{ background: "#2155CD", color: "#fff", fontWeight: 600 }}>
+                                  Coach
+                                </span>
+                              )}
                               <span className="badge bg-info ms-2" style={{ fontWeight: 600 }}>
                                 {user.availability === "yes" && "Attending"}
                                 {user.availability === "early" &&
@@ -704,13 +777,13 @@ const TeamManagement: React.FC = () => {
                     style={{ background: "#f8fbff", borderRadius: "0 0 18px 18px" }}
                   >
                     <ul className="list-group">
-                      {expandedTeams[captainsModalIdx].players.length === 0 && (
+                      {expandedTeams[captainsModalIdx].players.filter((m) => !m.isCoach).length === 0 && (
                         <li className="list-group-item text-secondary" style={{ border: "none" }}>
                           No players in this team.
                         </li>
                       )}
 
-                      {expandedTeams[captainsModalIdx].players.map((member) => {
+                      {expandedTeams[captainsModalIdx].players.filter((m) => !m.isCoach).map((member) => {
                         const modalCaptainCount = captainCountsByTeamIdx[captainsModalIdx] || 0;
 
                         return (
@@ -771,54 +844,63 @@ const TeamManagement: React.FC = () => {
             </div>
           )}
 
-          {/* Unassigned players */}
-          {!loading && selectedTournament && teams.length > 0 && unassignedPlayers.length > 0 && (
-            <div className="mt-4">
-              <h5 style={{ color: "#2155CD", fontWeight: 700 }}>Unassigned Players</h5>
-              <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
-                {unassignedPlayers.map((p) => (
-                  <li
-                    key={p.playerId}
-                    style={{
-                      background: "#fff",
-                      borderRadius: 12,
-                      padding: "8px 12px",
-                      marginBottom: 6,
-                      boxShadow: "0 1px 6px #0000000d",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <i className="bi bi-person" style={{ color: "#2155CD" }} />
-                    <span style={{ fontWeight: 700 }}>
-                      {p.firstName} {p.lastName}
-                    </span>
-
-                    {/* status chips */}
-                    <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
-                      {chipsForSignup(p).map((c, i) => (
-                        <span
-                          key={i}
+          {/* Unassigned pools: players and coaches */}
+          {!loading &&
+            selectedTournament &&
+            teams.length > 0 &&
+            ([
+              { title: "Unassigned Players", items: unassignedPlayers, icon: "bi-person" },
+              { title: "Unassigned Coaches", items: unassignedCoaches, icon: "bi-person-badge" },
+            ] as const).map(
+              (pool) =>
+                pool.items.length > 0 && (
+                  <div className="mt-4" key={pool.title}>
+                    <h5 style={{ color: "#2155CD", fontWeight: 700 }}>{pool.title}</h5>
+                    <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
+                      {pool.items.map((p) => (
+                        <li
+                          key={p.id}
                           style={{
-                            padding: "2px 8px",
-                            borderRadius: 999,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            background: c.bg,
-                            color: c.color,
-                            whiteSpace: "nowrap",
+                            background: p.isCoach ? "#eef4ff" : "#fff",
+                            borderRadius: 12,
+                            padding: "8px 12px",
+                            marginBottom: 6,
+                            boxShadow: "0 1px 6px #0000000d",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                           }}
                         >
-                          {c.text}
-                        </span>
+                          <i className={`bi ${pool.icon}`} style={{ color: "#2155CD" }} />
+                          <span style={{ fontWeight: 700 }}>
+                            {p.firstName} {p.lastName}
+                          </span>
+
+                          {/* status chips */}
+                          <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
+                            {chipsForSignup(p).map((c, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: c.bg,
+                                  color: c.color,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {c.text}
+                              </span>
+                            ))}
+                          </span>
+                        </li>
                       ))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                    </ul>
+                  </div>
+                )
+            )}
         </div>
       </div>
     </div>

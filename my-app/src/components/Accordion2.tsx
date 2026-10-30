@@ -1,10 +1,11 @@
 // ✅ DROP-IN REWRITE of your Accordion file with ONLY the "Co-Captain" enhancement added.
 // Everything else stays the same.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
+import { seasonForDate, currentSeason, compareSeasonsDesc } from "../utils/season";
 
 /* ---------- tiny UI helpers ---------- */
 const Badge: React.FC<{
@@ -132,6 +133,8 @@ const Accordion: React.FC = () => {
     title: "",
     items: [],
   });
+  const [seasonFilter, setSeasonFilter] = useState<string>(""); // "" = not chosen yet
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -183,9 +186,32 @@ const Accordion: React.FC = () => {
           const moderators = signupDocs.filter((s) => !!s.canModerate).map(volunteerDisplay);
           const scorekeepers = signupDocs.filter((s) => !!s.canScorekeep).map(volunteerDisplay);
 
+          // coach signups live in coach_signups and reference users/{uid}
+          const coachSnap = await getDocs(collection(db, "coach_signups", t.id, "entries"));
+          const coachDocs = coachSnap.docs.map((s) => ({ id: s.id, ...(s.data() as any) }));
+          const coachUserDocs = await Promise.all(
+            coachDocs.map((c) => getDoc(doc(db, "users", c.userId || c.playerId)))
+          );
+          const coachResponses = coachDocs.map((c, i) => {
+            const u: any = coachUserDocs[i].exists() ? coachUserDocs[i].data() : null;
+            const full = u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : "";
+            const name = `${full || u?.displayName || u?.email || "Coach"} (Coach)`;
+            return { name, tags: chipsForSignup(c) };
+          });
+          const coachSignupIdToName = new Map<string, string>();
+          coachDocs.forEach((c, i) =>
+            coachSignupIdToName.set(c.id, coachResponses[i].name.replace(/ \(Coach\)$/, ""))
+          );
+
+          // coaches who volunteered show in the moderator / scorekeeper lists too
+          coachDocs.forEach((c, i) => {
+            if (c.canModerate) moderators.push(coachResponses[i].name);
+            if (c.canScorekeep) scorekeepers.push(coachResponses[i].name);
+          });
+
           // team pretty lines
           const teamsSnap = await getDocs(collection(db, "tournaments", t.id, "teams"));
-          const teamLines: string[] = [];
+          const teamLines: { name: string; coaches: string[]; players: string[] }[] = [];
 
           teamsSnap.forEach((teamDoc) => {
             const td: any = teamDoc.data();
@@ -196,30 +222,37 @@ const Accordion: React.FC = () => {
             const captainCount = members.filter((m: any) => !!m?.isCaptain).length;
             const captainLabel = captainCount > 1 ? "Co-Captain" : "Captain";
 
-            const prettyMembers = members.map((m: any) => {
-              const pid = signupIdToPlayerId.get(m.signupId || "");
-              const name = pid ? playerIdToName.get(pid) || "Unknown" : "Unknown";
+            const coaches = members
+              .filter((m: any) => coachSignupIdToName.has(m.signupId || ""))
+              .map((m: any) => coachSignupIdToName.get(m.signupId || "") as string);
 
-              // ✅ If multiple captains, show "(Co-Captain)" instead of "(Captain)"
-              return m.isCaptain ? `${name} (${captainLabel})` : name;
-            });
+            const players = members
+              .filter((m: any) => !coachSignupIdToName.has(m.signupId || ""))
+              .map((m: any) => {
+                const pid = signupIdToPlayerId.get(m.signupId || "");
+                const name = pid ? playerIdToName.get(pid) || "Unknown" : "Unknown";
 
-            teamLines.push(`${teamName}: ${prettyMembers.join(", ") || "—"}`);
+                // ✅ If multiple captains, show "(Co-Captain)" instead of "(Captain)"
+                return m.isCaptain ? `${name} (${captainLabel})` : name;
+              });
+
+            teamLines.push({ name: teamName, coaches, players });
           });
-
-          // counts
-          const canDrive = signupDocs.filter((s) => (s.carpool || "").includes("can-drive")).length;
 
           // build "responses" list with chips
-          const responses = signupDocs.map((s) => {
-            const name = playerIdToName.get(s.playerId) || "Unknown";
-            const tags = chipsForSignup(s);
-            return { name, tags };
-          });
+          const responses = [
+            ...signupDocs.map((s) => {
+              const name = playerIdToName.get(s.playerId) || "Unknown";
+              const tags = chipsForSignup(s);
+              return { name, tags };
+            }),
+            ...coachResponses,
+          ];
 
           // totals
-          const total = signupDocs.length;
-          const attendingCount = signupDocs.filter(
+          const allDocs = [...signupDocs, ...coachDocs];
+          const total = allDocs.length;
+          const attendingCount = allDocs.filter(
             (s) => (s.availability || "").toLowerCase() !== "no" && (s.availability || "") !== ""
           ).length;
 
@@ -227,7 +260,7 @@ const Accordion: React.FC = () => {
             ...t,
             _teamsPretty: teamLines,
             _counts: {
-              canDrive,
+              canDrive: allDocs.filter((s) => (s.carpool || "").includes("can-drive")).length,
               moderatorsCount: moderators.length,
               scorekeepersCount: scorekeepers.length,
             },
@@ -244,6 +277,23 @@ const Accordion: React.FC = () => {
     fetchAll();
   }, []);
 
+  // seasons present in the data, newest first
+  const seasons = useMemo(
+    () => Array.from(new Set(tournaments.map((t: any) => seasonForDate(t.date)))).sort(compareSeasonsDesc),
+    [tournaments]
+  );
+  // default to the current season if it has events, otherwise show everything
+  const activeSeason = seasonFilter || (seasons.includes(currentSeason()) ? currentSeason() : "all");
+
+  // tournaments are already sorted by date ascending; filter by season and apply sort order
+  const visibleTournaments = useMemo(() => {
+    const filtered =
+      activeSeason === "all"
+        ? tournaments
+        : tournaments.filter((t: any) => seasonForDate(t.date) === activeSeason);
+    return sortOrder === "asc" ? filtered : [...filtered].reverse();
+  }, [tournaments, activeSeason, sortOrder]);
+
   return (
     <div style={{ background: "#f6f8fb", minHeight: "100vh" }}>
       <div className="container py-4" style={{ maxWidth: 1000 }}>
@@ -251,13 +301,57 @@ const Accordion: React.FC = () => {
           Events & Teams
         </h1>
 
-        {tournaments.map((t: any) => {
+        {/* Season filter + sort order */}
+        <div className="d-flex flex-wrap align-items-center mb-4" style={{ gap: 10 }}>
+          <label className="fw-semibold mb-0" htmlFor="seasonFilter" style={{ fontWeight: 700 }}>
+            Season:
+          </label>
+          <select
+            id="seasonFilter"
+            className="form-select"
+            style={{ maxWidth: 200, borderRadius: 12, fontWeight: 600 }}
+            value={activeSeason}
+            onChange={(e) => setSeasonFilter(e.target.value)}
+          >
+            <option value="all">All Seasons</option>
+            {seasons.map((season) => (
+              <option key={season} value={season}>
+                {season}
+              </option>
+            ))}
+          </select>
+
+          <label className="fw-semibold mb-0 ms-2" htmlFor="sortOrder" style={{ fontWeight: 700 }}>
+            Sort:
+          </label>
+          <select
+            id="sortOrder"
+            className="form-select"
+            style={{ maxWidth: 200, borderRadius: 12, fontWeight: 600 }}
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+          >
+            <option value="asc">Date (oldest first)</option>
+            <option value="desc">Date (newest first)</option>
+          </select>
+        </div>
+
+        {visibleTournaments.map((t: any, idx: number) => {
           const st = statusStyle(t.status);
           const tp = typeStyle(t.eventType);
           const isPublished = !!t.teamsPublished;
+          const season = seasonForDate(t.date);
+          const showSeasonHeader =
+            activeSeason === "all" && (idx === 0 || seasonForDate(visibleTournaments[idx - 1].date) !== season);
 
           return (
-            <Card key={t.id}>
+            <React.Fragment key={t.id}>
+            {showSeasonHeader && (
+              <h3 className="mt-4 mb-3" style={{ fontWeight: 800, color: "#DF2E38" }}>
+                {season === "No Date" ? "No Date" : `${season} Season`}
+              </h3>
+            )}
+            <Card>
               {/* Header */}
               <div
                 className="d-flex flex-wrap align-items-center justify-content-between"
@@ -383,11 +477,29 @@ const Accordion: React.FC = () => {
                   <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Teams</div>
                   {t._teamsPretty && t._teamsPretty.length > 0 ? (
                     <ul style={{ paddingLeft: 18, marginBottom: 0 }}>
-                      {t._teamsPretty.map((line: string, idx: number) => (
-                        <li key={idx} style={{ marginBottom: 4, color: "#0f172a" }}>
-                          {line}
-                        </li>
-                      ))}
+                      {t._teamsPretty.map(
+                        (team: { name: string; coaches: string[]; players: string[] }, idx: number) => (
+                          <li key={idx} style={{ marginBottom: 6, color: "#0f172a" }}>
+                            <span style={{ fontWeight: 800 }}>{team.name}</span>
+                            {team.coaches.length > 0 && (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: "#dbeafe",
+                                  color: "#1e3a8a",
+                                }}
+                              >
+                                {team.coaches.length > 1 ? "Coaches" : "Coach"}: {team.coaches.join(", ")}
+                              </span>
+                            )}
+                            <div style={{ fontSize: 14 }}>{team.players.join(", ") || "—"}</div>
+                          </li>
+                        )
+                      )}
                     </ul>
                   ) : (
                     <div className="text-muted">No teams yet</div>
@@ -395,10 +507,11 @@ const Accordion: React.FC = () => {
                 </div>
               </div>
             </Card>
+            </React.Fragment>
           );
         })}
 
-        {tournaments.length === 0 && <div className="text-center text-muted py-5">No tournaments found.</div>}
+        {visibleTournaments.length === 0 && <div className="text-center text-muted py-5">No tournaments found.</div>}
       </div>
 
       {/* overlay modal */}

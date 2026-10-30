@@ -6,10 +6,10 @@ const RED = "#DF2E38";
 const SOFT_BG = "#fff";
 
 const teamMembers = [
-  { name: 'Lisa Groh', role: 'Head SB Coach since 2009 & SB Parent 2008-2017', description: 'Logistics, Problem solving, Comm., U.S. History & Geography' },
+  { name: 'Vikram Manivasagam', role: 'Head Coach since 2026, Asst. Coach from 2024-2026 & SB parent since 2023', description: 'Specializing in Math, Science & Sports ' },
   { name: 'Satish Bhatt', role: 'Asst. Coach since 2022 & SB parent since 2018', description: 'Math, Science & Literature ' },
   { name: 'Amy Byrne', role: 'Asst. Coach & SB parent since 2021', description: 'Specializing in Math & Fine Arts' },
-  { name: 'Vikram Manivasagam', role: 'Asst. Coach since 2024 & SB parent since 2023', description: 'Specializing in Math, Science & Sports ' }
+  { name: 'Lisa Groh', role: 'Asst.  Coach since 2026, Head SB Coach from 2009-2026 & SB Parent 2008-2017', description: 'Logistics, Problem solving, Comm., U.S. History & Geography' }
 ];
 
 const About: React.FC = () => {
