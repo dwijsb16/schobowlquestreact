@@ -9,7 +9,7 @@ const teamMembers = [
   { name: 'Vikram Manivasagam', role: 'Head Coach since 2026, Asst. Coach from 2024-2026 & SB parent since 2023', description: 'Specializing in Math, Science & Sports ' },
   { name: 'Satish Bhatt', role: 'Asst. Coach since 2022 & SB parent since 2018', description: 'Math, Science & Literature ' },
   { name: 'Amy Byrne', role: 'Asst. Coach & SB parent since 2021', description: 'Specializing in Math & Fine Arts' },
-  { name: 'Lisa Groh', role: 'Asst.  Coach since 2026, Head SB Coach from 2009-2026 & SB Parent 2008-2017', description: 'Logistics, Problem solving, Comm., U.S. History & Geography' }
+  { name: 'Lisa Groh', role: 'Asst. Coach since 2026, Head SB Coach from 2009-2026 & SB Parent 2008-2017', description: 'Logistics, Problem solving, Comm., U.S. History & Geography' }
 ];
 
 const About: React.FC = () => {
@@ -115,9 +115,6 @@ const About: React.FC = () => {
                     </li>
                     <li>
                       <b>IESA</b> — Illinois Elementary School Association. Our official state format, played with local schools across Illinois.
-                    </li>
-                    <li>
-                      <b>NAC</b> — Quiz Bowl National Championship (More info coming soon!)
                     </li>
                   </ul>
                 </div>
