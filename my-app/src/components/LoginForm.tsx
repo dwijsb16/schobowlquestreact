@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { auth, signInWithGooglePopup, db } from "../.firebase/utils/firebase";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { getDoc, doc, collection, query, where, getDocs, setDoc, Timestamp } from "firebase/firestore";
+import { getDoc, doc } from "firebase/firestore";
 import { Eye, EyeOff } from "lucide-react";
-import emailjs from "emailjs-com";
 
 const RED = "#DF2E38";
 const DARK_RED = "#B71C1C";
@@ -14,16 +13,6 @@ const WHITE = "#fff";
 const BLACK = "#212121";
 const GREY = "#858585";
 const LIGHT_GREY = "#f7f7f7";
-
-// EmailJS config
-const EMAILJS_SERVICE_ID = "service_9marpbs";
-const EMAILJS_TEMPLATE_ID = "template_4lyuban";
-const EMAILJS_PUBLIC_KEY = "1F-ljhM3B95nu3_4i";
-
-// Helper to generate a random token
-function generateResetToken() {
-  return Math.random().toString(36).slice(2) + Date.now();
-}
 
 const MAX_RESENDS = 3;
 
@@ -99,48 +88,25 @@ const LoginForm: React.FC = () => {
     }
   };
 
-  // Forgot Password Functionality with Resend (unchanged)
+  // Forgot Password: Firebase sends the reset link and hosts the page that changes the password
   const handleForgotPassword = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSending(true);
     setSent(false);
 
     try {
-      const usersQuery = query(collection(db, "users"), where("email", "==", resetEmail));
-      const userSnap = await getDocs(usersQuery);
-      if (userSnap.empty) {
-        toast.error("No user with this email exists. Please try again.");
-        setSending(false);
-        return;
-      }
-      // 1. Generate reset token and expiration (30 mins)
-      const token = generateResetToken();
-      const expires = Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000));
-      await setDoc(doc(db, "reset_tokens", token), {
-        email: resetEmail,
-        expires,
-        used: false
-      });
+      await sendPasswordResetEmail(auth, resetEmail.trim());
 
-      // 2. Build reset link and send email via EmailJS
-      const resetLink = `${window.location.origin}/reset?token=${token}`;
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        {
-          to_email: resetEmail,
-          reset_link: resetLink
-        },
-        EMAILJS_PUBLIC_KEY
-      );
-
-      toast.success("Reset email sent! Check your inbox.");
+      // Firebase may not reveal whether the account exists, so don't promise an email was sent
+      toast.success("If an account exists for this email, a reset link is on its way. Check your inbox and spam folder.");
       setSent(true);
       setResendCount((c) => c + 1);
       setCanResend(false);
       setResendCooldown(30);
-    } catch (err) {
-      toast.error("Failed to send reset email. Try again later.");
+    } catch (err: any) {
+      toast.error(
+        err?.code ? firebaseErrorParser(err) : "Failed to send reset email. Try again later."
+      );
     }
     setSending(false);
   };

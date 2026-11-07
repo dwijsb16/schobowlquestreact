@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
+import { todayLocal } from "../utils/date";
 import { Link } from "react-router-dom";
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 
@@ -37,9 +38,6 @@ const AtAGlanceCalendar: React.FC = () => {
   const [signupStatus, setSignupStatus] = useState<Record<string, string>>({});
 
   // --- Helpers ---
-  const toLocalYYYYMMDD = (d: Date) =>
-    new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-
   const timeOrMidnight = (t?: string) => (t ?? "00:00").padEnd(8, ":00");
 
   const formatDate = (dateStr: string) => {
@@ -53,7 +51,7 @@ const AtAGlanceCalendar: React.FC = () => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const todayStr = toLocalYYYYMMDD(new Date()); // only upcoming (today or later)
+        const todayStr = todayLocal(); // only upcoming (today or later)
 
         // Firestore: filter to upcoming and order by date
         const tournQuery = query(

@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../.firebase/utils/firebase";
+import { isTodayOrLater } from "../utils/date";
 
 // --- SVG Crown for Captain Badge ---
 const Crown = () => (
@@ -109,10 +110,9 @@ const TeamManagement: React.FC = () => {
     const fetchTournaments = async () => {
       const qTourn = query(collection(db, "tournaments"), orderBy("date"));
       const tournSnap = await getDocs(qTourn);
-      const today = new Date();
       const allTourns: Tournament[] = tournSnap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }))
-        .filter((t) => t.date && new Date(t.date) >= today);
+        .filter((t) => isTodayOrLater(t.date));
 
       setTournaments(allTourns);
 

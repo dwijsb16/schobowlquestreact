@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Navigation from "./components/Navbar";
 import Home from "./pages/home";
 import About from "./pages/About";
@@ -24,7 +24,6 @@ import ManageEvents from "./pages/ManageTournaments";
 import AssignCoaches from "./pages/AssignCoaches";
 import PlayerList from "./pages/PlayerList";
 import { AuthProvider } from "./hooks/AuthContext";
-import ResetPassword from "./pages/forgotpassword";
 import { useAutoLogout } from './hooks/useAutoLogout';
 
 
@@ -39,7 +38,7 @@ const App = () => {
           <Routes>
             {/* PUBLIC ROUTES */}
             <Route path="/" element={<Home />} />
-            <Route path="/reset" element={<ResetPassword />} />
+            <Route path="/reset" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="/about" element={<About />} />

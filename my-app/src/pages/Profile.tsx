@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { setDoc, collection, doc, getDocs, getDoc, query, orderBy } from "firebase/firestore";
 import { auth, db } from "../.firebase/utils/firebase";
+import { isTodayOrLater } from "../utils/date";
 import { updatePassword } from "firebase/auth";
 import Footer from "../components/footer";
 
@@ -180,12 +181,11 @@ useEffect(() => {
   useEffect(() => {
     const load = async () => {
       setLoadingSignups(true);
-      const today = new Date();
       const tournQuery = query(collection(db, "tournaments"), orderBy("date"));
       const tournSnap = await getDocs(tournQuery);
       const tourns: TournamentCard[] = tournSnap.docs
         .map((d) => ({ id: d.id, ...d.data() } as TournamentCard))
-        .filter((t) => t.date && new Date(t.date) >= today);
+        .filter((t) => isTodayOrLater(t.date));
 
       setTournaments(tourns);
 
